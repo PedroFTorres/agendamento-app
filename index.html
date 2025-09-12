@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendamento e Gestão</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+New&display=swap');
+        body {
+            font-family: 'Courier New', monospace;
+        }
+        .has-submenu[data-section="agendamento"] svg {
+            transform: rotate(0deg);
+            transition: transform 0.2s;
+        }
+        .has-submenu[data-section="agendamento"].active svg {
+            transform: rotate(90deg);
+        }
+        .has-submenu[data-section="cadastro"] svg {
+            transform: rotate(0deg);
+            transition: transform 0.2s;
+        }
+        .has-submenu[data-section="cadastro"].active svg {
+            transform: rotate(90deg);
+        }
+
+        @media print {
+            body > *:not(.print-only) {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+            }
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #f6993f;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex min-h-screen">
+    <!-- Overlay de carregamento -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Tela de Login -->
+    <div id="login-screen" class="w-full flex items-center justify-center p-8">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm">
+            <h1 class="text-3xl font-bold text-center text-orange-800 mb-6">Login</h1>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">E-mail</label>
+                    <input type="email" id="email" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
+                    <input type="password" id="password" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                </div>
+                <button type="submit" class="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">Entrar</button>
+            </form>
+            <p id="error-message" class="text-red-500 text-sm mt-4 text-center hidden"></p>
+        </div>
+    </div>
+    
+    <!-- Aplicação Principal -->
+    <div id="main-app" class="w-full flex hidden">
+        <aside id="side-menu" class="bg-orange-800 text-white w-64 p-4 space-y-2 flex-shrink-0">
+            <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+            <nav class="space-y-1">
+                <a href="#" data-section="relatorio" class="menu-item flex items-center p-3 rounded-lg hover:bg-orange-700 transition-colors">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m-2-7a2 2 0 012-2h2a2 2 0 012 2v7m-2-7a2 2 0 00-2-2H9a2 2 0 00-2 2"></path>
+                    </svg>
+                    Relatório
+                </a>
+                <div class="relative">
+                    <a href="#" data-section="agendamento" class="has-submenu menu-item flex items-center justify-between p-3 rounded-lg hover:bg-orange-700 transition-colors">
+                        <span class="flex items-center">
+                            <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h.01M7 11h.01M11 15h.01M15 15h.01M17 11h.01m-6 4h.01M3 15h2a2 2 0 012 2v3a2 2 0 01-2 2H3a2 2 0 01-2-2v-3a2 2 0 012-2zm12-4h2a2 2 0 012 2v3a2 2 0 01-2 2h-2a2 2 0 01-2-2v-3a2 2 0 012-2zm-6-4h.01M7 9h.01M11 9h.01m2-4a2 2 0 012-2h2a2 2 0 012 2v4h-6V5z"></path>
+                            </svg>
+                            Agendamento
+                        </span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </a>
+                    <div data-submenu="agendamento" class="submenu hidden ml-6 mt-1 space-y-1">
+                        <a href="#" data-section="agendamento-novo" class="submenu-item block p-2 rounded-lg text-sm hover:bg-orange-700 transition-colors">Novo Agendamento</a>
+                        <a href="#" data-section="agendamento-consultar" class="submenu-item block p-2 rounded-lg text-sm hover:bg-orange-700 transition-colors">Consultar Agendamentos</a>
+                    </div>
+                </div>
+                <div id="cadastro-menu-item" class="relative">
+                    <a href="#" data-section="cadastro" class="has-submenu menu-item flex items-center justify-between p-3 rounded-lg hover:bg-orange-700 transition-colors">
+                        <span class="flex items-center">
+                            <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-6a4 4 0 11-8 0 4 4 0 018 0zm-8 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            Cadastro
+                        </span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </a>
+                    <div data-submenu="cadastro" class="submenu hidden ml-6 mt-1 space-y-1">
+                        <a href="#" data-section="cadastro-clientes" class="submenu-item block p-2 rounded-lg text-sm hover:bg-orange-700 transition-colors">Clientes</a>
+                        <a href="#" data-section="cadastro-representantes" class="submenu-item block p-2 rounded-lg text-sm hover:bg-orange-700 transition-colors">Representantes</a>
+                        <a href="#" data-section="cadastro-produtos" class="submenu-item block p-2 rounded-lg text-sm hover:bg-orange-700 transition-colors">Produtos</a>
+                    </div>
+                </div>
+            </nav>
+            <div class="mt-auto pt-4 border-t border-orange-700">
+                <button id="logout-btn" class="flex items-center w-full p-3 rounded-lg hover:bg-orange-700 transition-colors">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Sair
+                </button>
+            </div>
+        </aside>
+
+        <main id="main-content" class="flex-1 p-8 overflow-y-auto">
+            <!-- O conteúdo das seções será injetado aqui pelo JavaScript -->
+        </main>
+        
+        <!-- Relatório para Impressão (fora do main-content) -->
+        <div id="print-report-container" class="hidden print-only"></div>
+
+        <!-- Modal de confirmação/mensagem -->
+        <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+                <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
+                <p id="modal-message" class="text-gray-700 mb-6"></p>
+                <div id="modal-actions" class="flex justify-end space-x-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script da Aplicação -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Configuração e Inicialização do Firebase
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Assinatura anônima inicial para usar o Firestore
+        signInAnonymously(auth).catch(e => console.error("Erro ao fazer login anônimo para o Firestore:", e));
+        
+        // --- Variáveis Globais ---
+        let currentSection = 'dashboard';
+        let currentAppointmentId = null;
+        let isEditingAppointment = false;
+        let userRole = null;
+        let userId = null;
+        let representativeId = null;
+        
+        let appointmentData = [];
+        let clientes = [];
+        let representantes = [];
+        let produtos = [];
+
+        // --- Elementos do DOM ---
+        const loginScreen = document.getElementById('login-screen');
+        const mainApp = document.getElementById('main-app');
+        const mainContent = document.getElementById('main-content');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalActions = document.getElementById('modal-actions');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        const cadastroMenuItem = document.getElementById('cadastro-menu-item');
+        
+        // --- Setup de Navegação e Eventos ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderLoginScreen();
+        });
+
+        loginForm.addEventListener('submit', handleLogin);
+        document.getElementById('logout-btn').addEventListener('click', handleLogout);
+
+        function showLoading() { loadingOverlay.classList.remove('hidden'); }
+        function hideLoading() { loadingOverlay.classList.add('hidden'); }
+        
+        // --- Autenticação e Gestão de Usuários ---
+        function renderLoginScreen() {
+            loginScreen.classList.remove('hidden');
+            mainApp.classList.add('hidden');
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = loginForm.email.value;
+            const password = loginForm.password.value;
+            errorMessage.classList.add('hidden');
+            showLoading();
+
+            try {
+                if (email === 'pedrofernandot@gmail.com' && password === 'pedro1206') {
+                    userRole = 'master';
+                    console.log('Login Master bem-sucedido.');
+                    renderApp();
+                } else {
+                    const q = query(collection(db, `artifacts/${appId}/public/data/representantes`), where("email", "==", email), where("senha", "==", password));
+                    const querySnapshot = await getDocs(q);
+
+                    if (!querySnapshot.empty) {
+                        const representanteDoc = querySnapshot.docs[0];
+                        representativeId = representanteDoc.id;
+                        userRole = 'representante';
+                        console.log('Login Representante bem-sucedido.');
+                        renderApp();
+                    } else {
+                        throw new Error('E-mail ou senha incorretos.');
+                    }
+                }
+            } catch (error) {
+                console.error("Erro de login:", error);
+                errorMessage.textContent = error.message;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function handleLogout() {
+            userRole = null;
+            representativeId = null;
+            showModal('Sessão Encerrada', 'Você saiu com sucesso.', [{ text: 'OK', class: 'bg-green-500 text-white hover:bg-green-600', handler: hideModal }]);
+            renderLoginScreen();
+        }
+
+        // --- Renderização da UI da Aplicação ---
+        function renderApp() {
+            loginScreen.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+            
+            if (userRole === 'master') {
+                cadastroMenuItem.classList.remove('hidden');
+            } else {
+                cadastroMenuItem.classList.add('hidden');
+            }
+            
+            loadData();
+            setupEventListeners();
+            showSection(currentSection);
+            hideLoading();
+        }
+
+        function setupEventListeners() {
+            const menuItems = document.querySelectorAll('.menu-item');
+            menuItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const section = e.currentTarget.dataset.section;
+                    const hasSubmenu = e.currentTarget.classList.contains('has-submenu');
+                    
+                    if (hasSubmenu) {
+                        e.currentTarget.classList.toggle('active');
+                        const submenu = e.currentTarget.nextElementSibling;
+                        submenu.classList.toggle('hidden');
+                    } else {
+                        document.querySelectorAll('.submenu').forEach(sub => sub.classList.add('hidden'));
+                        document.querySelectorAll('.has-submenu').forEach(el => el.classList.remove('active'));
+                        showSection(section);
+                    }
+                });
+            });
+
+            const submenuItems = document.querySelectorAll('.submenu-item');
+            submenuItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const section = e.currentTarget.dataset.section;
+                    showSection(section);
+                });
+            });
+
+            const importCsvBtn = document.getElementById('import-csv-btn');
+            const csvFileInput = document.getElementById('csv-file-input');
+            if (importCsvBtn && csvFileInput) {
+                importCsvBtn.addEventListener('click', () => csvFileInput.click());
+                csvFileInput.addEventListener('change', (e) => handleCSVImport(e.target.files[0]));
+            }
+            
+            const produtoImagemInput = document.getElementById('produto-imagem');
+            const produtoImagemPreview = document.getElementById('produto-imagem-preview');
+            if (produtoImagemInput && produtoImagemPreview) {
+                produtoImagemInput.addEventListener('input', (e) => {
+                    const url = e.target.value;
+                    if (url) {
+                        produtoImagemPreview.src = url;
+                        produtoImagemPreview.classList.remove('hidden');
+                    } else {
+                        produtoImagemPreview.classList.add('hidden');
+                    }
+                });
+            }
+        }
+
+        // --- Funções de Exibição de Conteúdo ---
+        function showSection(section) {
+            currentSection = section;
+            mainContent.innerHTML = '';
+            
+            document.querySelectorAll('.menu-item, .submenu-item').forEach(el => el.classList.remove('bg-orange-700'));
+            const activeLink = document.querySelector(`[data-section="${section}"]`);
+            if (activeLink) activeLink.classList.add('bg-orange-700');
+
+            if (currentSection.startsWith('cadastro-')) {
+                renderCadastro(currentSection.replace('cadastro-', ''));
+            } else if (currentSection === 'agendamento-novo') {
+                renderAgendamentoForm();
+            } else if (currentSection === 'agendamento-consultar') {
+                renderConsultaAgendamentos();
+            } else if (currentSection === 'relatorio') {
+                renderRelatorio();
+            } else {
+                renderDashboard();
+            }
+        }
+        
+        // --- Gerenciamento de Modal ---
+        function showModal(title, message, actions) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalActions.innerHTML = '';
+            actions.forEach(action => {
+                const btn = document.createElement('button');
+                btn.textContent = action.text;
+                btn.className = `px-4 py-2 rounded-lg font-semibold ${action.class}`;
+                btn.onclick = () => {
+                    action.handler();
+                };
+                modalActions.appendChild(btn);
+            });
+            modal.classList.remove('hidden');
+        }
+
+        function hideModal() {
+            modal.classList.add('hidden');
+        }
+        
+        // --- Renderização das Seções ---
+        function renderDashboard() {
+            mainContent.innerHTML = `
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold mb-4">Dashboard</h2>
+                    <p>Bem-vindo ao sistema de agendamento e gestão.</p>
+                </div>
+            `;
+        }
+        
+        function renderRelatorio() {
+            mainContent.innerHTML = `
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">Relatório de Agendamentos</h2>
+                        <button id="print-report-btn" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm0-4v2h6v-2h-6zM17 14v4M12 21v-4"></path></svg>
+                            Imprimir Relatório
+                        </button>
+                    </div>
+                    <div class="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="report-start-date" class="block text-sm font-medium text-gray-700">Data Inicial:</label>
+                            <input type="date" id="report-start-date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                        </div>
+                        <div>
+                            <label for="report-end-date" class="block text-sm font-medium text-gray-700">Data Final:</label>
+                            <input type="date" id="report-end-date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                        </div>
+                        <div>
+                            <label for="report-client" class="block text-sm font-medium text-gray-700">Pesquisar por Cliente:</label>
+                            <input type="text" id="report-client" placeholder="Nome do Cliente" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                        </div>
+                        ${userRole === 'master' ? `
+                        <div>
+                            <label for="report-representative" class="block text-sm font-medium text-gray-700">Pesquisar por Representante:</label>
+                            <input type="text" id="report-representative" placeholder="Nome do Representante" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                        </div>` : ''}
+                    </div>
+                </div>
+                <div id="report-live-view" class="p-6"></div>
+            `;
+            const reportStartDateInput = document.getElementById('report-start-date');
+            const reportEndDateInput = document.getElementById('report-end-date');
+            const reportClientInput = document.getElementById('report-client');
+            const reportRepresentativeInput = document.getElementById('report-representative');
+            const printBtn = document.getElementById('print-report-btn');
+
+            const updateReport = () => {
+                const startDate = reportStartDateInput.value;
+                const endDate = reportEndDateInput.value;
+                const clientName = reportClientInput.value;
+                const representativeName = userRole === 'master' ? reportRepresentativeInput.value : null;
+                generateReport(startDate, endDate, clientName, representativeName);
+            };
+
+            reportStartDateInput.addEventListener('input', updateReport);
+            reportEndDateInput.addEventListener('input', updateReport);
+            reportClientInput.addEventListener('input', updateReport);
+            if (userRole === 'master' && reportRepresentativeInput) {
+                reportRepresentativeInput.addEventListener('input', updateReport);
+            }
+            
+            printBtn.addEventListener('click', () => {
+                updateReport();
+                window.print();
+            });
+
+            updateReport();
+        }
+        
+        async function renderAgendamentoForm() {
+            mainContent.innerHTML = `
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold mb-4">${isEditingAppointment ? 'Editar Agendamento' : 'Novo Agendamento'}</h2>
+                    <form id="agendamento-form" class="space-y-4">
+                        <div>
+                            <label for="cliente-select" class="block text-sm font-medium text-gray-700">Cliente</label>
+                            <select id="cliente-select" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                <option value="">Selecione um cliente...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="representante-select" class="block text-sm font-medium text-gray-700">Representante</label>
+                            <select id="representante-select" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                <option value="">Selecione um representante...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="agendamento-data" class="block text-sm font-medium text-gray-700">Data e Hora</label>
+                            <input type="datetime-local" id="agendamento-data" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <h3 class="text-lg font-semibold mb-2">Produtos</h3>
+                            <div id="produtos-container" class="space-y-2"></div>
+                            <button type="button" id="add-produto-btn" class="mt-2 px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                                <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                Adicionar Produto
+                            </button>
+                        </div>
+                        
+                        <div class="pt-4">
+                            <button type="submit" class="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                                ${isEditingAppointment ? 'Salvar Alterações' : 'Agendar'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            const form = document.getElementById('agendamento-form');
+            const clienteSelect = document.getElementById('cliente-select');
+            const representanteSelect = document.getElementById('representante-select');
+            const produtosContainer = document.getElementById('produtos-container');
+            const addProdutoBtn = document.getElementById('add-produto-btn');
+
+            await populateSelects(clienteSelect, clientes.filter(c => userRole === 'master' || c.representanteId === representativeId));
+            await populateSelects(representanteSelect, representantes);
+            
+            if (userRole === 'representante') {
+                representanteSelect.value = representativeId;
+                representanteSelect.disabled = true;
+                clienteSelect.innerHTML = '<option value="">Selecione um cliente...</option>';
+                clientes.filter(c => c.representanteId === representativeId).forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = item.nome;
+                    clienteSelect.appendChild(option);
+                });
+            }
+
+            if (isEditingAppointment && currentAppointmentId) {
+                const appointment = appointmentData.find(a => a.id === currentAppointmentId);
+                if (appointment) {
+                    document.getElementById('agendamento-data').value = appointment.data.slice(0, 16);
+                    clienteSelect.value = appointment.clienteId;
+                    representanteSelect.value = appointment.representanteId;
+                    appointment.produtos.forEach(produto => {
+                        addProdutoRow(produtosContainer, produto.produtoId, produto.quantidade);
+                    });
+                }
+            } else {
+                addProdutoRow(produtosContainer);
+            }
+
+            addProdutoBtn.addEventListener('click', () => addProdutoRow(produtosContainer));
+            form.addEventListener('submit', handleAgendamentoSubmit);
+        }
+        
+        async function renderConsultaAgendamentos() {
+            mainContent.innerHTML = `
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold mb-4">Consultar Agendamentos</h2>
+                    <div class="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="search-client" class="block text-sm font-medium text-gray-700">Pesquisar por Cliente:</label>
+                            <input type="text" id="search-client" placeholder="Nome do Cliente" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                        </div>
+                        <div>
+                            <label for="search-date" class="block text-sm font-medium text-gray-700">Pesquisar por Data:</label>
+                            <input type="date" id="search-date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                        </div>
+                    </div>
+                    <div id="agendamentos-list" class="space-y-4"></div>
+                </div>
+            `;
+            const agendamentosList = document.getElementById('agendamentos-list');
+            const searchClientInput = document.getElementById('search-client');
+            const searchDateInput = document.getElementById('search-date');
+            
+            filterAgendamentos(appointmentData, agendamentosList, '', '');
+
+            searchClientInput.addEventListener('input', () => filterAgendamentos(appointmentData, agendamentosList, searchClientInput.value, searchDateInput.value));
+            searchDateInput.addEventListener('change', () => filterAgendamentos(appointmentData, agendamentosList, searchClientInput.value, searchDateInput.value));
+        }
+        
+        // --- Renderização dos Cadastros ---
+        function renderCadastro(tipo) {
+            mainContent.innerHTML = `
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold mb-4">Cadastro de ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</h2>
+                    <div id="form-container"></div>
+                    <div id="list-container" class="mt-6"></div>
+                </div>
+            `;
+            const formContainer = document.getElementById('form-container');
+            const listContainer = document.getElementById('list-container');
+            
+            let formHtml = '';
+            let listTitle = '';
+
+            switch(tipo) {
+                case 'clientes':
+                    formHtml = `
+                        <form id="cadastro-form" class="bg-white p-4 rounded-lg shadow-md mb-4">
+                            <h3 class="text-lg font-semibold mb-2">Novo Cliente</h3>
+                            <input type="hidden" id="item-id">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="cliente-nome" class="block text-sm font-medium text-gray-700">Nome do Cliente</label>
+                                    <input type="text" id="cliente-nome" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                </div>
+                                <div>
+                                    <label for="cliente-contato" class="block text-sm font-medium text-gray-700">Contato (Telefone/Email)</label>
+                                    <input type="text" id="cliente-contato" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                </div>
+                                <div class="col-span-1">
+                                    <label for="cliente-representante-select" class="block text-sm font-medium text-gray-700">Representante</label>
+                                    <select id="cliente-representante-select" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                        <option value="">Selecione um representante...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" id="submit-btn" class="mt-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">Cadastrar Cliente</button>
+                        </form>
+                        <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+                            <h3 class="text-lg font-semibold mb-2">Importar Clientes</h3>
+                            <p class="text-sm text-gray-600 mb-2">
+                                Para importar, prepare um arquivo CSV com as colunas: "nome,contato".
+                            </p>
+                            <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+                            <button type="button" id="import-csv-btn" class="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                Importar Clientes do CSV
+                            </button>
+                        </div>
+                    `;
+                    listTitle = 'Clientes Cadastrados';
+                    break;
+                case 'representantes':
+                    formHtml = `
+                        <form id="cadastro-form" class="bg-white p-4 rounded-lg shadow-md mb-4">
+                            <h3 class="text-lg font-semibold mb-2">Novo Representante</h3>
+                            <input type="hidden" id="item-id">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="representante-nome" class="block text-sm font-medium text-gray-700">Nome do Representante</label>
+                                    <input type="text" id="representante-nome" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                </div>
+                                <div>
+                                    <label for="representante-email" class="block text-sm font-medium text-gray-700">E-mail</label>
+                                    <input type="email" id="representante-email" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                </div>
+                                <div>
+                                    <label for="representante-whatsapp" class="block text-sm font-medium text-gray-700">WhatsApp</label>
+                                    <input type="tel" id="representante-whatsapp" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                </div>
+                            </div>
+                            <button type="submit" id="submit-btn" class="mt-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">Cadastrar Representante</button>
+                        </form>
+                    `;
+                    listTitle = 'Representantes Cadastrados';
+                    break;
+                case 'produtos':
+                    formHtml = `
+                        <form id="cadastro-form" class="bg-white p-4 rounded-lg shadow-md mb-4">
+                            <h3 class="text-lg font-semibold mb-2">Novo Produto</h3>
+                            <input type="hidden" id="item-id">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="produto-nome" class="block text-sm font-medium text-gray-700">Nome do Produto</label>
+                                    <input type="text" id="produto-nome" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                </div>
+                                <div>
+                                    <label for="produto-preco" class="block text-sm font-medium text-gray-700">Preço</label>
+                                    <input type="text" id="produto-preco" pattern="\\d+(\\,\\d{1,4})?" placeholder="Ex: 0,7888" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                </div>
+                                <div>
+                                    <label for="produto-imagem" class="block text-sm font-medium text-gray-700">URL da Imagem</label>
+                                    <input type="url" id="produto-imagem" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                                </div>
+                                <div id="imagem-preview-container" class="mt-1">
+                                    <p class="text-sm font-medium text-gray-700">Pré-visualização:</p>
+                                    <img id="produto-imagem-preview" src="" alt="Pré-visualização da imagem" class="mt-2 w-24 h-24 rounded-lg object-cover border border-gray-300 hidden">
+                                </div>
+                            </div>
+                            <button type="submit" id="submit-btn" class="mt-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">Cadastrar Produto</button>
+                        </form>
+                    `;
+                    listTitle = 'Produtos Cadastrados';
+                    break;
+            }
+            formContainer.innerHTML = formHtml;
+            
+            if (tipo === 'clientes') {
+                const representanteSelect = document.getElementById('cliente-representante-select');
+                populateSelects(representanteSelect, representantes);
+            }
+            
+            const form = document.getElementById('cadastro-form');
+            form.addEventListener('submit', (e) => handleCadastroSubmit(e, tipo));
+            
+            const listTitleEl = document.createElement('h3');
+            listTitleEl.className = 'text-lg font-semibold mb-2';
+            listTitleEl.textContent = listTitle;
+            listContainer.appendChild(listTitleEl);
+            
+            const listEl = document.createElement('div');
+            listEl.id = 'cadastro-list';
+            listEl.className = 'space-y-2';
+            listContainer.appendChild(listEl);
+            
+            loadCadastroData(tipo, listEl);
+        }
+        
+        // --- Funções de Manipulação de Dados ---
+        function loadData() {
+            onSnapshot(collection(db, `artifacts/${appId}/public/data/clientes`), (snapshot) => {
+                clientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (currentSection === 'cadastro-clientes' && userRole === 'master') loadCadastroData('clientes', document.getElementById('cadastro-list'));
+                if (currentSection === 'agendamento-novo' && document.getElementById('agendamento-form')) renderAgendamentoForm();
+                if (currentSection === 'agendamento-consultar') renderConsultaAgendamentos();
+                if (currentSection === 'relatorio') renderRelatorio();
+            });
+
+            onSnapshot(collection(db, `artifacts/${appId}/public/data/agendamentos`), (snapshot) => {
+                appointmentData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (currentSection === 'agendamento-consultar') {
+                    renderConsultaAgendamentos();
+                } else if (currentSection === 'relatorio') {
+                    const reportStartDateInput = document.getElementById('report-start-date');
+                    const reportEndDateInput = document.getElementById('report-end-date');
+                    const reportClientInput = document.getElementById('report-client');
+                    const reportRepresentativeInput = document.getElementById('report-representative');
+                    if (reportStartDateInput && reportEndDateInput && reportClientInput) {
+                        const representativeName = userRole === 'master' ? (reportRepresentativeInput ? reportRepresentativeInput.value : null) : null;
+                        generateReport(reportStartDateInput.value, reportEndDateInput.value, reportClientInput.value, representativeName);
+                    }
+                }
+            });
+
+            onSnapshot(collection(db, `artifacts/${appId}/public/data/representantes`), (snapshot) => {
+                representantes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (currentSection === 'cadastro-representantes' && userRole === 'master') loadCadastroData('representantes', document.getElementById('cadastro-list'));
+            });
+            onSnapshot(collection(db, `artifacts/${appId}/public/data/produtos`), (snapshot) => {
+                produtos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (currentSection === 'cadastro-produtos' && userRole === 'master') loadCadastroData('produtos', document.getElementById('cadastro-list'));
+            });
+        }
+        
+        async function populateSelects(selectElement, dataList) {
+            selectElement.innerHTML = '<option value="">Selecione...</option>';
+            dataList.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.nome;
+                selectElement.appendChild(option);
+            });
+        }
+        
+        async function addProdutoRow(container, productId = '', quantidade = '') {
+            const row = document.createElement('div');
+            row.className = 'flex items-center space-x-2';
+            
+            const select = document.createElement('select');
+            select.className = 'w-2/3 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-orange-300';
+            select.name = 'produto-id';
+            select.required = true;
+            
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Selecione um produto';
+            select.appendChild(defaultOption);
+            
+            produtos.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.nome;
+                select.appendChild(option);
+            });
+            
+            const quantidadeInput = document.createElement('input');
+            quantidadeInput.type = 'number';
+            quantidadeInput.min = '1';
+            quantidadeInput.value = quantidade || 1;
+            quantidadeInput.className = 'w-1/3 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-orange-300';
+            quantidadeInput.name = 'quantidade';
+            quantidadeInput.required = true;
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.innerHTML = `<svg class="w-5 h-5 text-red-500 hover:text-red-700" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>`;
+            removeBtn.onclick = () => row.remove();
+            
+            if (productId) {
+                select.value = productId;
+            }
+            
+            row.appendChild(select);
+            row.appendChild(quantidadeInput);
+            row.appendChild(removeBtn);
+            container.appendChild(row);
+        }
+        
+        async function handleAgendamentoSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const clienteId = form['cliente-select'].value;
+            const representanteId = form['representante-select'].value;
+            const agendamentoData = form['agendamento-data'].value;
+            
+            const produtos = [];
+            document.querySelectorAll('#produtos-container > div').forEach(row => {
+                const produtoId = row.querySelector('select[name="produto-id"]').value;
+                const quantidade = parseInt(row.querySelector('input[name="quantidade"]').value, 10);
+                if (produtoId && quantidade > 0) {
+                    produtos.push({ produtoId, quantidade });
+                }
+            });
+            
+            if (!clienteId || !representanteId || !agendamentoData || produtos.length === 0) {
+                showModal('Erro no Formulário', 'Por favor, preencha todos os campos obrigatórios.', [{ text: 'OK', class: 'bg-red-500 text-white hover:bg-red-600', handler: hideModal }]);
+                return;
+            }
+            
+            const agendamento = {
+                clienteId,
+                representanteId,
+                data: agendamentoData,
+                produtos,
+                timestamp: new Date().toISOString()
+            };
+            
+            try {
+                if (isEditingAppointment) {
+                    await setDoc(doc(db, `artifacts/${appId}/public/data/agendamentos`, currentAppointmentId), agendamento);
+                    showModal('Sucesso', 'Agendamento atualizado com sucesso!', [{ text: 'OK', class: 'bg-green-500 text-white hover:bg-green-600', handler: hideModal }]);
+                } else {
+                    await addDoc(collection(db, `artifacts/${appId}/public/data/agendamentos`), agendamento);
+                    showModal('Sucesso', 'Agendamento cadastrado com sucesso!', [{ text: 'OK', class: 'bg-green-500 text-white hover:bg-green-600', handler: hideModal }]);
+                }
+                isEditingAppointment = false;
+                currentAppointmentId = null;
+                form.reset();
+            } catch (e) {
+                showModal('Erro', `Erro ao salvar agendamento: ${e.message}`, [{ text: 'OK', class: 'bg-red-500 text-white hover:bg-red-600', handler: hideModal }]);
+                console.error("Erro ao adicionar/atualizar documento: ", e);
+            }
+        }
+        
+        async function handleCadastroSubmit(event, tipo) {
+            event.preventDefault();
+            const form = event.target;
+            const submitBtn = document.getElementById('submit-btn');
+            const itemId = document.getElementById('item-id').value;
+            
+            let data = {};
+            let collectionName = `artifacts/${appId}/public/data/${tipo}`;
+            
+            switch(tipo) {
+                case 'clientes':
+                    const representanteId = form['cliente-representante-select'] ? form['cliente-representante-select'].value : null;
+                    data = {
+                        nome: form['cliente-nome'].value,
+                        contato: form['cliente-contato'].value,
+                        representanteId: representanteId,
+                    };
+                    break;
+                case 'representantes':
+                    data = {
+                        nome: form['representante-nome'].value,
+                        email: form['representante-email'].value,
+                        whatsapp: form['representante-whatsapp'].value,
+                        senha: 'representante123' // Senha padrão para novos representantes
+                    };
+                    break;
+                case 'produtos':
+                    const preco = form['produto-preco'].value.replace(',', '.');
+                    data = {
+                        nome: form['produto-nome'].value,
+                        preco: parseFloat(preco),
+                        imagem: form['produto-imagem'].value
+                    };
+                    break;
+            }
+            
+            try {
+                if (itemId) {
+                    await setDoc(doc(db, collectionName, itemId), data);
+                    showModal('Sucesso', `${tipo.charAt(0).toUpperCase() + tipo.slice(1)} atualizado com sucesso!`, [{ text: 'OK', class: 'bg-green-500 text-white hover:bg-green-600', handler: hideModal }]);
+                } else {
+                    await addDoc(collection(db, collectionName), data);
+                    showModal('Sucesso', `${tipo.charAt(0).toUpperCase() + tipo.slice(1)} cadastrado com sucesso!`, [{ text: 'OK', class: 'bg-green-500 text-white hover:bg-green-600', handler: hideModal }]);
+                }
+                form.reset();
+                document.getElementById('item-id').value = '';
+                submitBtn.textContent = `Cadastrar ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
+                if (tipo === 'produtos') {
+                    document.getElementById('produto-imagem-preview').classList.add('hidden');
+                }
+            } catch (e) {
+                showModal('Erro', `Erro ao salvar: ${e.message}`, [{ text: 'OK', class: 'bg-red-500 text-white hover:bg-red-600', handler: hideModal }]);
+                console.error("Erro ao adicionar/atualizar documento: ", e);
+            }
+        }
+        
+        async function loadCadastroData(tipo, listElement) {
+            listElement.innerHTML = '';
+            let dataList = [];
+            switch (tipo) {
+                case 'clientes': dataList = clientes; break;
+                case 'representantes': dataList = representantes; break;
+                case 'produtos': dataList = produtos; break;
+            }
+
+            if (dataList.length === 0) {
+                listElement.innerHTML = `<p class="text-gray-500 italic">Nenhum ${tipo.slice(0, -1)} cadastrado ainda.</p>`;
+                return;
+            }
+            
+            dataList.forEach(data => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'bg-white p-4 rounded-lg shadow-md flex justify-between items-center';
+                
+                let contentHtml = '';
+                switch(tipo) {
+                    case 'clientes':
+                        const representante = representantes.find(r => r.id === data.representanteId);
+                        const representanteNome = representante ? representante.nome : 'Nenhum';
+                        contentHtml = `
+                            <div>
+                                <h4 class="font-semibold text-lg">${data.nome}</h4>
+                                <p class="text-sm text-gray-600">${data.contato}</p>
+                                <p class="text-sm text-gray-600">Representante: ${representanteNome}</p>
+                            </div>
+                        `;
+                        break;
+                    case 'representantes':
+                        contentHtml = `
+                            <div>
+                                <h4 class="font-semibold text-lg">${data.nome}</h4>
+                                <p class="text-sm text-gray-600">Email: ${data.email}</p>
+                                <p class="text-sm text-gray-600">WhatsApp: ${data.whatsapp}</p>
+                            </div>
+                        `;
+                        break;
+                    case 'produtos':
+                        const precoFormatado = data.preco ? `R$ ${parseFloat(data.preco).toFixed(4).replace('.', ',')}` : 'Preço não informado';
+                        contentHtml = `
+                            <div class="flex items-center space-x-4">
+                                ${data.imagem ? `<img src="${data.imagem}" alt="${data.nome}" class="w-16 h-16 object-cover rounded-lg">` : `<div class="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs text-center">Sem Imagem</div>`}
+                                <div>
+                                    <h4 class="font-semibold text-lg">${data.nome}</h4>
+                                    <p class="text-sm text-gray-600">${precoFormatado}</p>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                }
+                
+                itemEl.innerHTML = `
+                    ${contentHtml}
+                    <div class="flex space-x-2">
+                        <button class="edit-btn px-3 py-1 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 transition-colors" data-id="${data.id}" data-tipo="${tipo}">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path></svg>
+                        </button>
+                        <button class="delete-btn px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors" data-id="${data.id}" data-tipo="${tipo}">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                        </button>
+                    </div>
+                `;
+                listElement.appendChild(itemEl);
+            });
+            
+            listElement.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    const tipo = btn.dataset.tipo;
+                    const data = (tipo === 'clientes' ? clientes : (tipo === 'representantes' ? representantes : produtos)).find(item => item.id === id);
+                    editCadastroItem(id, tipo, data);
+                });
+            });
+            listElement.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => deleteCadastroItem(btn.dataset.id, btn.dataset.tipo));
+            });
+        }
+        
+        function editCadastroItem(id, tipo, data) {
+            const form = document.getElementById('cadastro-form');
+            const submitBtn = document.getElementById('submit-btn');
+            document.getElementById('item-id').value = id;
+            
+            switch(tipo) {
+                case 'clientes':
+                    form['cliente-nome'].value = data.nome;
+                    form['cliente-contato'].value = data.contato;
+                    const representanteSelect = document.getElementById('cliente-representante-select');
+                    if (representanteSelect) {
+                        representanteSelect.value = data.representanteId || '';
+                    }
+                    break;
+                case 'representantes':
+                    form['representante-nome'].value = data.nome;
+                    form['representante-email'].value = data.email;
+                    form['representante-whatsapp'].value = data.whatsapp;
+                    break;
+                case 'produtos':
+                    form['produto-nome'].value = data.nome;
+                    form['produto-preco'].value = data.preco.toString().replace('.', ',');
+                    form['produto-imagem'].value = data.imagem;
+                    const preview = document.getElementById('produto-imagem-preview');
+                    if (data.imagem) {
+                        preview.src = data.imagem;
+                        preview.classList.remove('hidden');
+                    } else {
+                        preview.classList.add('hidden');
+                    }
+                    break;
+            }
+            submitBtn.textContent = 'Salvar Alterações';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        async function deleteCadastroItem(id, tipo) {
+            showModal('Confirmar Exclusão', `Tem certeza de que deseja excluir este ${tipo.slice(0, -1)}?`, [
+                {
+                    text: 'Confirmar',
+                    class: 'bg-red-500 text-white hover:bg-red-600',
+                    handler: async () => {
+                        try {
+                            await deleteDoc(doc(db, `artifacts/${appId}/public/data/${tipo}`, id));
+                            hideModal();
+                        } catch (e) {
+                            showModal('Erro', `Erro ao excluir: ${e.message}`, [{ text: 'OK', class: 'bg-red-500 text-white hover:bg-red-600', handler: hideModal }]);
+                            console.error("Erro ao remover documento: ", e);
+                        }
+                    }
+                },
+                { text: 'Cancelar', class: 'bg-gray-400 text-gray-800 hover:bg-gray-500', handler: hideModal }
+            ]);
+        }
+        
+        async function handleCSVImport(file) {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                const headers = lines[0].split(',').map(h => h.trim());
+
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',').map(v => v.trim());
+                    if (values.length === headers.length) {
+                        const newClient = {};
+                        headers.forEach((header, index) => {
+                            newClient[header] = values[index];
+                        });
+                        try {
+                            await addDoc(collection(db, `artifacts/${appId}/public/data/clientes`), newClient);
+                        } catch (e) {
+                            console.error("Erro ao importar cliente:", newClient, e);
+                        }
+                    }
+                }
+                showModal('Importação Concluída', `${lines.length - 1} clientes foram processados.`, [{ text: 'OK', class: 'bg-green-500 text-white hover:bg-green-600', handler: hideModal }]);
+            };
+            reader.readAsText(file);
+        }
+        
+        function renderAgendamentos(agendamentos) {
+            const listContainer = document.getElementById('agendamentos-list');
+            listContainer.innerHTML = '';
+            
+            const filteredAgendamentos = agendamentos.filter(a => userRole === 'master' || a.representanteId === representativeId);
+            
+            if (filteredAgendamentos.length === 0) {
+                listContainer.innerHTML = `<p class="text-center text-gray-500 italic">Nenhum agendamento encontrado.</p>`;
+                return;
+            }
+            
+            const sortedAgendamentos = filteredAgendamentos.sort((a, b) => new Date(a.data) - new Date(b.data));
+            
+            sortedAgendamentos.forEach(agendamento => {
+                const cliente = clientes.find(c => c.id === agendamento.clienteId);
+                const representante = representantes.find(r => r.id === agendamento.representanteId);
+                const clienteNome = cliente ? cliente.nome : 'Cliente Desconhecido';
+                const representanteNome = representante ? representante.nome : 'Representante Desconhecido';
+                const dataFormatada = new Date(agendamento.data).toLocaleString('pt-BR');
+                
+                const produtosList = agendamento.produtos.map(p => {
+                    const produto = produtos.find(prod => prod.id === p.produtoId);
+                    return `<li>${p.quantidade} x ${produto ? produto.nome : 'Produto Desconhecido'}</li>`;
+                }).join('');
+                
+                const agendamentoEl = document.createElement('div');
+                agendamentoEl.className = 'bg-white p-4 rounded-lg shadow-md';
+                agendamentoEl.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-700">Cliente: <span class="font-normal text-gray-900">${clienteNome}</span></p>
+                            <p class="text-sm font-semibold text-gray-700">Representante: <span class="font-normal text-gray-900">${representanteNome}</span></p>
+                            <p class="text-sm font-semibold text-gray-700">Data: <span class="font-normal text-gray-900">${dataFormatada}</span></p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="edit-agendamento-btn px-3 py-1 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 transition-colors" data-id="${agendamento.id}">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path></svg>
+                            </button>
+                            <button class="delete-agendamento-btn px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors" data-id="${agendamento.id}">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <ul class="list-disc list-inside text-sm text-gray-700">
+                        <p class="font-semibold text-sm mb-1">Produtos:</p>
+                        ${produtosList}
+                    </ul>
+                `;
+                listContainer.appendChild(agendamentoEl);
+            });
+            
+            document.querySelectorAll('.edit-agendamento-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    isEditingAppointment = true;
+                    currentAppointmentId = btn.dataset.id;
+                    showSection('agendamento-novo');
+                });
+            });
+            document.querySelectorAll('.delete-agendamento-btn').forEach(btn => {
+                btn.addEventListener('click', () => deleteAgendamento(btn.dataset.id));
+            });
+        }
+        
+        function filterAgendamentos(allAgendamentos, listContainer, clientName, date) {
+            const filtered = allAgendamentos.filter(agendamento => {
+                const cliente = clientes.find(c => c.id === agendamento.clienteId);
+                const clienteNome = cliente ? cliente.nome.toLowerCase() : '';
+                const agendamentoDate = agendamento.data.split('T')[0];
+                
+                const matchesClient = clientName ? clienteNome.includes(clientName.toLowerCase()) : true;
+                const matchesDate = date ? agendamentoDate === date : true;
+                
+                return matchesClient && matchesDate;
+            });
+            renderAgendamentos(filtered);
+        }
+        
+        async function generateReport(startDate, endDate, clientName, representativeName) {
+            const container = document.getElementById('report-live-view');
+            const printContainer = document.getElementById('print-report-container');
+            if (!container || !printContainer) return;
+
+            const filteredAppointments = appointmentData.filter(app => {
+                const appDate = app.data.split('T')[0];
+                const client = clientes.find(c => c.id === app.clienteId);
+                const representative = representantes.find(r => r.id === app.representanteId);
+                const clientMatch = !clientName || (client && client.nome.toLowerCase().includes(clientName.toLowerCase()));
+                const representativeMatch = userRole === 'master' ? (!representativeName || (representative && representative.nome.toLowerCase().includes(representativeName.toLowerCase()))) : (app.representanteId === representativeId);
+                const dateMatch = (!startDate || appDate >= startDate) && (!endDate || appDate <= endDate);
+
+                return clientMatch && representativeMatch && dateMatch;
+            });
+            
+            if (filteredAppointments.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8">
+                        <h1 class="text-3xl font-bold text-gray-800 mb-6">Relatório de Agendamentos</h1>
+                        <p class="text-center text-gray-500 italic">Não há agendamentos para os critérios de busca selecionados.</p>
+                    </div>
+                `;
+                printContainer.innerHTML = container.innerHTML;
+                return;
+            }
+            
+            const totalProducts = {};
+            const totalByRepresentative = {};
+            let grandTotal = 0;
+            
+            filteredAppointments.forEach(app => {
+                const representante = representantes.find(r => r.id === app.representanteId);
+                const representanteNome = representante ? representante.nome : 'Desconhecido';
+                
+                if (!totalByRepresentative[representanteNome]) {
+                    totalByRepresentative[representanteNome] = 0;
+                }
+                
+                app.produtos.forEach(p => {
+                    const produto = produtos.find(prod => prod.id === p.produtoId);
+                    if (produto) {
+                        if (!totalProducts[produto.nome]) {
+                            totalProducts[produto.nome] = 0;
+                        }
+                        totalProducts[produto.nome] += p.quantidade;
+                        totalByRepresentative[representanteNome] += p.quantidade;
+                        grandTotal += p.quantidade;
+                    }
+                });
+            });
+            
+            let reportHtml = `
+                <div class="p-8">
+                    <h1 class="text-3xl font-bold text-gray-800 mb-6">Relatório de Agendamentos</h1>
+                    <h3 class="text-xl font-bold mb-4 print:text-black">Resumo dos Agendamentos</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2">Quantidade Total por Produto</h4>
+                            <ul class="list-disc list-inside space-y-1">
+                                ${Object.keys(totalProducts).map(produto => `<li><span class="font-medium">${produto}</span>: ${totalProducts[produto]}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2">Quantidade Total por Representante</h4>
+                            <ul class="list-disc list-inside space-y-1">
+                                ${Object.keys(totalByRepresentative).map(rep => `<li><span class="font-medium">${rep}</span>: ${totalByRepresentative[rep]}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-gray-200 mb-8">
+                        <h4 class="font-bold text-xl text-gray-800">Total Geral de Produtos: <span class="text-orange-600">${grandTotal}</span></h4>
+                    </div>
+                    
+                    <h3 class="font-bold text-xl mb-4">Agendamentos Detalhados</h3>
+                    <div class="overflow-x-auto rounded-lg border border-gray-200">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Data/Hora
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Cliente
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Representante
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Produtos
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                ${filteredAppointments.map(app => {
+                                    const cliente = clientes.find(c => c.id === app.clienteId);
+                                    const representante = representantes.find(r => r.id === app.representanteId);
+                                    const clienteNome = cliente ? cliente.nome : 'Desconhecido';
+                                    const representanteNome = representante ? representante.nome : 'Desconhecido';
+                                    const dataFormatada = new Date(app.data).toLocaleString('pt-BR');
+                                    const produtosList = app.produtos.map(p => {
+                                        const produto = produtos.find(prod => prod.id === p.produtoId);
+                                        return `<li>${p.quantidade} x ${produto ? produto.nome : 'Desconhecido'}</li>`;
+                                    }).join('');
+                                    return `
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">${dataFormatada}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">${clienteNome}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">${representanteNome}</td>
+                                            <td class="px-6 py-4 text-sm text-gray-800">
+                                                <ul class="list-disc list-inside">
+                                                    ${produtosList}
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            container.innerHTML = reportHtml;
+            printContainer.innerHTML = reportHtml;
+        }
+
+        async function deleteAgendamento(id) {
+            showModal('Confirmar Exclusão', `Tem certeza de que deseja excluir este agendamento?`, [
+                {
+                    text: 'Confirmar',
+                    class: 'bg-red-500 text-white hover:bg-red-600',
+                    handler: async () => {
+                        try {
+                            await deleteDoc(doc(db, `artifacts/${appId}/public/data/agendamentos`, id));
+                            hideModal();
+                        } catch (e) {
+                            showModal('Erro', `Erro ao excluir: ${e.message}`, [{ text: 'OK', class: 'bg-red-500 text-white hover:bg-red-600', handler: hideModal }]);
+                            console.error("Erro ao remover documento: ", e);
+                        }
+                    }
+                },
+                { text: 'Cancelar', class: 'bg-gray-400 text-gray-800 hover:bg-gray-500', handler: hideModal }
+            ]);
+        }
+    </script>
+</body>
+</html>
