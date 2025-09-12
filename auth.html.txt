@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login com Firebase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1e293b;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 text-white">
+
+    <div id="app" class="w-full max-w-sm p-8 space-y-6 bg-slate-800 rounded-xl shadow-lg border border-slate-700">
+        <h1 class="text-3xl font-bold text-center text-white mb-6">Autenticação Firebase</h1>
+        
+        <!-- Mensagem de feedback do usuário -->
+        <div id="message-box" class="hidden p-4 rounded-md text-sm" role="alert"></div>
+
+        <div id="loading-spinner" class="hidden flex justify-center items-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+        </div>
+
+        <div id="auth-content" class="text-center space-y-4 hidden">
+            <p id="user-status" class="text-lg font-semibold"></p>
+            <p id="user-id" class="break-all font-mono text-xs p-2 bg-slate-700 rounded-md shadow-inner"></p>
+            <p class="text-xs text-slate-400">Este é o seu ID de usuário. Em uma aplicação real, ele é usado para identificar seus dados no banco de dados.</p>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, getDoc, doc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Ativa o log de depuração do Firestore para ajudar a ver o que está acontecendo
+        setLogLevel('debug');
+
+        // Referências para os elementos da UI
+        const messageBox = document.getElementById('message-box');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const authContent = document.getElementById('auth-content');
+        const userStatus = document.getElementById('user-status');
+        const userIdElem = document.getElementById('user-id');
+
+        // Função para exibir mensagens na UI
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.className = `p-4 rounded-md text-sm ${type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`;
+            messageBox.classList.remove('hidden');
+        }
+
+        // Configuração e inicialização do Firebase
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+        if (Object.keys(firebaseConfig).length > 0) {
+            try {
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+
+                // Mostra o spinner de carregamento enquanto o login é processado
+                loadingSpinner.classList.remove('hidden');
+
+                // Tenta fazer login com o token personalizado, caso exista
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                const authenticate = async () => {
+                    if (initialAuthToken) {
+                        try {
+                            const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                            console.log('Login com token personalizado bem-sucedido!', userCredential.user);
+                        } catch (error) {
+                            console.error('Erro ao fazer login com token personalizado:', error);
+                            showMessage('Erro no login. Tentando login anônimo...', 'error');
+                            // Em caso de falha, tenta o login anônimo
+                            await signInAnonymously(auth);
+                        }
+                    } else {
+                        // Se não houver token, faz o login anônimo
+                        await signInAnonymously(auth);
+                    }
+
+                    // Aguarda a autenticação e então atualiza a UI
+                    const user = auth.currentUser;
+                    if (user) {
+                        console.log("Usuário autenticado:", user.uid);
+                        loadingSpinner.classList.add('hidden');
+                        authContent.classList.remove('hidden');
+                        userStatus.textContent = 'Você está logado!';
+                        userIdElem.textContent = user.uid;
+                        showMessage('Login bem-sucedido!', 'success');
+
+                        // Exemplo de como salvar um documento privado com o ID do usuário
+                        const userDocRef = doc(db, `artifacts/${appId}/users/${user.uid}/user-data/profile`);
+                        await setDoc(userDocRef, { 
+                            lastLogin: new Date().toISOString(),
+                            username: 'usuário-anonimo'
+                        }, { merge: true });
+
+                        // Exemplo de como ler o documento salvo
+                        const docSnap = await getDoc(userDocRef);
+                        if (docSnap.exists()) {
+                            console.log("Dados do perfil:", docSnap.data());
+                        } else {
+                            console.log("Nenhum dado de perfil encontrado.");
+                        }
+                    } else {
+                        showMessage('Não foi possível autenticar o usuário.', 'error');
+                        loadingSpinner.classList.add('hidden');
+                    }
+                };
+
+                authenticate();
+
+            } catch (error) {
+                console.error("Erro ao inicializar o Firebase:", error);
+                showMessage(`Erro fatal: ${error.message}`, 'error');
+                loadingSpinner.classList.add('hidden');
+            }
+        } else {
+            console.error("Configuração do Firebase não encontrada.");
+            showMessage('Erro: A configuração do Firebase não foi encontrada.', 'error');
+            loadingSpinner.classList.add('hidden');
+        }
+    </script>
+
+</body>
+</html>
