@@ -3,232 +3,1190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login com Firebase</title>
+    <title>Sistema de Gestão Completo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #1e293b;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #f8fafc;
+            color: #111827;
+        }
+        .container-card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        .input, .select {
+            background-color: #f9fafb;
+            border: 1px solid #d1d5db;
+        }
+        #sidebar {
+            width: 280px;
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(0);
+        }
+        #sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        #content {
+            flex-grow: 1;
+        }
+        @media (max-width: 768px) {
+            #sidebar {
+                position: fixed;
+                height: 100vh;
+                z-index: 20;
+            }
+        }
+        .file-upload-label {
+            cursor: pointer;
+            padding: 10px 15px;
+            background-color: #f97316;
+            color: white;
+            border-radius: 5px;
+            text-align: center;
+            transition-colors: 0.2s;
+        }
+        .file-upload-label:hover {
+            background-color: #ea580c;
+        }
+        .menu-item.active {
+            background-color: #f97316 !important;
+            color: white;
+        }
+        .menu-item:hover {
+            background-color: #fcd34d;
+            color: #374151;
+        }
+        .submenu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+        .submenu.open {
+            max-height: 500px; /* Large enough for all submenus */
+        }
+        .day-cell {
+            position: relative;
+            cursor: pointer;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        .day-cell:hover {
+            background-color: #e5e7eb;
+        }
+        .day-cell .marker {
+            position: absolute;
+            bottom: 4px;
+            width: 8px;
+            height: 8px;
+            background-color: #f97316;
+            border-radius: 50%;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4 text-white">
+<body class="flex min-h-screen">
 
-    <div id="app" class="w-full max-w-sm p-8 space-y-6 bg-slate-800 rounded-xl shadow-lg border border-slate-700">
-        <h1 class="text-3xl font-bold text-center text-white mb-6">Autenticação Firebase</h1>
+    <!-- Sidebar -->
+    <aside id="sidebar" class="flex flex-col p-4 space-y-2 container-card z-20 border-r-2 border-orange-200">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold">Menu</h2>
+            <button id="close-sidebar-btn" class="md:hidden text-gray-400 hover:text-black">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <button class="menu-item w-full text-left px-4 py-2 rounded-md transition-colors active" data-page="dashboard">Dashboard</button>
+        <button class="menu-item w-full text-left px-4 py-2 rounded-md hover:bg-orange-200 transition-colors" data-page="user-profile">Minha Conta</button>
         
-        <!-- Mensagem de feedback do usuário -->
-        <div id="message-box" class="hidden p-4 rounded-md text-sm" role="alert"></div>
-
-        <div id="loading-spinner" class="hidden flex justify-center items-center">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-        </div>
-
-        <!-- Formulário de Login -->
-        <div id="login-form-container" class="space-y-4">
-            <div>
-                <label for="email" class="block text-sm font-medium text-gray-400">E-mail</label>
-                <input type="email" id="email" placeholder="seu-email@exemplo.com"
-                       class="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        <!-- Menu Cadastros -->
+        <div class="space-y-1">
+            <button class="menu-dropdown w-full text-left px-4 py-2 rounded-md hover:bg-orange-200 transition-colors flex justify-between items-center">
+                <span>Cadastro</span>
+                <svg class="w-4 h-4 transform transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+            <div class="submenu space-y-1 pl-4">
+                <button class="menu-item w-full text-left px-4 py-2 rounded-md hover:bg-orange-200 transition-colors" data-page="clientes">Clientes</button>
+                <button class="menu-item w-full text-left px-4 py-2 rounded-md hover:bg-orange-200 transition-colors" data-page="representantes">Representantes</button>
+                <button class="menu-item w-full text-left px-4 py-2 rounded-md hover:bg-orange-200 transition-colors" data-page="produtos">Produtos</button>
             </div>
-            <div>
-                <label for="password" class="block text-sm font-medium text-gray-400">Senha</label>
-                <input type="password" id="password" placeholder="Sua senha"
-                       class="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+        
+        <button class="menu-item w-full text-left px-4 py-2 rounded-md hover:bg-orange-200 transition-colors" data-page="agendamentos">Agendamentos</button>
+        
+        <!-- Menu Relatórios -->
+        <div class="space-y-1">
+            <button class="menu-dropdown w-full text-left px-4 py-2 rounded-md hover:bg-orange-200 transition-colors flex justify-between items-center">
+                <span>Relatórios</span>
+                <svg class="w-4 h-4 transform transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+            <div class="submenu space-y-1 pl-4">
+                <button class="menu-item w-full text-left px-4 py-2 rounded-md hover:bg-orange-200 transition-colors" data-page="relatorios">Relatórios de Vendas</button>
             </div>
-            <button id="login-button"
-                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                Entrar
+        </div>
+        
+        <div class="mt-auto pt-4 border-t border-gray-200">
+            <button id="logout-button" class="w-full py-2 rounded-md bg-red-600 hover:bg-red-700 text-white transition-colors">Sair</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="content" class="flex flex-col flex-1 p-8 overflow-y-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6">
+            <h1 id="page-title" class="text-3xl font-bold">Dashboard</h1>
+            <button id="sidebar-toggle" class="md:hidden p-2 rounded-md hover:bg-gray-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
             </button>
-            <button id="signup-button"
-                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
-                Criar Conta
-            </button>
+        </header>
+
+        <!-- Feedback Messages -->
+        <div id="message-box" class="hidden p-4 rounded-md text-sm text-center mb-4"></div>
+        <div id="loading-spinner" class="hidden flex justify-center items-center my-4">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+        </div>
+        <div class="text-right text-sm text-gray-400 mb-4">
+            <p>ID do Usuário: <span id="userIdDisplay" class="font-mono bg-gray-200 px-2 py-1 rounded-md">Carregando...</span></p>
         </div>
 
-        <!-- Conteúdo do usuário após o login -->
-        <div id="auth-content" class="text-center space-y-4 hidden">
-            <p id="user-status" class="text-lg font-semibold text-green-400">Você está logado!</p>
-            <p id="user-id" class="break-all font-mono text-xs p-2 bg-slate-700 rounded-md shadow-inner"></p>
-            <p class="text-xs text-slate-400">Este é o seu ID de usuário. Em uma aplicação real, ele é usado para identificar seus dados no banco de dados.</p>
-            <button id="logout-button"
-                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
-                Sair
-            </button>
-        </div>
+        <!-- Page Content -->
+        <div id="page-content" class="flex-1 space-y-8">
+            
+            <!-- Dashboard Page -->
+            <div id="dashboard-page" class="page-container container-card p-6 rounded-xl">
+                <h2 class="text-2xl font-bold mb-4">Dashboard</h2>
+                <div class="flex flex-col md:flex-row items-center justify-between mb-4">
+                    <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                        <button id="prevMonthBtn" class="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full transition-all duration-300 transform hover:scale-105">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        </button>
+                        <h2 id="currentMonthYear" class="text-2xl font-semibold text-black"></h2>
+                        <button id="nextMonthBtn" class="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full transition-all duration-300 transform hover:scale-105">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="calendar" class="grid grid-cols-7 gap-1 text-center font-medium text-gray-500">
+                    <div class="col-span-7 grid grid-cols-7 text-sm font-semibold text-gray-500 mb-2">
+                        <span class="p-2">Dom</span>
+                        <span class="p-2">Seg</span>
+                        <span class="p-2">Ter</span>
+                        <span class="p-2">Qua</span>
+                        <span class="p-2">Qui</span>
+                        <span class="p-2">Sex</span>
+                        <span class="p-2">Sáb</span>
+                    </div>
+                </div>
+                <div class="bg-gray-100 rounded-xl p-6 mt-6">
+                    <h2 class="text-2xl font-bold text-black mb-4">Agendamentos por Período</h2>
+                    <div class="flex flex-col sm:flex-row items-center sm:space-x-4 mb-4">
+                        <div class="flex flex-col w-full sm:w-1/2 mb-4 sm:mb-0">
+                            <label for="startDate" class="text-sm font-medium text-gray-700 mb-1">Data Início</label>
+                            <input type="date" id="startDate" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white text-black">
+                        </div>
+                        <div class="flex flex-col w-full sm:w-1/2">
+                            <label for="endDate" class="text-sm font-medium text-gray-700 mb-1">Data Fim</label>
+                            <input type="date" id="endDate" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white text-black">
+                        </div>
+                    </div>
+                    <button id="filterBtn" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300">
+                        Filtrar Agendamentos
+                    </button>
+                </div>
+                <div class="bg-gray-100 rounded-xl p-6 mt-6">
+                    <h2 class="text-2xl font-bold text-black mb-4">Lista de Agendamentos</h2>
+                    <div id="appointmentsList" class="space-y-4">
+                        <p class="text-gray-500 text-center py-8" id="noAppointmentsMessage">Selecione um período e clique em "Filtrar Agendamentos".</p>
+                    </div>
+                    <div id="productSummary" class="mt-8 border-t border-gray-300 pt-6">
+                        <h3 class="text-xl font-bold text-black mb-4">Resumo de Produtos</h3>
+                        <div id="productSummaryList" class="bg-white p-4 rounded-lg">
+                            <p class="text-gray-500 text-center">Nenhum produto para exibir.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        <!-- Conteúdo de fallback para quando as variáveis do Firebase não estiverem disponíveis -->
-        <div id="fallback-message" class="hidden text-center p-4 rounded-md bg-red-500/20 text-red-400">
-            <p><strong>Erro de Carregamento</strong></p>
-            <p class="text-sm mt-2">O aplicativo não pôde se conectar ao Firebase. Isso pode acontecer ao executar o arquivo localmente.</p>
-            <p class="text-sm mt-2">Para funcionar, o site precisa ser hospedado em um ambiente web.</p>
+            <!-- User Profile Page -->
+            <div id="user-profile-page" class="page-container hidden container-card p-6 rounded-xl">
+                <h2 class="text-2xl font-bold mb-4">Minha Conta</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center space-x-4">
+                        <img id="user-profile-image" class="w-16 h-16 rounded-full border-2 border-orange-500 shadow-md" src="https://placehold.co/100x100/E0E7FF/4F46E5?text=Foto" alt="Foto de Perfil">
+                        <div>
+                            <p class="text-xl font-bold" id="user-name-display">Usuário</p>
+                            <p class="text-gray-600" id="user-email-display">usuario@exemplo.com</p>
+                            <p class="text-sm text-gray-500">ID: <span id="user-profile-id" class="font-mono">Carregando...</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulários para troca de senha e foto de perfil -->
+                <div class="space-y-6 mt-6">
+                    <!-- Formulário para alterar senha -->
+                    <form id="change-password-form" class="space-y-4 p-4 border border-gray-200 rounded-lg shadow-sm bg-gray-50">
+                        <h2 class="text-lg font-semibold text-black">Trocar Senha</h2>
+                        <div>
+                            <label for="new-password" class="block text-sm font-medium text-gray-700">Nova Senha</label>
+                            <input type="password" id="new-password" name="new-password" class="mt-1 block w-full px-3 py-2 input rounded-md sm:text-sm" placeholder="Nova senha">
+                        </div>
+                        <div>
+                            <label for="confirm-password" class="block text-sm font-medium text-gray-700">Confirmar Nova Senha</label>
+                            <input type="password" id="confirm-password" name="confirm-password" class="mt-1 block w-full px-3 py-2 input rounded-md sm:text-sm" placeholder="Confirmar nova senha">
+                        </div>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+                            Salvar Nova Senha
+                        </button>
+                    </form>
+
+                    <!-- Formulário para alterar foto de perfil -->
+                    <form id="change-profile-image-form" class="space-y-4 p-4 border border-gray-200 rounded-lg shadow-sm bg-gray-50">
+                        <h2 class="text-lg font-semibold text-black">Trocar Foto de Perfil</h2>
+                        <div>
+                            <label for="profile-image-input" class="block text-sm font-medium text-gray-700">URL da Nova Foto</label>
+                            <input type="url" id="profile-image-input" name="profile-image" class="mt-1 block w-full px-3 py-2 input rounded-md sm:text-sm" placeholder="Ex: https://exemplo.com/foto.jpg">
+                        </div>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            Salvar Foto
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Clientes Page -->
+            <div id="clientes-page" class="page-container hidden container-card p-6 rounded-xl">
+                <h2 class="text-2xl font-bold mb-4">Gerenciar Clientes</h2>
+                <div class="space-y-4">
+                    <form id="client-form" class="space-y-4 p-4 container-card rounded-md">
+                        <h3 class="text-xl font-semibold">Novo Cliente</h3>
+                        <div>
+                            <label for="client-name" class="block text-sm font-medium">Nome</label>
+                            <input type="text" id="client-name" placeholder="Nome do Cliente" required class="mt-1 block w-full px-3 py-2 rounded-md input">
+                        </div>
+                        <div>
+                            <label for="client-whatsapp" class="block text-sm font-medium">WhatsApp</label>
+                            <input type="tel" id="client-whatsapp" placeholder="(99) 99999-9999" required class="mt-1 block w-full px-3 py-2 rounded-md input">
+                        </div>
+                        <div>
+                            <label for="client-rep" class="block text-sm font-medium">Representante (Opcional)</label>
+                            <select id="client-rep" class="mt-1 block w-full px-3 py-2 rounded-md input select"></select>
+                        </div>
+                        <button type="submit" class="w-full py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors">Adicionar Cliente</button>
+                    </form>
+                    
+                    <div class="p-4 container-card rounded-md">
+                        <h3 class="text-xl font-semibold mb-2">Importar Clientes de Planilha (.xlsx)</h3>
+                        <label for="client-file" class="file-upload-label">Selecionar Arquivo</label>
+                        <input type="file" id="client-file" class="hidden" accept=".xlsx" />
+                    </div>
+
+                    <div class="p-4 container-card rounded-md">
+                        <h3 class="text-xl font-semibold mb-2">Lista de Clientes</h3>
+                        <ul id="client-list" class="space-y-2"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Representantes Page -->
+            <div id="representantes-page" class="page-container hidden container-card p-6 rounded-xl">
+                <h2 class="text-2xl font-bold mb-4">Gerenciar Representantes</h2>
+                <form id="rep-form" class="space-y-4 p-4 container-card rounded-md">
+                    <h3 class="text-xl font-semibold">Novo Representante</h3>
+                    <div>
+                        <label for="rep-name" class="block text-sm font-medium">Nome</label>
+                        <input type="text" id="rep-name" placeholder="Nome do Representante" required class="mt-1 block w-full px-3 py-2 rounded-md input">
+                    </div>
+                    <button type="submit" class="w-full py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors">Adicionar Representante</button>
+                </form>
+                <div class="p-4 container-card rounded-md mt-4">
+                    <h3 class="text-xl font-semibold mb-2">Lista de Representantes</h3>
+                    <ul id="rep-list" class="space-y-2"></ul>
+                </div>
+            </div>
+
+            <!-- Produtos Page -->
+            <div id="produtos-page" class="page-container hidden container-card p-6 rounded-xl">
+                <h2 class="text-2xl font-bold mb-4">Gerenciar Produtos</h2>
+                <form id="product-form" class="space-y-4 p-4 container-card rounded-md">
+                    <h3 class="text-xl font-semibold">Novo Produto</h3>
+                    <div>
+                        <label for="product-name" class="block text-sm font-medium">Nome</label>
+                        <input type="text" id="product-name" placeholder="Nome do Produto" required class="mt-1 block w-full px-3 py-2 rounded-md input">
+                    </div>
+                    <div>
+                        <label for="product-category" class="block text-sm font-medium">Categoria</label>
+                        <input type="text" id="product-category" placeholder="Categoria do Produto" required class="mt-1 block w-full px-3 py-2 rounded-md input">
+                    </div>
+                    <div>
+                        <label for="product-price" class="block text-sm font-medium">Preço (4 casas decimais)</label>
+                        <input type="number" id="product-price" placeholder="0.0000" step="0.0001" required class="mt-1 block w-full px-3 py-2 rounded-md input">
+                    </div>
+                    <div>
+                        <label for="product-image-url" class="block text-sm font-medium">URL da Imagem</label>
+                        <input type="url" id="product-image-url" placeholder="https://example.com/image.jpg" class="mt-1 block w-full px-3 py-2 rounded-md input">
+                    </div>
+                    <button type="submit" class="w-full py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors">Adicionar Produto</button>
+                </form>
+                <div class="p-4 container-card rounded-md mt-4">
+                    <h3 class="text-xl font-semibold mb-2">Lista de Produtos</h3>
+                    <ul id="product-list" class="space-y-2"></ul>
+                </div>
+            </div>
+
+            <!-- Agendamentos Page -->
+            <div id="agendamentos-page" class="page-container hidden container-card p-6 rounded-xl">
+                <h2 class="text-2xl font-bold mb-4">Gerenciar Agendamentos</h2>
+                <form id="appointment-form" class="space-y-4 p-4 container-card rounded-md">
+                    <h3 class="text-xl font-semibold">Novo Agendamento</h3>
+                    <div>
+                        <label for="appointment-client" class="block text-sm font-medium">Cliente</label>
+                        <select id="appointment-client" required class="mt-1 block w-full px-3 py-2 rounded-md input select"></select>
+                    </div>
+                    <div>
+                        <label for="appointment-product" class="block text-sm font-medium">Produto/Serviço</label>
+                        <select id="appointment-product" required class="mt-1 block w-full px-3 py-2 rounded-md input select"></select>
+                    </div>
+                    <div>
+                        <label for="appointment-date" class="block text-sm font-medium">Data</label>
+                        <input type="date" id="appointment-date" required class="mt-1 block w-full px-3 py-2 rounded-md input">
+                    </div>
+                    <div>
+                        <label for="appointment-time" class="block text-sm font-medium">Hora</label>
+                        <input type="time" id="appointment-time" required class="mt-1 block w-full px-3 py-2 rounded-md input">
+                    </div>
+                    <button type="submit" class="w-full py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors">Agendar</button>
+                </form>
+                <div class="p-4 container-card rounded-md mt-4">
+                    <h3 class="text-xl font-semibold mb-2">Próximos Agendamentos</h3>
+                    <ul id="appointment-list" class="space-y-2"></ul>
+                </div>
+            </div>
+
+            <!-- Relatórios Page -->
+            <div id="relatorios-page" class="page-container hidden container-card p-6 rounded-xl">
+                <h2 class="text-2xl font-bold mb-4">Relatórios</h2>
+                <div class="space-y-4">
+                    <div class="p-4 container-card rounded-md">
+                        <h3 class="text-xl font-semibold mb-2">Filtros</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label for="report-start-date" class="block text-sm font-medium">Data Início</label>
+                                <input type="date" id="report-start-date" class="mt-1 block w-full px-3 py-2 rounded-md input">
+                            </div>
+                            <div>
+                                <label for="report-end-date" class="block text-sm font-medium">Data Fim</label>
+                                <input type="date" id="report-end-date" class="mt-1 block w-full px-3 py-2 rounded-md input">
+                            </div>
+                            <div>
+                                <label for="report-client" class="block text-sm font-medium">Cliente</label>
+                                <select id="report-client" class="mt-1 block w-full px-3 py-2 rounded-md input select">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="report-rep" class="block text-sm font-medium">Representante</label>
+                                <select id="report-rep" class="mt-1 block w-full px-3 py-2 rounded-md input select">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="generate-report-btn" class="mt-4 w-full py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors">Gerar Relatório</button>
+                    </div>
+
+                    <div id="report-results" class="p-4 container-card rounded-md hidden">
+                        <h3 class="text-xl font-semibold mb-2">Resultados do Relatório</h3>
+                        <div id="report-summary" class="space-y-2 mb-4"></div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Representante</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                        <button id="print-report-btn" class="mt-4 w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors">Imprimir Relatório</button>
+                    </div>
+                </div>
+            </div>
+
         </div>
-    </div>
+    </main>
 
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, getDoc, doc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signOut, onAuthStateChanged, signInWithCustomToken, updatePassword, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, deleteDoc, setLogLevel, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Ativa o log de depuração do Firestore para ajudar a ver o que está acontecendo
-        setLogLevel('debug');
+        setLogLevel('debug'); // Enable Firestore debug logging
 
-        // Referências para os elementos da UI
+        const userIdDisplay = document.getElementById('userIdDisplay');
         const messageBox = document.getElementById('message-box');
         const loadingSpinner = document.getElementById('loading-spinner');
-        const loginFormContainer = document.getElementById('login-form-container');
-        const loginButton = document.getElementById('login-button');
-        const signupButton = document.getElementById('signup-button');
         const logoutButton = document.getElementById('logout-button');
-        const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
-        const authContent = document.getElementById('auth-content');
-        const userStatus = document.getElementById('user-status');
-        const userIdElem = document.getElementById('user-id');
-        const fallbackMessage = document.getElementById('fallback-message');
+        const menuItems = document.querySelectorAll('.menu-item');
+        const menuDropdowns = document.querySelectorAll('.menu-dropdown');
+        const pageTitle = document.getElementById('page-title');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const pageContent = document.getElementById('page-content');
+        
+        // User Profile Elements
+        const userProfilePage = document.getElementById('user-profile-page');
+        const userProfileImage = document.getElementById('user-profile-image');
+        const userNameDisplay = document.getElementById('user-name-display');
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const userProfileId = document.getElementById('user-profile-id');
+        const changePasswordForm = document.getElementById('change-password-form');
+        const newPasswordInput = document.getElementById('new-password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        const changeProfileImageForm = document.getElementById('change-profile-image-form');
+        const profileImageInput = document.getElementById('profile-image-input');
 
-        // Função para exibir mensagens na UI
+        // References for forms and lists
+        const clientForm = document.getElementById('client-form');
+        const clientFile = document.getElementById('client-file');
+        const clientRepSelect = document.getElementById('client-rep');
+        const clientList = document.getElementById('client-list');
+
+        const repForm = document.getElementById('rep-form');
+        const repList = document.getElementById('rep-list');
+
+        const productForm = document.getElementById('product-form');
+        const productList = document.getElementById('product-list');
+
+        const appointmentForm = document.getElementById('appointment-form');
+        const appointmentClientSelect = document.getElementById('appointment-client');
+        const appointmentProductSelect = document.getElementById('appointment-product');
+        const appointmentList = document.getElementById('appointment-list');
+
+        const reportStartDate = document.getElementById('report-start-date');
+        const reportEndDate = document.getElementById('report-end-date');
+        const reportClientSelect = document.getElementById('report-client');
+        const reportRepSelect = document.getElementById('report-rep');
+        const generateReportBtn = document.getElementById('generate-report-btn');
+        const reportResults = document.getElementById('report-results');
+        const reportSummary = document.getElementById('report-summary');
+        const reportTableBody = document.getElementById('report-table-body');
+        const printReportBtn = document.getElementById('print-report-btn');
+
+        // Dashboard Elements
+        const currentMonthYear = document.getElementById('currentMonthYear');
+        const calendarEl = document.getElementById('calendar');
+        const prevMonthBtn = document.getElementById('prevMonthBtn');
+        const nextMonthBtn = document.getElementById('nextMonthBtn');
+        const startDateEl = document.getElementById('startDate');
+        const endDateEl = document.getElementById('endDate');
+        const filterBtn = document.getElementById('filterBtn');
+        const appointmentsListEl = document.getElementById('appointmentsList');
+        const noAppointmentsMessageEl = document.getElementById('noAppointmentsMessage');
+        const productSummaryListEl = document.getElementById('productSummaryList');
+
+
+        // App state
+        let auth, db, userId;
+        let clients = [];
+        let reps = [];
+        let products = [];
+        let appointments = [];
+        let currentDate = new Date();
+
+        // UI Functions
         function showMessage(message, type = 'info') {
             messageBox.textContent = message;
-            messageBox.className = `p-4 rounded-md text-sm ${type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`;
+            messageBox.className = `p-4 rounded-md text-sm text-center ${type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`;
             messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
         }
 
-        // Configuração e inicialização do Firebase
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-
-        let auth, db;
-
-        if (Object.keys(firebaseConfig).length > 0) {
-            fallbackMessage.classList.add('hidden'); // Esconde a mensagem de fallback
+        function showPage(pageId) {
+            document.querySelectorAll('.page-container').forEach(page => page.classList.add('hidden'));
+            document.getElementById(pageId).classList.remove('hidden');
             
+            // Update sidebar and page title
+            menuItems.forEach(item => item.classList.remove('active'));
+            const selectedMenuItem = document.querySelector(`[data-page="${pageId.replace('-page', '')}"]`);
+            if (selectedMenuItem) {
+                selectedMenuItem.classList.add('active');
+                pageTitle.textContent = selectedMenuItem.textContent;
+            }
+        }
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('collapsed');
+        }
+
+        // CRUD & Sync Functions
+        async function addData(collectionName, data) {
+            loadingSpinner.classList.remove('hidden');
             try {
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
+                const colRef = collection(db, `artifacts/${appId}/users/${userId}/${collectionName}`);
+                await addDoc(colRef, { ...data, createdAt: new Date().toISOString() });
+                showMessage(`${collectionName.charAt(0).toUpperCase() + collectionName.slice(1)} adicionado com sucesso!`, 'success');
+            } catch (e) {
+                console.error("Erro ao adicionar documento: ", e);
+                showMessage(`Erro ao adicionar ${collectionName}.`, 'error');
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        }
 
-                // Mostra o spinner de carregamento enquanto o login é processado
-                loadingSpinner.classList.remove('hidden');
+        async function deleteData(collectionName, docId) {
+            loadingSpinner.classList.remove('hidden');
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${userId}/${collectionName}/${docId}`);
+                await deleteDoc(docRef);
+                showMessage(`${collectionName.charAt(0).toUpperCase() + collectionName.slice(1)} excluído com sucesso!`, 'success');
+            } catch (e) {
+                console.error("Erro ao excluir documento: ", e);
+                showMessage(`Erro ao excluir ${collectionName}.`, 'error');
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        }
 
-                // Listener para o estado de autenticação (login/logout)
-                onAuthStateChanged(auth, async (user) => {
+        // Render functions and populating selects
+        function renderClients(data) {
+            clientList.innerHTML = '';
+            clients = data;
+            if (data.length === 0) {
+                clientList.innerHTML = '<li class="text-gray-500">Nenhum cliente cadastrado.</li>';
+                return;
+            }
+            data.forEach(client => {
+                const li = document.createElement('li');
+                const repName = client.repId ? (reps.find(r => r.id === client.repId)?.name || 'N/A') : 'N/A';
+                li.className = 'flex justify-between items-center p-2 rounded-md bg-gray-50';
+                li.innerHTML = `
+                    <span>
+                        <strong class="text-orange-500">${client.name}</strong> - WhatsApp: ${client.whatsapp}<br>
+                        <span class="text-xs text-gray-500">Representante: ${repName}</span>
+                    </span>
+                    <button class="delete-btn px-2 py-1 bg-red-600 hover:bg-red-700 rounded-md text-white text-xs" data-collection="clients" data-id="${client.id}">Excluir</button>
+                `;
+                clientList.appendChild(li);
+            });
+            populateClientSelects();
+        }
+        
+        function renderReps(data) {
+            repList.innerHTML = '';
+            reps = data;
+            if (data.length === 0) {
+                repList.innerHTML = '<li class="text-gray-500">Nenhum representante cadastrado.</li>';
+                return;
+            }
+            data.forEach(rep => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-2 rounded-md bg-gray-50';
+                li.innerHTML = `
+                    <span>${rep.name}</span>
+                    <button class="delete-btn px-2 py-1 bg-red-600 hover:bg-red-700 rounded-md text-white text-xs" data-collection="reps" data-id="${rep.id}">Excluir</button>
+                `;
+                repList.appendChild(li);
+            });
+            populateRepSelects();
+        }
+
+        function renderProducts(data) {
+            productList.innerHTML = '';
+            products = data;
+            if (data.length === 0) {
+                productList.innerHTML = '<li class="text-gray-500">Nenhum produto cadastrado.</li>';
+                return;
+            }
+            data.forEach(product => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-2 rounded-md bg-gray-50';
+                li.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <img src="${product.imageUrl || 'https://placehold.co/50x50/cccccc/000000?text=Sem+Imagem'}" alt="${product.name}" class="h-12 w-12 rounded-md object-cover">
+                        <span>
+                            <strong class="text-orange-500">${product.name}</strong> (${product.category})<br>
+                            <span class="text-sm">R$ ${parseFloat(product.price).toFixed(4)}</span>
+                        </span>
+                    </div>
+                    <button class="delete-btn px-2 py-1 bg-red-600 hover:bg-red-700 rounded-md text-white text-xs" data-collection="products" data-id="${product.id}">Excluir</button>
+                `;
+                productList.appendChild(li);
+            });
+            populateProductSelects();
+        }
+
+        function renderAppointments(data) {
+            appointmentList.innerHTML = '';
+            appointments = data;
+            if (data.length === 0) {
+                appointmentList.innerHTML = '<li class="text-gray-500">Nenhum agendamento encontrado.</li>';
+                return;
+            }
+            const sortedAppointments = data.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+            sortedAppointments.forEach(appointment => {
+                const clientName = clients.find(c => c.id === appointment.clientId)?.name || 'Cliente desconhecido';
+                const productName = products.find(p => p.id === appointment.productId)?.name || 'Produto desconhecido';
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-2 rounded-md bg-gray-50';
+                li.innerHTML = `
+                    <span>
+                        <strong class="text-orange-500">${clientName}</strong> agendou ${productName} em ${new Date(appointment.date + 'T' + appointment.time).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                    </span>
+                    <button class="delete-btn px-2 py-1 bg-red-600 hover:bg-red-700 rounded-md text-white text-xs" data-collection="appointments" data-id="${appointment.id}">Excluir</button>
+                `;
+                appointmentList.appendChild(li);
+            });
+        }
+        
+        function populateClientSelects() {
+            const clientOptions = clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            appointmentClientSelect.innerHTML = clientOptions;
+            reportClientSelect.innerHTML = `<option value="">Todos</option>${clientOptions}`;
+        }
+        
+        function populateRepSelects() {
+            const repOptions = reps.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+            clientRepSelect.innerHTML = `<option value="">Sem Representante</option>${repOptions}`;
+            reportRepSelect.innerHTML = `<option value="">Todos</option>${repOptions}`;
+        }
+
+        function populateProductSelects() {
+            const productOptions = products.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            appointmentProductSelect.innerHTML = productOptions;
+        }
+
+        // Initialization functions
+        async function initializeAppAndAuth() {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'agendamento-app';
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+            if (Object.keys(firebaseConfig).length === 0) {
+                console.error("Firebase config not found.");
+                return;
+            }
+
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    userIdDisplay.textContent = userId;
+                    userProfileId.textContent = userId;
+                    userNameDisplay.textContent = user.displayName || user.email.split('@')[0] || 'Usuário';
+                    userEmailDisplay.textContent = user.email || 'Não informado';
+                    userProfileImage.src = user.photoURL || 'https://placehold.co/100x100/E0E7FF/4F46E5?text=Foto';
+                    
+                    console.log("User authenticated:", userId);
+                    fetchDataAndSetupListeners();
+                } else {
+                    console.log("User not authenticated. Using custom token.");
+                }
+            });
+            
+            // Sign in with custom token if available
+            if (initialAuthToken) {
+                await signInWithCustomToken(auth, initialAuthToken);
+            }
+        }
+
+        // Setup Firestore Listeners
+        function fetchDataAndSetupListeners() {
+            const clientsQuery = query(collection(db, `artifacts/${appId}/users/${userId}/clients`));
+            onSnapshot(clientsQuery, (querySnapshot) => {
+                const data = [];
+                querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
+                renderClients(data);
+                renderAppointments(appointments); // Re-render to update client names
+            });
+
+            const repsQuery = query(collection(db, `artifacts/${appId}/users/${userId}/reps`));
+            onSnapshot(repsQuery, (querySnapshot) => {
+                const data = [];
+                querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
+                renderReps(data);
+                renderClients(clients); // Re-render to update rep names
+            });
+
+            const productsQuery = query(collection(db, `artifacts/${appId}/users/${userId}/products`));
+            onSnapshot(productsQuery, (querySnapshot) => {
+                const data = [];
+                querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
+                renderProducts(data);
+                renderAppointments(appointments); // Re-render to update product names
+            });
+            
+            const appointmentsQuery = query(collection(db, `artifacts/${appId}/users/${userId}/appointments`));
+            onSnapshot(appointmentsQuery, (querySnapshot) => {
+                const data = [];
+                querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
+                appointments = data; // Update appointments array
+                renderAppointments(appointments);
+                renderCalendar(currentDate); // Update calendar with new appointments
+            });
+        }
+
+        // Form event handlers
+        clientForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('client-name').value;
+            const whatsapp = document.getElementById('client-whatsapp').value;
+            const repId = document.getElementById('client-rep').value;
+            addData('clients', { name, whatsapp, repId });
+            clientForm.reset();
+        });
+
+        repForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('rep-name').value;
+            addData('reps', { name });
+            repForm.reset();
+        });
+
+        productForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('product-name').value;
+            const category = document.getElementById('product-category').value;
+            const price = parseFloat(document.getElementById('product-price').value);
+            const imageUrl = document.getElementById('product-image-url').value;
+            addData('products', { name, category, price, imageUrl });
+            productForm.reset();
+        });
+
+        appointmentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const clientId = document.getElementById('appointment-client').value;
+            const productId = document.getElementById('appointment-product').value;
+            const date = document.getElementById('appointment-date').value;
+            const time = document.getElementById('appointment-time').value;
+            
+            const client = clients.find(c => c.id === clientId);
+            const product = products.find(p => p.id === productId);
+
+            const appointmentData = {
+                clientId: clientId,
+                description: `${client?.name || 'Cliente'} agendou ${product?.name || 'Produto'}`,
+                products: [{ id: productId, name: product?.name || 'Produto', quantity: 1 }], // Adding products to appointment
+                date: date,
+                time: time
+            };
+
+            addData('appointments', appointmentData);
+            appointmentForm.reset();
+        });
+
+        // Spreadsheet import event
+        clientFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                return;
+            }
+            loadingSpinner.classList.remove('hidden');
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: ["name", "whatsapp", "repId"] });
+                    
+                    const clientsToAdd = json.filter(row => row.name && row.whatsapp);
+
+                    for (const client of clientsToAdd) {
+                        await addData('clients', client);
+                    }
+                    showMessage(`Added ${clientsToAdd.length} clients from spreadsheet!`, 'success');
+                } catch (error) {
+                    console.error("Error importing spreadsheet:", error);
+                    showMessage("Error importing spreadsheet. Check file format.", 'error');
+                } finally {
                     loadingSpinner.classList.add('hidden');
-                    if (user) {
-                        // Usuário logado
-                        loginFormContainer.classList.add('hidden');
-                        authContent.classList.remove('hidden');
-                        userIdElem.textContent = user.uid;
-                        showMessage('Login bem-sucedido!', 'success');
+                }
+            };
+            reader.readAsBinaryString(file);
+        });
+        
+        // User profile form handlers
+        changePasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newPassword = newPasswordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
 
-                        // Exemplo de como salvar/ler dados após o login
-                        const userDocRef = doc(db, `artifacts/${appId}/users/${user.uid}/user-data/profile`);
-                        await setDoc(userDocRef, { 
-                            lastLogin: new Date().toISOString(),
-                            email: user.email
-                        }, { merge: true });
-                        console.log("Perfil do usuário salvo.");
-                    } else {
-                        // Usuário deslogado
-                        loginFormContainer.classList.remove('hidden');
-                        authContent.classList.add('hidden');
-                        userIdElem.textContent = '';
-                        showMessage('Faça login ou crie uma conta para continuar.', 'info');
+            if (newPassword === "" || newPassword !== confirmPassword) {
+                showMessage("As senhas não coincidem ou estão vazias.", "error");
+                return;
+            }
+            
+            loadingSpinner.classList.remove('hidden');
+            try {
+                await updatePassword(auth.currentUser, newPassword);
+                showMessage("Senha alterada com sucesso!", "success");
+                newPasswordInput.value = '';
+                confirmPasswordInput.value = '';
+            } catch (error) {
+                console.error("Erro ao mudar a senha:", error);
+                showMessage("Erro ao mudar a senha. Tente novamente.", "error");
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        });
+
+        changeProfileImageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const imageUrl = profileImageInput.value;
+
+            loadingSpinner.classList.remove('hidden');
+            try {
+                await updateProfile(auth.currentUser, { photoURL: imageUrl });
+                userProfileImage.src = imageUrl;
+                showMessage("Foto de perfil atualizada!", "success");
+                profileImageInput.value = '';
+            } catch (error) {
+                console.error("Erro ao mudar a foto de perfil:", error);
+                showMessage("Erro ao mudar a foto de perfil. Tente novamente.", "error");
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        });
+
+        // Generate Report
+        generateReportBtn.addEventListener('click', async () => {
+            loadingSpinner.classList.remove('hidden');
+            reportTableBody.innerHTML = '';
+            reportSummary.innerHTML = '';
+            reportResults.classList.add('hidden');
+
+            try {
+                const startDate = reportStartDate.value ? new Date(reportStartDate.value) : null;
+                const endDate = reportEndDate.value ? new Date(reportEndDate.value + 'T23:59:59') : null;
+                const selectedClientId = reportClientSelect.value;
+                const selectedRepId = reportRepSelect.value;
+                
+                const appointmentsRef = collection(db, `artifacts/${appId}/users/${userId}/appointments`);
+                const querySnapshot = await getDocs(appointmentsRef);
+
+                const reportData = [];
+                querySnapshot.forEach(doc => {
+                    const appointment = doc.data();
+                    const appointmentDate = new Date(appointment.date);
+
+                    let isFiltered = true;
+
+                    if (startDate && appointmentDate < startDate) isFiltered = false;
+                    if (endDate && appointmentDate > endDate) isFiltered = false;
+
+                    const client = clients.find(c => c.id === appointment.clientId);
+                    if (selectedClientId && client?.id !== selectedClientId) isFiltered = false;
+                    if (selectedRepId && client?.repId !== selectedRepId) isFiltered = false;
+
+                    if (isFiltered) {
+                        const product = products.find(p => p.id === appointment.productId);
+                        const rep = reps.find(r => r.id === client?.repId);
+                        reportData.push({
+                            ...appointment,
+                            clientName: client ? client.name : 'N/A',
+                            productName: product ? product.name : 'N/A',
+                            productPrice: product ? product.price : 0,
+                            repName: rep ? rep.name : 'N/A'
+                        });
                     }
                 });
 
+                if (reportData.length === 0) {
+                    reportSummary.innerHTML = '<p class="text-gray-500 text-center">Nenhum dado encontrado para os filtros selecionados.</p>';
+                    reportResults.classList.remove('hidden');
+                    return;
+                }
+                
+                const totalByProduct = reportData.reduce((acc, curr) => {
+                    acc[curr.productName] = (acc[curr.productName] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const totalByRep = reportData.reduce((acc, curr) => {
+                    acc[curr.repName] = (acc[curr.repName] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const totalByDay = reportData.reduce((acc, curr) => {
+                    acc[curr.date] = (acc[curr.date] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const summaryHtml = `
+                    <p class="font-bold">Total por Produto:</p>
+                    <ul class="list-disc list-inside">${Object.entries(totalByProduct).map(([prod, count]) => `<li>${prod}: ${count}</li>`).join('')}</ul>
+                    <p class="font-bold mt-2">Total por Representante:</p>
+                    <ul class="list-disc list-inside">${Object.entries(totalByRep).map(([rep, count]) => `<li>${rep}: ${count}</li>`).join('')}</ul>
+                    <p class="font-bold mt-2">Total por Dia:</p>
+                    <ul class="list-disc list-inside">${Object.entries(totalByDay).map(([day, count]) => `<li>${new Date(day).toLocaleDateString('pt-BR')}: ${count}</li>`).join('')}</ul>
+                    <p class="font-bold mt-2">Valor Total: R$ ${reportData.reduce((sum, curr) => sum + parseFloat(curr.productPrice), 0).toFixed(2)}</p>
+                `;
+                reportSummary.innerHTML = summaryHtml;
+
+                const tableHtml = reportData.map(d => `
+                    <tr class="hover:bg-gray-100 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap">${new Date(d.date).toLocaleDateString('pt-BR')}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${d.clientName}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${d.productName}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">R$ ${parseFloat(d.productPrice).toFixed(4)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${d.repName}</td>
+                    </tr>
+                `).join('');
+                reportTableBody.innerHTML = tableHtml;
+                reportResults.classList.remove('hidden');
+
             } catch (error) {
-                console.error("Erro ao inicializar o Firebase:", error);
-                showMessage(`Erro fatal: ${error.message}`, 'error');
+                console.error("Error generating report:", error);
+                showMessage("Erro ao gerar relatório. Tente novamente.", 'error');
+            } finally {
                 loadingSpinner.classList.add('hidden');
             }
-        } else {
-            // Se as variáveis do Firebase não estiverem disponíveis, mostra a mensagem de fallback
-            console.error("Configuração do Firebase não encontrada.");
-            loadingSpinner.classList.add('hidden');
-            fallbackMessage.classList.remove('hidden');
+        });
+        
+        // Print Report
+        printReportBtn.addEventListener('click', () => {
+            const originalBody = document.body.innerHTML;
+            const printContent = document.getElementById('report-results').cloneNode(true);
+            const header = `<h1 class="text-3xl font-bold mb-4 text-center">Relatório de Vendas</h1>`;
+            const style = `
+                <style>
+                    body { font-family: 'Courier New', Courier, monospace; background: #fff; color: #000; padding: 20px; }
+                    .container-card, table, th, td { border: 1px solid #000; border-collapse: collapse; }
+                    .p-4 { padding: 1rem; }
+                    .rounded-md { border-radius: 0.375rem; }
+                    .mb-2 { margin-bottom: 0.5rem; }
+                    .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.5rem; }
+                    h2, h3, h1 { font-weight: bold; }
+                    .text-2xl { font-size: 1.5rem; }
+                    .text-xl { font-size: 1.25rem; }
+                    .font-bold { font-weight: 700; }
+                    .hidden, .bg-gray-100, .bg-white, button { display: none !important; }
+                    table { width: 100%; margin-top: 1rem; }
+                    th, td { padding: 0.75rem; text-align: left; }
+                </style>
+            `;
+            document.body.innerHTML = style + header + printContent.innerHTML;
+            window.print();
+            document.body.innerHTML = originalBody;
+            window.location.reload(); // Reload page to restore state
+        });
+
+        // Deletion events
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const docId = e.target.dataset.id;
+                const collectionName = e.target.dataset.collection;
+                deleteData(collectionName, docId);
+            }
+        });
+
+        // Navigation events
+        menuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                showPage(`${item.dataset.page}-page`);
+            });
+        });
+
+        menuDropdowns.forEach(dropdown => {
+            dropdown.addEventListener('click', () => {
+                const submenu = dropdown.nextElementSibling;
+                submenu.classList.toggle('open');
+                dropdown.querySelector('svg').classList.toggle('rotate-180');
+            });
+        });
+        
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.remove('collapsed');
+        });
+
+        closeSidebarBtn.addEventListener('click', () => {
+            sidebar.classList.add('collapsed');
+        });
+
+        // Dashboard functions
+        function renderCalendar(date) {
+            currentMonthYear.textContent = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            const calendarDaysEl = document.createElement('div');
+            calendarDaysEl.className = 'col-span-7 grid grid-cols-7 gap-1';
+
+            const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+            const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                calendarDaysEl.innerHTML += `<div class="p-2"></div>`;
+            }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                calendarDaysEl.innerHTML += `<div class="day-cell">
+                    <span class="font-semibold text-black">${i}</span>
+                    <div id="marker-${i}" class="marker hidden"></div>
+                </div>`;
+            }
+
+            const existingCalendarDays = calendarEl.querySelector('.col-span-7.grid');
+            if (existingCalendarDays) {
+                calendarEl.removeChild(existingCalendarDays);
+            }
+            calendarEl.appendChild(calendarDaysEl);
+
+            if (userId && db) {
+                fetchAppointmentsForCalendar(date);
+            }
         }
 
-        // Evento de clique do botão de login
-        loginButton.addEventListener('click', async () => {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
+        function fetchAppointmentsForCalendar(date) {
+            const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+            const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
-            if (!email || !password) {
-                showMessage('Por favor, preencha todos os campos.', 'error');
+            const q = query(collection(db, `artifacts/${appId}/users/${userId}/appointments`),
+                where('date', '>=', startOfMonth.toISOString().slice(0, 10)),
+                where('date', '<=', endOfMonth.toISOString().slice(0, 10))
+            );
+
+            onSnapshot(q, (snapshot) => {
+                const appointmentDates = new Set();
+                snapshot.forEach(doc => {
+                    const appointment = doc.data();
+                    if (appointment.date) {
+                        const day = new Date(appointment.date).getDate();
+                        appointmentDates.add(day);
+                    }
+                });
+
+                document.querySelectorAll('.marker').forEach(el => el.classList.add('hidden'));
+
+                appointmentDates.forEach(day => {
+                    const marker = document.getElementById(`marker-${day}`);
+                    if (marker) {
+                        marker.classList.remove('hidden');
+                    }
+                });
+            }, (error) => {
+                console.error("Error fetching appointments for calendar:", error);
+            });
+        }
+        
+        filterBtn.addEventListener('click', () => {
+            const startDateStr = startDateEl.value;
+            const endDateStr = endDateEl.value;
+            if (!startDateStr || !endDateStr) {
+                showMessage('Por favor, selecione as datas de início e fim.', 'error');
                 return;
             }
+            const q = query(collection(db, `artifacts/${appId}/users/${userId}/appointments`),
+                where('date', '>=', startDateStr),
+                where('date', '<=', endDateStr)
+            );
+            
+            onSnapshot(q, (snapshot) => {
+                const filteredAppointments = [];
+                const productTotals = {};
+                snapshot.forEach(doc => {
+                    const appointment = doc.data();
+                    filteredAppointments.push({ id: doc.id, ...appointment });
+                    
+                    if (appointment.products) {
+                        appointment.products.forEach(product => {
+                            const productName = product.name;
+                            const quantity = product.quantity;
+                            if (productName && quantity) {
+                                productTotals[productName] = (productTotals[productName] || 0) + quantity;
+                            }
+                        });
+                    }
+                });
 
-            loadingSpinner.classList.remove('hidden');
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-            } catch (error) {
-                loadingSpinner.classList.add('hidden');
-                console.error("Erro no login:", error);
-                let errorMessage = 'Ocorreu um erro no login.';
-                switch (error.code) {
-                    case 'auth/user-not-found':
-                    case 'auth/wrong-password':
-                        errorMessage = 'E-mail ou senha inválidos.';
-                        break;
-                    case 'auth/invalid-email':
-                        errorMessage = 'E-mail inválido.';
-                        break;
-                    default:
-                        errorMessage = 'Erro no login. Tente novamente.';
-                }
-                showMessage(errorMessage, 'error');
-            }
+                renderFilteredAppointments(filteredAppointments);
+                renderProductSummary(productTotals);
+            }, (error) => {
+                console.error("Error fetching appointments:", error);
+            });
         });
 
-        // Evento de clique do botão de cadastro
-        signupButton.addEventListener('click', async () => {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
+        function renderFilteredAppointments(filteredAppointments) {
+            appointmentsListEl.innerHTML = '';
+            if (filteredAppointments.length === 0) {
+                noAppointmentsMessageEl.textContent = 'Nenhum agendamento encontrado no período selecionado.';
+                appointmentsListEl.appendChild(noAppointmentsMessageEl);
+            } else {
+                filteredAppointments.sort((a, b) => new Date(a.date) - new Date(b.date));
+                filteredAppointments.forEach(appointment => {
+                    const appointmentEl = document.createElement('div');
+                    appointmentEl.className = 'bg-gray-100 p-4 rounded-xl shadow-sm border border-gray-200';
+                    const productsHtml = appointment.products.map(p => `
+                        <span class="inline-block bg-orange-200 text-orange-800 text-xs font-semibold px-2.5 py-0.5 rounded-full mr-2 mb-1">
+                            ${p.name}: ${p.quantity}
+                        </span>
+                    `).join('');
+                    const clientName = clients.find(c => c.id === appointment.clientId)?.name || 'Cliente desconhecido';
 
-            if (!email || !password) {
-                showMessage('Por favor, preencha todos os campos.', 'error');
-                return;
+                    appointmentEl.innerHTML = `
+                        <p class="text-sm text-gray-600 font-semibold">${new Date(appointment.date).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        <p class="text-lg font-bold text-black">${appointment.description}</p>
+                        <p class="text-sm text-gray-700">Cliente: ${clientName}</p>
+                        <div class="mt-2 flex flex-wrap">${productsHtml}</div>
+                    `;
+                    appointmentsListEl.appendChild(appointmentEl);
+                });
+                noAppointmentsMessageEl.textContent = '';
             }
+        }
 
-            loadingSpinner.classList.remove('hidden');
-            try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                showMessage('Conta criada com sucesso! Faça o login agora.', 'success');
-            } catch (error) {
-                loadingSpinner.classList.add('hidden');
-                console.error("Erro no cadastro:", error);
-                let errorMessage = 'Ocorreu um erro no cadastro.';
-                switch (error.code) {
-                    case 'auth/email-already-in-use':
-                        errorMessage = 'Este e-mail já está em uso.';
-                        break;
-                    case 'auth/weak-password':
-                        errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
-                        break;
-                    case 'auth/invalid-email':
-                        errorMessage = 'E-mail inválido.';
-                        break;
-                    default:
-                        errorMessage = 'Erro no cadastro. Tente novamente.';
-                }
-                showMessage(errorMessage, 'error');
+        function renderProductSummary(productTotals) {
+            productSummaryListEl.innerHTML = '';
+            const productNames = Object.keys(productTotals).sort();
+            if (productNames.length === 0) {
+                productSummaryListEl.innerHTML = `<p class="text-gray-500 text-center">Nenhum produto para exibir.</p>`;
+            } else {
+                productNames.forEach(productName => {
+                    const totalQuantity = productTotals[productName];
+                    const productEl = document.createElement('div');
+                    productEl.className = 'flex items-center justify-between py-2 border-b last:border-b-0 border-gray-200';
+                    productEl.innerHTML = `
+                        <span class="text-black">${productName}</span>
+                        <span class="font-bold text-lg text-orange-500">${totalQuantity}</span>
+                    `;
+                    productSummaryListEl.appendChild(productEl);
+                });
             }
+        }
+
+        prevMonthBtn.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar(currentDate);
         });
 
-        // Evento de clique do botão de logout
-        logoutButton.addEventListener('click', async () => {
-            try {
-                await signOut(auth);
-                showMessage('Você saiu com sucesso.', 'success');
-            } catch (error) {
-                console.error("Erro ao fazer logout:", error);
-                showMessage('Erro ao sair. Tente novamente.', 'error');
-            }
+        nextMonthBtn.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar(currentDate);
         });
+
+        // Initialize the app
+        initializeAppAndAuth();
+        showPage('dashboard-page');
     </script>
-
 </body>
 </html>
