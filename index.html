@@ -6,8 +6,9 @@
     <title>Sistema de Gestão Completo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
         body {
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'Courier Prime', monospace;
             background-color: #f8fafc;
             color: #111827;
         }
@@ -89,6 +90,10 @@
             height: 8px;
             background-color: #f97316;
             border-radius: 50%;
+        }
+
+        .modal {
+            transition: opacity 0.3s ease-in-out;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
@@ -430,13 +435,31 @@
         </div>
     </main>
 
+    <!-- Modal de Confirmação -->
+    <div id="confirmation-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden modal">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full container-card space-y-4">
+            <h3 id="modal-title" class="text-xl font-bold">Confirmação</h3>
+            <p id="modal-message" class="text-gray-700">Tem certeza que deseja continuar?</p>
+            <div class="flex justify-end space-x-4">
+                <button id="modal-cancel-btn" class="py-2 px-4 rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button id="modal-confirm-btn" class="py-2 px-4 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signOut, onAuthStateChanged, signInWithCustomToken, updatePassword, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, deleteDoc, setLogLevel, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signOut, onAuthStateChanged, signInWithCustomToken, updatePassword, updateProfile, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, deleteDoc, setLogLevel, getDocs, where, writeBatch, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        setLogLevel('debug'); // Enable Firestore debug logging
+        // Global variables for Firebase configuration
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Enable Firestore debug logging
+        setLogLevel('debug'); 
 
         const userIdDisplay = document.getElementById('userIdDisplay');
         const messageBox = document.getElementById('message-box');
@@ -501,6 +524,13 @@
         const noAppointmentsMessageEl = document.getElementById('noAppointmentsMessage');
         const productSummaryListEl = document.getElementById('productSummaryList');
 
+        // Modal Elements
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
 
         // App state
         let auth, db, userId;
@@ -520,247 +550,728 @@
             }, 5000);
         }
 
-        function showPage(pageId) {
+        function showProgress() {
+            loadingSpinner.classList.remove('hidden');
+            messageBox.classList.add('hidden');
+        }
+
+        function hideProgress() {
+            loadingSpinner.classList.add('hidden');
+        }
+
+        function navigateTo(pageId) {
             document.querySelectorAll('.page-container').forEach(page => page.classList.add('hidden'));
-            document.getElementById(pageId).classList.remove('hidden');
-            
-            // Update sidebar and page title
+            document.getElementById(`${pageId}-page`).classList.remove('hidden');
+            pageTitle.textContent = document.querySelector(`.menu-item[data-page="${pageId}"]`)?.textContent || 'Dashboard';
+            // Update active menu item
             menuItems.forEach(item => item.classList.remove('active'));
-            const selectedMenuItem = document.querySelector(`[data-page="${pageId.replace('-page', '')}"]`);
-            if (selectedMenuItem) {
-                selectedMenuItem.classList.add('active');
-                pageTitle.textContent = selectedMenuItem.textContent;
+            document.querySelector(`.menu-item[data-page="${pageId}"]`)?.classList.add('active');
+            
+            // Re-render data for the new page
+            if (pageId === 'dashboard') renderCalendar();
+            if (pageId === 'clientes') renderClients();
+            if (pageId === 'representantes') renderReps();
+            if (pageId === 'produtos') renderProducts();
+            if (pageId === 'agendamentos') {
+                renderAppointmentClients();
+                renderAppointmentProducts();
+                renderAppointments();
+            }
+            if (pageId === 'relatorios') {
+                renderReportFilters();
+                reportResults.classList.add('hidden');
+                reportTableBody.innerHTML = '';
             }
         }
 
-        function toggleSidebar() {
-            sidebar.classList.toggle('collapsed');
+        // Modal Confirmation
+        function showConfirmationModal(title, message, callback) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            confirmationModal.classList.remove('hidden');
+            confirmationModal.style.opacity = '1';
+
+            modalConfirmBtn.onclick = () => {
+                callback(true);
+                hideModal();
+            };
+
+            modalCancelBtn.onclick = () => {
+                callback(false);
+                hideModal();
+            };
         }
 
-        // CRUD & Sync Functions
-        async function addData(collectionName, data) {
-            loadingSpinner.classList.remove('hidden');
-            try {
-                const colRef = collection(db, `artifacts/${appId}/users/${userId}/${collectionName}`);
-                await addDoc(colRef, { ...data, createdAt: new Date().toISOString() });
-                showMessage(`${collectionName.charAt(0).toUpperCase() + collectionName.slice(1)} adicionado com sucesso!`, 'success');
-            } catch (e) {
-                console.error("Erro ao adicionar documento: ", e);
-                showMessage(`Erro ao adicionar ${collectionName}.`, 'error');
-            } finally {
-                loadingSpinner.classList.add('hidden');
-            }
-        }
-
-        async function deleteData(collectionName, docId) {
-            loadingSpinner.classList.remove('hidden');
-            try {
-                const docRef = doc(db, `artifacts/${appId}/users/${userId}/${collectionName}/${docId}`);
-                await deleteDoc(docRef);
-                showMessage(`${collectionName.charAt(0).toUpperCase() + collectionName.slice(1)} excluído com sucesso!`, 'success');
-            } catch (e) {
-                console.error("Erro ao excluir documento: ", e);
-                showMessage(`Erro ao excluir ${collectionName}.`, 'error');
-            } finally {
-                loadingSpinner.classList.add('hidden');
-            }
-        }
-
-        // Render functions and populating selects
-        function renderClients(data) {
-            clientList.innerHTML = '';
-            clients = data;
-            if (data.length === 0) {
-                clientList.innerHTML = '<li class="text-gray-500">Nenhum cliente cadastrado.</li>';
-                return;
-            }
-            data.forEach(client => {
-                const li = document.createElement('li');
-                const repName = client.repId ? (reps.find(r => r.id === client.repId)?.name || 'N/A') : 'N/A';
-                li.className = 'flex justify-between items-center p-2 rounded-md bg-gray-50';
-                li.innerHTML = `
-                    <span>
-                        <strong class="text-orange-500">${client.name}</strong> - WhatsApp: ${client.whatsapp}<br>
-                        <span class="text-xs text-gray-500">Representante: ${repName}</span>
-                    </span>
-                    <button class="delete-btn px-2 py-1 bg-red-600 hover:bg-red-700 rounded-md text-white text-xs" data-collection="clients" data-id="${client.id}">Excluir</button>
-                `;
-                clientList.appendChild(li);
-            });
-            populateClientSelects();
+        function hideModal() {
+            confirmationModal.style.opacity = '0';
+            setTimeout(() => {
+                confirmationModal.classList.add('hidden');
+            }, 300);
         }
         
-        function renderReps(data) {
-            repList.innerHTML = '';
-            reps = data;
-            if (data.length === 0) {
-                repList.innerHTML = '<li class="text-gray-500">Nenhum representante cadastrado.</li>';
-                return;
+        // Firestore CRUD Operations
+        // Clients
+        async function addClient(name, whatsapp, repId) {
+            showProgress();
+            try {
+                const clientData = {
+                    name: name,
+                    whatsapp: whatsapp,
+                    repId: repId,
+                    createdAt: new Date(),
+                };
+                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/clients`), clientData);
+                showMessage('Cliente adicionado com sucesso!');
+            } catch (error) {
+                console.error("Erro ao adicionar cliente:", error);
+                showMessage('Erro ao adicionar cliente. Tente novamente.', 'error');
+            } finally {
+                hideProgress();
             }
-            data.forEach(rep => {
+        }
+
+        function renderClients() {
+            clientList.innerHTML = '';
+            clients.forEach(client => {
+                const rep = reps.find(r => r.id === client.repId);
                 const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-2 rounded-md bg-gray-50';
+                li.className = 'p-3 bg-gray-50 rounded-md flex justify-between items-center shadow-sm';
+                li.innerHTML = `
+                    <div>
+                        <p class="font-semibold">${client.name}</p>
+                        <p class="text-sm text-gray-500">${client.whatsapp}</p>
+                        ${rep ? `<p class="text-xs text-gray-400">Representante: ${rep.name}</p>` : ''}
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="text-orange-600 hover:text-orange-800 transition-colors edit-btn" data-id="${client.id}">Editar</button>
+                        <button class="text-red-600 hover:text-red-800 transition-colors delete-btn" data-id="${client.id}">Excluir</button>
+                    </div>
+                `;
+                li.querySelector('.edit-btn').addEventListener('click', () => editClient(client));
+                li.querySelector('.delete-btn').addEventListener('click', () => deleteClient(client.id));
+                clientList.appendChild(li);
+            });
+            // Also update the select dropdowns
+            renderAppointmentClients();
+            renderReportFilters();
+        }
+
+        async function editClient(client) {
+            const newName = prompt("Editar nome:", client.name);
+            if (!newName) return;
+            const newWhatsapp = prompt("Editar WhatsApp:", client.whatsapp);
+            if (!newWhatsapp) return;
+            const newRep = reps.find(r => r.name === prompt("Editar representante (nome):", reps.find(rep => rep.id === client.repId)?.name || ''));
+            
+            showProgress();
+            try {
+                const clientDocRef = doc(db, `/artifacts/${appId}/users/${userId}/clients`, client.id);
+                await setDoc(clientDocRef, { 
+                    name: newName, 
+                    whatsapp: newWhatsapp, 
+                    repId: newRep ? newRep.id : null 
+                }, { merge: true });
+                showMessage('Cliente atualizado com sucesso!');
+            } catch (error) {
+                console.error("Erro ao atualizar cliente:", error);
+                showMessage('Erro ao atualizar cliente. Tente novamente.', 'error');
+            } finally {
+                hideProgress();
+            }
+        }
+
+        async function deleteClient(id) {
+            showConfirmationModal('Excluir Cliente', 'Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.', async (confirmed) => {
+                if (confirmed) {
+                    showProgress();
+                    try {
+                        const clientDocRef = doc(db, `/artifacts/${appId}/users/${userId}/clients`, id);
+                        await deleteDoc(clientDocRef);
+                        showMessage('Cliente excluído com sucesso!');
+                    } catch (error) {
+                        console.error("Erro ao excluir cliente:", error);
+                        showMessage('Erro ao excluir cliente. Tente novamente.', 'error');
+                    } finally {
+                        hideProgress();
+                    }
+                }
+            });
+        }
+        
+        // Reps
+        async function addRep(name) {
+            showProgress();
+            try {
+                const repData = {
+                    name: name,
+                    createdAt: new Date(),
+                };
+                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/reps`), repData);
+                showMessage('Representante adicionado com sucesso!');
+            } catch (error) {
+                console.error("Erro ao adicionar representante:", error);
+                showMessage('Erro ao adicionar representante. Tente novamente.', 'error');
+            } finally {
+                hideProgress();
+            }
+        }
+
+        function renderReps() {
+            repList.innerHTML = '';
+            reps.forEach(rep => {
+                const li = document.createElement('li');
+                li.className = 'p-3 bg-gray-50 rounded-md flex justify-between items-center shadow-sm';
                 li.innerHTML = `
                     <span>${rep.name}</span>
-                    <button class="delete-btn px-2 py-1 bg-red-600 hover:bg-red-700 rounded-md text-white text-xs" data-collection="reps" data-id="${rep.id}">Excluir</button>
+                    <button class="text-red-600 hover:text-red-800 transition-colors delete-btn" data-id="${rep.id}">Excluir</button>
                 `;
+                li.querySelector('.delete-btn').addEventListener('click', () => deleteRep(rep.id));
                 repList.appendChild(li);
             });
-            populateRepSelects();
+            // Also update the select dropdowns
+            renderClientReps();
+            renderReportFilters();
         }
 
-        function renderProducts(data) {
-            productList.innerHTML = '';
-            products = data;
-            if (data.length === 0) {
-                productList.innerHTML = '<li class="text-gray-500">Nenhum produto cadastrado.</li>';
-                return;
+        async function deleteRep(id) {
+            showConfirmationModal('Excluir Representante', 'Tem certeza que deseja excluir este representante? Esta ação não pode ser desfeita.', async (confirmed) => {
+                if (confirmed) {
+                    showProgress();
+                    try {
+                        const repDocRef = doc(db, `/artifacts/${appId}/users/${userId}/reps`, id);
+                        await deleteDoc(repDocRef);
+                        showMessage('Representante excluído com sucesso!');
+                    } catch (error) {
+                        console.error("Erro ao excluir representante:", error);
+                        showMessage('Erro ao excluir representante. Tente novamente.', 'error');
+                    } finally {
+                        hideProgress();
+                    }
+                }
+            });
+        }
+        
+        // Products
+        async function addProduct(name, category, price, imageUrl) {
+            showProgress();
+            try {
+                const productData = {
+                    name: name,
+                    category: category,
+                    price: parseFloat(price),
+                    imageUrl: imageUrl || `https://placehold.co/100x100/A8A29E/374151?text=${name.substring(0,3).toUpperCase()}`,
+                    createdAt: new Date(),
+                };
+                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/products`), productData);
+                showMessage('Produto adicionado com sucesso!');
+            } catch (error) {
+                console.error("Erro ao adicionar produto:", error);
+                showMessage('Erro ao adicionar produto. Tente novamente.', 'error');
+            } finally {
+                hideProgress();
             }
-            data.forEach(product => {
+        }
+
+        function renderProducts() {
+            productList.innerHTML = '';
+            products.forEach(product => {
                 const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-2 rounded-md bg-gray-50';
+                li.className = 'p-3 bg-gray-50 rounded-md flex items-center shadow-sm space-x-4';
                 li.innerHTML = `
-                    <div class="flex items-center space-x-4">
-                        <img src="${product.imageUrl || 'https://placehold.co/50x50/cccccc/000000?text=Sem+Imagem'}" alt="${product.name}" class="h-12 w-12 rounded-md object-cover">
-                        <span>
-                            <strong class="text-orange-500">${product.name}</strong> (${product.category})<br>
-                            <span class="text-sm">R$ ${parseFloat(product.price).toFixed(4)}</span>
-                        </span>
+                    <img src="${product.imageUrl}" onerror="this.src='https://placehold.co/100x100/A8A29E/374151?text=N/A'" alt="${product.name}" class="w-16 h-16 rounded-md object-cover border-2 border-orange-300">
+                    <div class="flex-grow">
+                        <p class="font-semibold">${product.name}</p>
+                        <p class="text-sm text-gray-500">${product.category}</p>
+                        <p class="text-sm text-orange-600 font-bold">R$ ${product.price.toFixed(4)}</p>
                     </div>
-                    <button class="delete-btn px-2 py-1 bg-red-600 hover:bg-red-700 rounded-md text-white text-xs" data-collection="products" data-id="${product.id}">Excluir</button>
+                    <div class="flex space-x-2">
+                        <button class="text-red-600 hover:text-red-800 transition-colors delete-btn" data-id="${product.id}">Excluir</button>
+                    </div>
                 `;
+                li.querySelector('.delete-btn').addEventListener('click', () => deleteProduct(product.id));
                 productList.appendChild(li);
             });
-            populateProductSelects();
+            // Also update the select dropdowns
+            renderAppointmentProducts();
         }
 
-        function renderAppointments(data) {
-            appointmentList.innerHTML = '';
-            appointments = data;
-            if (data.length === 0) {
-                appointmentList.innerHTML = '<li class="text-gray-500">Nenhum agendamento encontrado.</li>';
-                return;
+        async function deleteProduct(id) {
+            showConfirmationModal('Excluir Produto', 'Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.', async (confirmed) => {
+                if (confirmed) {
+                    showProgress();
+                    try {
+                        const productDocRef = doc(db, `/artifacts/${appId}/users/${userId}/products`, id);
+                        await deleteDoc(productDocRef);
+                        showMessage('Produto excluído com sucesso!');
+                    } catch (error) {
+                        console.error("Erro ao excluir produto:", error);
+                        showMessage('Erro ao excluir produto. Tente novamente.', 'error');
+                    } finally {
+                        hideProgress();
+                    }
+                }
+            });
+        }
+        
+        // Appointments
+        async function addAppointment(clientId, productId, date, time) {
+            showProgress();
+            try {
+                const appointmentData = {
+                    clientId: clientId,
+                    productId: productId,
+                    date: date,
+                    time: time,
+                    createdAt: new Date(),
+                };
+                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/appointments`), appointmentData);
+                showMessage('Agendamento adicionado com sucesso!');
+            } catch (error) {
+                console.error("Erro ao adicionar agendamento:", error);
+                showMessage('Erro ao adicionar agendamento. Tente novamente.', 'error');
+            } finally {
+                hideProgress();
             }
-            const sortedAppointments = data.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+        }
+
+        function renderAppointments() {
+            appointmentList.innerHTML = '';
+            if (appointments.length === 0) {
+                appointmentList.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum agendamento futuro.</p>';
+            }
+            // Sort appointments by date and time
+            const sortedAppointments = appointments.sort((a, b) => {
+                const dateA = new Date(`${a.date}T${a.time}`);
+                const dateB = new Date(`${b.date}T${b.time}`);
+                return dateA - dateB;
+            });
+
             sortedAppointments.forEach(appointment => {
-                const clientName = clients.find(c => c.id === appointment.clientId)?.name || 'Cliente desconhecido';
-                const productName = products.find(p => p.id === appointment.productId)?.name || 'Produto desconhecido';
+                const client = clients.find(c => c.id === appointment.clientId);
+                const product = products.find(p => p.id === appointment.productId);
+                
                 const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-2 rounded-md bg-gray-50';
+                li.className = 'p-3 bg-gray-50 rounded-md flex justify-between items-center shadow-sm';
                 li.innerHTML = `
-                    <span>
-                        <strong class="text-orange-500">${clientName}</strong> agendou ${productName} em ${new Date(appointment.date + 'T' + appointment.time).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
-                    </span>
-                    <button class="delete-btn px-2 py-1 bg-red-600 hover:bg-red-700 rounded-md text-white text-xs" data-collection="appointments" data-id="${appointment.id}">Excluir</button>
+                    <div>
+                        <p class="font-semibold">${client?.name || 'Cliente não encontrado'}</p>
+                        <p class="text-sm text-gray-500">${product?.name || 'Produto não encontrado'}</p>
+                        <p class="text-xs text-gray-400">${new Date(appointment.date).toLocaleDateString()} às ${appointment.time}</p>
+                    </div>
+                    <button class="text-red-600 hover:text-red-800 transition-colors delete-btn" data-id="${appointment.id}">Excluir</button>
                 `;
+                li.querySelector('.delete-btn').addEventListener('click', () => deleteAppointment(appointment.id));
                 appointmentList.appendChild(li);
             });
         }
-        
-        function populateClientSelects() {
-            const clientOptions = clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-            appointmentClientSelect.innerHTML = clientOptions;
-            reportClientSelect.innerHTML = `<option value="">Todos</option>${clientOptions}`;
-        }
-        
-        function populateRepSelects() {
-            const repOptions = reps.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-            clientRepSelect.innerHTML = `<option value="">Sem Representante</option>${repOptions}`;
-            reportRepSelect.innerHTML = `<option value="">Todos</option>${repOptions}`;
+
+        async function deleteAppointment(id) {
+            showConfirmationModal('Excluir Agendamento', 'Tem certeza que deseja excluir este agendamento?', async (confirmed) => {
+                if (confirmed) {
+                    showProgress();
+                    try {
+                        const appointmentDocRef = doc(db, `/artifacts/${appId}/users/${userId}/appointments`, id);
+                        await deleteDoc(appointmentDocRef);
+                        showMessage('Agendamento excluído com sucesso!');
+                    } catch (error) {
+                        console.error("Erro ao excluir agendamento:", error);
+                        showMessage('Erro ao excluir agendamento. Tente novamente.', 'error');
+                    } finally {
+                        hideProgress();
+                    }
+                }
+            });
         }
 
-        function populateProductSelects() {
-            const productOptions = products.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-            appointmentProductSelect.innerHTML = productOptions;
+        // Helper functions for select dropdowns
+        function renderClientReps() {
+            clientRepSelect.innerHTML = '<option value="">Nenhum Representante</option>';
+            reps.forEach(rep => {
+                const option = document.createElement('option');
+                option.value = rep.id;
+                option.textContent = rep.name;
+                clientRepSelect.appendChild(option);
+            });
         }
 
-        // Initialization functions
-        async function initializeAppAndAuth() {
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'agendamento-app';
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        function renderAppointmentClients() {
+            appointmentClientSelect.innerHTML = '<option value="">Selecione um cliente</option>';
+            clients.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.id;
+                option.textContent = client.name;
+                appointmentClientSelect.appendChild(option);
+            });
+        }
 
-            if (Object.keys(firebaseConfig).length === 0) {
-                console.error("Firebase config not found.");
+        function renderAppointmentProducts() {
+            appointmentProductSelect.innerHTML = '<option value="">Selecione um produto</option>';
+            products.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product.id;
+                option.textContent = `${product.name} (R$ ${product.price.toFixed(2)})`;
+                appointmentProductSelect.appendChild(option);
+            });
+        }
+
+        // Dashboard Calendar and Filtering
+        function renderCalendar() {
+            const month = currentDate.getMonth();
+            const year = currentDate.getFullYear();
+            currentMonthYear.textContent = `${currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`;
+            calendarEl.innerHTML = `
+                <div class="col-span-7 grid grid-cols-7 text-sm font-semibold text-gray-500 mb-2">
+                    <span class="p-2">Dom</span>
+                    <span class="p-2">Seg</span>
+                    <span class="p-2">Ter</span>
+                    <span class="p-2">Qua</span>
+                    <span class="p-2">Qui</span>
+                    <span class="p-2">Sex</span>
+                    <span class="p-2">Sáb</span>
+                </div>`;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDay = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) {
+                calendarEl.innerHTML += '<div></div>';
+            }
+
+            for (let day = 1; day <= lastDay; day++) {
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const hasAppointment = appointments.some(app => app.date === dateString);
+                
+                calendarEl.innerHTML += `
+                    <div class="day-cell relative">
+                        <span class="text-sm font-bold text-gray-800">${day}</span>
+                        ${hasAppointment ? '<div class="marker"></div>' : ''}
+                    </div>
+                `;
+            }
+        }
+
+        function filterAppointments() {
+            const start = startDateEl.value;
+            const end = endDateEl.value;
+
+            if (!start || !end) {
+                showMessage('Por favor, selecione uma data de início e fim.', 'error');
+                appointmentsListEl.innerHTML = '<p class="text-gray-500 text-center py-8" id="noAppointmentsMessage">Selecione um período e clique em "Filtrar Agendamentos".</p>';
+                productSummaryListEl.innerHTML = '<p class="text-gray-500 text-center">Nenhum produto para exibir.</p>';
                 return;
             }
 
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
+            const filteredAppointments = appointments.filter(app => {
+                const appDate = new Date(app.date);
+                const startDate = new Date(start);
+                const endDate = new Date(end);
+                return appDate >= startDate && appDate <= endDate;
+            }).sort((a,b) => new Date(a.date) - new Date(b.date));
 
-            onAuthStateChanged(auth, (user) => {
+            appointmentsListEl.innerHTML = '';
+            productSummaryListEl.innerHTML = '';
+
+            if (filteredAppointments.length === 0) {
+                appointmentsListEl.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum agendamento encontrado no período.</p>';
+                productSummaryListEl.innerHTML = '<p class="text-gray-500 text-center">Nenhum produto para exibir.</p>';
+                return;
+            }
+
+            const summary = {};
+            filteredAppointments.forEach(app => {
+                const client = clients.find(c => c.id === app.clientId);
+                const product = products.find(p => p.id === app.productId);
+                
+                if (product) {
+                    if (summary[product.id]) {
+                        summary[product.id].count++;
+                    } else {
+                        summary[product.id] = { name: product.name, count: 1 };
+                    }
+                }
+                
+                const li = document.createElement('li');
+                li.className = 'p-3 bg-white rounded-md shadow-sm border-l-4 border-orange-500';
+                li.innerHTML = `
+                    <p class="font-semibold">${client?.name || 'Cliente não encontrado'}</p>
+                    <p class="text-sm text-gray-600">${product?.name || 'Produto não encontrado'}</p>
+                    <p class="text-xs text-gray-400">${new Date(app.date).toLocaleDateString()} às ${app.time}</p>
+                `;
+                appointmentsListEl.appendChild(li);
+            });
+            
+            for (const productId in summary) {
+                const item = summary[productId];
+                const p = document.createElement('p');
+                p.textContent = `${item.name}: ${item.count} agendamento(s)`;
+                productSummaryListEl.appendChild(p);
+            }
+        }
+
+        // Reports
+        function renderReportFilters() {
+            reportClientSelect.innerHTML = '<option value="">Todos</option>';
+            clients.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.id;
+                option.textContent = client.name;
+                reportClientSelect.appendChild(option);
+            });
+            reportRepSelect.innerHTML = '<option value="">Todos</option>';
+            reps.forEach(rep => {
+                const option = document.createElement('option');
+                option.value = rep.id;
+                option.textContent = rep.name;
+                reportRepSelect.appendChild(option);
+            });
+        }
+
+        function generateReport() {
+            const startDate = reportStartDate.value;
+            const endDate = reportEndDate.value;
+            const clientId = reportClientSelect.value;
+            const repId = reportRepSelect.value;
+
+            if (!startDate || !endDate) {
+                showMessage('Por favor, selecione as datas de início e fim.', 'error');
+                return;
+            }
+            
+            showProgress();
+            
+            const filteredAppointments = appointments.filter(app => {
+                const appDate = new Date(app.date);
+                const sDate = new Date(startDate);
+                const eDate = new Date(endDate);
+                
+                const client = clients.find(c => c.id === app.clientId);
+
+                const dateMatch = appDate >= sDate && appDate <= eDate;
+                const clientMatch = !clientId || app.clientId === clientId;
+                const repMatch = !repId || (client && client.repId === repId);
+
+                return dateMatch && clientMatch && repMatch;
+            });
+            
+            reportTableBody.innerHTML = '';
+            let totalValue = 0;
+            const productSales = {};
+
+            filteredAppointments.forEach(app => {
+                const client = clients.find(c => c.id === app.clientId);
+                const product = products.find(p => p.id === app.productId);
+                const rep = client ? reps.find(r => r.id === client.repId) : null;
+                
+                if (product) {
+                    totalValue += product.price;
+                    if (productSales[product.id]) {
+                        productSales[product.id].count++;
+                        productSales[product.id].total += product.price;
+                    } else {
+                        productSales[product.id] = {
+                            name: product.name,
+                            count: 1,
+                            total: product.price
+                        };
+                    }
+                }
+                
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">${new Date(app.date).toLocaleDateString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${client?.name || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${product?.name || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">R$ ${product?.price.toFixed(2) || '0.00'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${rep?.name || 'N/A'}</td>
+                `;
+                reportTableBody.appendChild(row);
+            });
+
+            reportSummary.innerHTML = `
+                <p class="font-bold">Total de Agendamentos: <span class="text-orange-600">${filteredAppointments.length}</span></p>
+                <p class="font-bold">Valor Total das Vendas: <span class="text-green-600">R$ ${totalValue.toFixed(2)}</span></p>
+                <div class="mt-4">
+                    <h4 class="font-semibold text-lg">Vendas por Produto:</h4>
+                    ${Object.values(productSales).map(item => `<p class="text-sm">${item.name}: ${item.count} unidade(s) (R$ ${item.total.toFixed(2)})</p>`).join('')}
+                </div>
+            `;
+            
+            reportResults.classList.remove('hidden');
+            hideProgress();
+        }
+        
+        // Excel Import Logic
+        function importClientsFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showProgress();
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                // Assuming the first row is header: Name, WhatsApp, RepName
+                if (jsonData.length < 2) {
+                    showMessage('A planilha não contém dados suficientes.', 'error');
+                    hideProgress();
+                    return;
+                }
+
+                const clientsToImport = [];
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (row.length >= 2) {
+                        const rep = reps.find(r => r.name === (row[2] || ''));
+                        clientsToImport.push({
+                            name: row[0],
+                            whatsapp: row[1],
+                            repId: rep ? rep.id : null,
+                            createdAt: new Date()
+                        });
+                    }
+                }
+                
+                const batch = writeBatch(db);
+                clientsToImport.forEach(client => {
+                    const docRef = doc(collection(db, `/artifacts/${appId}/users/${userId}/clients`));
+                    batch.set(docRef, client);
+                });
+
+                try {
+                    await batch.commit();
+                    showMessage(`Foram importados ${clientsToImport.length} clientes com sucesso!`);
+                } catch (error) {
+                    console.error('Erro ao importar clientes:', error);
+                    showMessage('Erro ao importar clientes. Verifique o formato da planilha.', 'error');
+                } finally {
+                    hideProgress();
+                    event.target.value = ''; // Reset file input
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Event Listeners
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (Object.keys(firebaseConfig).length > 0) {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+            } else {
+                console.error("Firebase config is missing.");
+                showMessage("Erro de configuração do Firebase.", "error");
+                return;
+            }
+
+            onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
                     userIdDisplay.textContent = userId;
                     userProfileId.textContent = userId;
-                    userNameDisplay.textContent = user.displayName || user.email.split('@')[0] || 'Usuário';
-                    userEmailDisplay.textContent = user.email || 'Não informado';
-                    userProfileImage.src = user.photoURL || 'https://placehold.co/100x100/E0E7FF/4F46E5?text=Foto';
+                    userNameDisplay.textContent = user.displayName || 'Usuário Anônimo';
+                    userEmailDisplay.textContent = user.email || 'N/A';
+                    if (user.photoURL) {
+                        userProfileImage.src = user.photoURL;
+                    }
                     
-                    console.log("User authenticated:", userId);
-                    fetchDataAndSetupListeners();
+                    // Set up Firestore listeners
+                    onSnapshot(query(collection(db, `/artifacts/${appId}/users/${userId}/clients`)), (snapshot) => {
+                        clients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        renderClients();
+                    });
+                    
+                    onSnapshot(query(collection(db, `/artifacts/${appId}/users/${userId}/reps`)), (snapshot) => {
+                        reps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        renderReps();
+                    });
+                    
+                    onSnapshot(query(collection(db, `/artifacts/${appId}/users/${userId}/products`)), (snapshot) => {
+                        products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        renderProducts();
+                    });
+                    
+                    onSnapshot(query(collection(db, `/artifacts/${appId}/users/${userId}/appointments`)), (snapshot) => {
+                        appointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        renderAppointments();
+                        renderCalendar();
+                    });
+
                 } else {
-                    console.log("User not authenticated. Using custom token.");
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Authentication failed:", error);
+                        showMessage("Falha na autenticação.", "error");
+                    }
                 }
             });
-            
-            // Sign in with custom token if available
-            if (initialAuthToken) {
-                await signInWithCustomToken(auth, initialAuthToken);
-            }
-        }
+        });
 
-        // Setup Firestore Listeners
-        function fetchDataAndSetupListeners() {
-            const clientsQuery = query(collection(db, `artifacts/${appId}/users/${userId}/clients`));
-            onSnapshot(clientsQuery, (querySnapshot) => {
-                const data = [];
-                querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
-                renderClients(data);
-                renderAppointments(appointments); // Re-render to update client names
-            });
+        // UI Events
+        document.getElementById('sidebar-toggle').addEventListener('click', () => {
+            sidebar.classList.remove('collapsed');
+        });
 
-            const repsQuery = query(collection(db, `artifacts/${appId}/users/${userId}/reps`));
-            onSnapshot(repsQuery, (querySnapshot) => {
-                const data = [];
-                querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
-                renderReps(data);
-                renderClients(clients); // Re-render to update rep names
+        document.getElementById('close-sidebar-btn').addEventListener('click', () => {
+            sidebar.classList.add('collapsed');
+        });
+        
+        logoutButton.addEventListener('click', async () => {
+            showConfirmationModal('Sair', 'Tem certeza que deseja sair?', async (confirmed) => {
+                if (confirmed) {
+                    try {
+                        await signOut(auth);
+                        window.location.reload(); // Reload the page to reset state
+                    } catch (error) {
+                        console.error("Error signing out:", error);
+                        showMessage("Erro ao sair.", "error");
+                    }
+                }
             });
+        });
 
-            const productsQuery = query(collection(db, `artifacts/${appId}/users/${userId}/products`));
-            onSnapshot(productsQuery, (querySnapshot) => {
-                const data = [];
-                querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
-                renderProducts(data);
-                renderAppointments(appointments); // Re-render to update product names
+        menuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                navigateTo(item.dataset.page);
+                if (window.innerWidth < 768) {
+                    sidebar.classList.add('collapsed');
+                }
             });
-            
-            const appointmentsQuery = query(collection(db, `artifacts/${appId}/users/${userId}/appointments`));
-            onSnapshot(appointmentsQuery, (querySnapshot) => {
-                const data = [];
-                querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
-                appointments = data; // Update appointments array
-                renderAppointments(appointments);
-                renderCalendar(currentDate); // Update calendar with new appointments
+        });
+        
+        menuDropdowns.forEach(dropdown => {
+            dropdown.addEventListener('click', () => {
+                const submenu = dropdown.nextElementSibling;
+                submenu.classList.toggle('open');
+                const svg = dropdown.querySelector('svg');
+                svg.classList.toggle('rotate-180');
             });
-        }
+        });
 
-        // Form event handlers
         clientForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('client-name').value;
             const whatsapp = document.getElementById('client-whatsapp').value;
-            const repId = document.getElementById('client-rep').value;
-            addData('clients', { name, whatsapp, repId });
+            const repId = document.getElementById('client-rep').value || null;
+            addClient(name, whatsapp, repId);
             clientForm.reset();
         });
+
+        clientFile.addEventListener('change', importClientsFromExcel);
 
         repForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('rep-name').value;
-            addData('reps', { name });
+            addRep(name);
             repForm.reset();
         });
 
@@ -768,9 +1279,9 @@
             e.preventDefault();
             const name = document.getElementById('product-name').value;
             const category = document.getElementById('product-category').value;
-            const price = parseFloat(document.getElementById('product-price').value);
+            const price = document.getElementById('product-price').value;
             const imageUrl = document.getElementById('product-image-url').value;
-            addData('products', { name, category, price, imageUrl });
+            addProduct(name, category, price, imageUrl);
             productForm.reset();
         });
 
@@ -781,412 +1292,78 @@
             const date = document.getElementById('appointment-date').value;
             const time = document.getElementById('appointment-time').value;
             
-            const client = clients.find(c => c.id === clientId);
-            const product = products.find(p => p.id === productId);
-
-            const appointmentData = {
-                clientId: clientId,
-                description: `${client?.name || 'Cliente'} agendou ${product?.name || 'Produto'}`,
-                products: [{ id: productId, name: product?.name || 'Produto', quantity: 1 }], // Adding products to appointment
-                date: date,
-                time: time
-            };
-
-            addData('appointments', appointmentData);
-            appointmentForm.reset();
-        });
-
-        // Spreadsheet import event
-        clientFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) {
+            if (!clientId || !productId || !date || !time) {
+                showMessage('Por favor, preencha todos os campos do agendamento.', 'error');
                 return;
             }
-            loadingSpinner.classList.remove('hidden');
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const data = e.target.result;
-                    const workbook = XLSX.read(data, { type: 'binary' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const json = XLSX.utils.sheet_to_json(worksheet, { header: ["name", "whatsapp", "repId"] });
-                    
-                    const clientsToAdd = json.filter(row => row.name && row.whatsapp);
-
-                    for (const client of clientsToAdd) {
-                        await addData('clients', client);
-                    }
-                    showMessage(`Added ${clientsToAdd.length} clients from spreadsheet!`, 'success');
-                } catch (error) {
-                    console.error("Error importing spreadsheet:", error);
-                    showMessage("Error importing spreadsheet. Check file format.", 'error');
-                } finally {
-                    loadingSpinner.classList.add('hidden');
-                }
-            };
-            reader.readAsBinaryString(file);
+            
+            addAppointment(clientId, productId, date, time);
+            appointmentForm.reset();
         });
         
-        // User profile form handlers
+        // Dashboard Navigation
+        prevMonthBtn.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        filterBtn.addEventListener('click', filterAppointments);
+        
+        generateReportBtn.addEventListener('click', generateReport);
+        
+        printReportBtn.addEventListener('click', () => {
+            const printContents = document.getElementById('report-results').outerHTML;
+            const originalContents = document.body.innerHTML;
+            document.body.innerHTML = printContents;
+            window.print();
+            document.body.innerHTML = originalContents;
+            window.location.reload(); // Reload to restore original page
+        });
+        
+        // User Profile
         changePasswordForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const newPassword = newPasswordInput.value;
             const confirmPassword = confirmPasswordInput.value;
 
-            if (newPassword === "" || newPassword !== confirmPassword) {
-                showMessage("As senhas não coincidem ou estão vazias.", "error");
+            if (newPassword !== confirmPassword) {
+                showMessage('As senhas não coincidem.', 'error');
                 return;
             }
             
-            loadingSpinner.classList.remove('hidden');
+            showProgress();
             try {
                 await updatePassword(auth.currentUser, newPassword);
-                showMessage("Senha alterada com sucesso!", "success");
-                newPasswordInput.value = '';
-                confirmPasswordInput.value = '';
+                showMessage('Senha atualizada com sucesso!');
             } catch (error) {
-                console.error("Erro ao mudar a senha:", error);
-                showMessage("Erro ao mudar a senha. Tente novamente.", "error");
+                console.error("Erro ao atualizar senha:", error);
+                showMessage(`Erro ao atualizar senha: ${error.message}`, 'error');
             } finally {
-                loadingSpinner.classList.add('hidden');
+                hideProgress();
             }
         });
 
         changeProfileImageForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const imageUrl = profileImageInput.value;
-
-            loadingSpinner.classList.remove('hidden');
+            showProgress();
             try {
                 await updateProfile(auth.currentUser, { photoURL: imageUrl });
                 userProfileImage.src = imageUrl;
-                showMessage("Foto de perfil atualizada!", "success");
-                profileImageInput.value = '';
+                showMessage('Foto de perfil atualizada com sucesso!');
             } catch (error) {
-                console.error("Erro ao mudar a foto de perfil:", error);
-                showMessage("Erro ao mudar a foto de perfil. Tente novamente.", "error");
+                console.error("Erro ao atualizar foto:", error);
+                showMessage(`Erro ao atualizar foto: ${error.message}`, 'error');
             } finally {
-                loadingSpinner.classList.add('hidden');
+                hideProgress();
             }
         });
 
-        // Generate Report
-        generateReportBtn.addEventListener('click', async () => {
-            loadingSpinner.classList.remove('hidden');
-            reportTableBody.innerHTML = '';
-            reportSummary.innerHTML = '';
-            reportResults.classList.add('hidden');
-
-            try {
-                const startDate = reportStartDate.value ? new Date(reportStartDate.value) : null;
-                const endDate = reportEndDate.value ? new Date(reportEndDate.value + 'T23:59:59') : null;
-                const selectedClientId = reportClientSelect.value;
-                const selectedRepId = reportRepSelect.value;
-                
-                const appointmentsRef = collection(db, `artifacts/${appId}/users/${userId}/appointments`);
-                const querySnapshot = await getDocs(appointmentsRef);
-
-                const reportData = [];
-                querySnapshot.forEach(doc => {
-                    const appointment = doc.data();
-                    const appointmentDate = new Date(appointment.date);
-
-                    let isFiltered = true;
-
-                    if (startDate && appointmentDate < startDate) isFiltered = false;
-                    if (endDate && appointmentDate > endDate) isFiltered = false;
-
-                    const client = clients.find(c => c.id === appointment.clientId);
-                    if (selectedClientId && client?.id !== selectedClientId) isFiltered = false;
-                    if (selectedRepId && client?.repId !== selectedRepId) isFiltered = false;
-
-                    if (isFiltered) {
-                        const product = products.find(p => p.id === appointment.productId);
-                        const rep = reps.find(r => r.id === client?.repId);
-                        reportData.push({
-                            ...appointment,
-                            clientName: client ? client.name : 'N/A',
-                            productName: product ? product.name : 'N/A',
-                            productPrice: product ? product.price : 0,
-                            repName: rep ? rep.name : 'N/A'
-                        });
-                    }
-                });
-
-                if (reportData.length === 0) {
-                    reportSummary.innerHTML = '<p class="text-gray-500 text-center">Nenhum dado encontrado para os filtros selecionados.</p>';
-                    reportResults.classList.remove('hidden');
-                    return;
-                }
-                
-                const totalByProduct = reportData.reduce((acc, curr) => {
-                    acc[curr.productName] = (acc[curr.productName] || 0) + 1;
-                    return acc;
-                }, {});
-
-                const totalByRep = reportData.reduce((acc, curr) => {
-                    acc[curr.repName] = (acc[curr.repName] || 0) + 1;
-                    return acc;
-                }, {});
-
-                const totalByDay = reportData.reduce((acc, curr) => {
-                    acc[curr.date] = (acc[curr.date] || 0) + 1;
-                    return acc;
-                }, {});
-
-                const summaryHtml = `
-                    <p class="font-bold">Total por Produto:</p>
-                    <ul class="list-disc list-inside">${Object.entries(totalByProduct).map(([prod, count]) => `<li>${prod}: ${count}</li>`).join('')}</ul>
-                    <p class="font-bold mt-2">Total por Representante:</p>
-                    <ul class="list-disc list-inside">${Object.entries(totalByRep).map(([rep, count]) => `<li>${rep}: ${count}</li>`).join('')}</ul>
-                    <p class="font-bold mt-2">Total por Dia:</p>
-                    <ul class="list-disc list-inside">${Object.entries(totalByDay).map(([day, count]) => `<li>${new Date(day).toLocaleDateString('pt-BR')}: ${count}</li>`).join('')}</ul>
-                    <p class="font-bold mt-2">Valor Total: R$ ${reportData.reduce((sum, curr) => sum + parseFloat(curr.productPrice), 0).toFixed(2)}</p>
-                `;
-                reportSummary.innerHTML = summaryHtml;
-
-                const tableHtml = reportData.map(d => `
-                    <tr class="hover:bg-gray-100 transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap">${new Date(d.date).toLocaleDateString('pt-BR')}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${d.clientName}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${d.productName}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">R$ ${parseFloat(d.productPrice).toFixed(4)}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${d.repName}</td>
-                    </tr>
-                `).join('');
-                reportTableBody.innerHTML = tableHtml;
-                reportResults.classList.remove('hidden');
-
-            } catch (error) {
-                console.error("Error generating report:", error);
-                showMessage("Erro ao gerar relatório. Tente novamente.", 'error');
-            } finally {
-                loadingSpinner.classList.add('hidden');
-            }
-        });
-        
-        // Print Report
-        printReportBtn.addEventListener('click', () => {
-            const originalBody = document.body.innerHTML;
-            const printContent = document.getElementById('report-results').cloneNode(true);
-            const header = `<h1 class="text-3xl font-bold mb-4 text-center">Relatório de Vendas</h1>`;
-            const style = `
-                <style>
-                    body { font-family: 'Courier New', Courier, monospace; background: #fff; color: #000; padding: 20px; }
-                    .container-card, table, th, td { border: 1px solid #000; border-collapse: collapse; }
-                    .p-4 { padding: 1rem; }
-                    .rounded-md { border-radius: 0.375rem; }
-                    .mb-2 { margin-bottom: 0.5rem; }
-                    .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.5rem; }
-                    h2, h3, h1 { font-weight: bold; }
-                    .text-2xl { font-size: 1.5rem; }
-                    .text-xl { font-size: 1.25rem; }
-                    .font-bold { font-weight: 700; }
-                    .hidden, .bg-gray-100, .bg-white, button { display: none !important; }
-                    table { width: 100%; margin-top: 1rem; }
-                    th, td { padding: 0.75rem; text-align: left; }
-                </style>
-            `;
-            document.body.innerHTML = style + header + printContent.innerHTML;
-            window.print();
-            document.body.innerHTML = originalBody;
-            window.location.reload(); // Reload page to restore state
-        });
-
-        // Deletion events
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-btn')) {
-                const docId = e.target.dataset.id;
-                const collectionName = e.target.dataset.collection;
-                deleteData(collectionName, docId);
-            }
-        });
-
-        // Navigation events
-        menuItems.forEach(item => {
-            item.addEventListener('click', () => {
-                showPage(`${item.dataset.page}-page`);
-            });
-        });
-
-        menuDropdowns.forEach(dropdown => {
-            dropdown.addEventListener('click', () => {
-                const submenu = dropdown.nextElementSibling;
-                submenu.classList.toggle('open');
-                dropdown.querySelector('svg').classList.toggle('rotate-180');
-            });
-        });
-        
-        sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.remove('collapsed');
-        });
-
-        closeSidebarBtn.addEventListener('click', () => {
-            sidebar.classList.add('collapsed');
-        });
-
-        // Dashboard functions
-        function renderCalendar(date) {
-            currentMonthYear.textContent = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-            const calendarDaysEl = document.createElement('div');
-            calendarDaysEl.className = 'col-span-7 grid grid-cols-7 gap-1';
-
-            const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-            const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-
-            for (let i = 0; i < firstDayOfMonth; i++) {
-                calendarDaysEl.innerHTML += `<div class="p-2"></div>`;
-            }
-
-            for (let i = 1; i <= daysInMonth; i++) {
-                calendarDaysEl.innerHTML += `<div class="day-cell">
-                    <span class="font-semibold text-black">${i}</span>
-                    <div id="marker-${i}" class="marker hidden"></div>
-                </div>`;
-            }
-
-            const existingCalendarDays = calendarEl.querySelector('.col-span-7.grid');
-            if (existingCalendarDays) {
-                calendarEl.removeChild(existingCalendarDays);
-            }
-            calendarEl.appendChild(calendarDaysEl);
-
-            if (userId && db) {
-                fetchAppointmentsForCalendar(date);
-            }
-        }
-
-        function fetchAppointmentsForCalendar(date) {
-            const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-            const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-
-            const q = query(collection(db, `artifacts/${appId}/users/${userId}/appointments`),
-                where('date', '>=', startOfMonth.toISOString().slice(0, 10)),
-                where('date', '<=', endOfMonth.toISOString().slice(0, 10))
-            );
-
-            onSnapshot(q, (snapshot) => {
-                const appointmentDates = new Set();
-                snapshot.forEach(doc => {
-                    const appointment = doc.data();
-                    if (appointment.date) {
-                        const day = new Date(appointment.date).getDate();
-                        appointmentDates.add(day);
-                    }
-                });
-
-                document.querySelectorAll('.marker').forEach(el => el.classList.add('hidden'));
-
-                appointmentDates.forEach(day => {
-                    const marker = document.getElementById(`marker-${day}`);
-                    if (marker) {
-                        marker.classList.remove('hidden');
-                    }
-                });
-            }, (error) => {
-                console.error("Error fetching appointments for calendar:", error);
-            });
-        }
-        
-        filterBtn.addEventListener('click', () => {
-            const startDateStr = startDateEl.value;
-            const endDateStr = endDateEl.value;
-            if (!startDateStr || !endDateStr) {
-                showMessage('Por favor, selecione as datas de início e fim.', 'error');
-                return;
-            }
-            const q = query(collection(db, `artifacts/${appId}/users/${userId}/appointments`),
-                where('date', '>=', startDateStr),
-                where('date', '<=', endDateStr)
-            );
-            
-            onSnapshot(q, (snapshot) => {
-                const filteredAppointments = [];
-                const productTotals = {};
-                snapshot.forEach(doc => {
-                    const appointment = doc.data();
-                    filteredAppointments.push({ id: doc.id, ...appointment });
-                    
-                    if (appointment.products) {
-                        appointment.products.forEach(product => {
-                            const productName = product.name;
-                            const quantity = product.quantity;
-                            if (productName && quantity) {
-                                productTotals[productName] = (productTotals[productName] || 0) + quantity;
-                            }
-                        });
-                    }
-                });
-
-                renderFilteredAppointments(filteredAppointments);
-                renderProductSummary(productTotals);
-            }, (error) => {
-                console.error("Error fetching appointments:", error);
-            });
-        });
-
-        function renderFilteredAppointments(filteredAppointments) {
-            appointmentsListEl.innerHTML = '';
-            if (filteredAppointments.length === 0) {
-                noAppointmentsMessageEl.textContent = 'Nenhum agendamento encontrado no período selecionado.';
-                appointmentsListEl.appendChild(noAppointmentsMessageEl);
-            } else {
-                filteredAppointments.sort((a, b) => new Date(a.date) - new Date(b.date));
-                filteredAppointments.forEach(appointment => {
-                    const appointmentEl = document.createElement('div');
-                    appointmentEl.className = 'bg-gray-100 p-4 rounded-xl shadow-sm border border-gray-200';
-                    const productsHtml = appointment.products.map(p => `
-                        <span class="inline-block bg-orange-200 text-orange-800 text-xs font-semibold px-2.5 py-0.5 rounded-full mr-2 mb-1">
-                            ${p.name}: ${p.quantity}
-                        </span>
-                    `).join('');
-                    const clientName = clients.find(c => c.id === appointment.clientId)?.name || 'Cliente desconhecido';
-
-                    appointmentEl.innerHTML = `
-                        <p class="text-sm text-gray-600 font-semibold">${new Date(appointment.date).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                        <p class="text-lg font-bold text-black">${appointment.description}</p>
-                        <p class="text-sm text-gray-700">Cliente: ${clientName}</p>
-                        <div class="mt-2 flex flex-wrap">${productsHtml}</div>
-                    `;
-                    appointmentsListEl.appendChild(appointmentEl);
-                });
-                noAppointmentsMessageEl.textContent = '';
-            }
-        }
-
-        function renderProductSummary(productTotals) {
-            productSummaryListEl.innerHTML = '';
-            const productNames = Object.keys(productTotals).sort();
-            if (productNames.length === 0) {
-                productSummaryListEl.innerHTML = `<p class="text-gray-500 text-center">Nenhum produto para exibir.</p>`;
-            } else {
-                productNames.forEach(productName => {
-                    const totalQuantity = productTotals[productName];
-                    const productEl = document.createElement('div');
-                    productEl.className = 'flex items-center justify-between py-2 border-b last:border-b-0 border-gray-200';
-                    productEl.innerHTML = `
-                        <span class="text-black">${productName}</span>
-                        <span class="font-bold text-lg text-orange-500">${totalQuantity}</span>
-                    `;
-                    productSummaryListEl.appendChild(productEl);
-                });
-            }
-        }
-
-        prevMonthBtn.addEventListener('click', () => {
-            currentDate.setMonth(currentDate.getMonth() - 1);
-            renderCalendar(currentDate);
-        });
-
-        nextMonthBtn.addEventListener('click', () => {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            renderCalendar(currentDate);
-        });
-
-        // Initialize the app
-        initializeAppAndAuth();
-        showPage('dashboard-page');
     </script>
 </body>
 </html>
