@@ -514,16 +514,16 @@
 
         // Dashboard Elements
         const currentMonthYear = document.getElementById('currentMonthYear');
-        const calendarEl = document.getElementById('calendar');
+        const calendar = document.getElementById('calendar');
         const prevMonthBtn = document.getElementById('prevMonthBtn');
         const nextMonthBtn = document.getElementById('nextMonthBtn');
-        const startDateEl = document.getElementById('startDate');
-        const endDateEl = document.getElementById('endDate');
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
         const filterBtn = document.getElementById('filterBtn');
-        const appointmentsListEl = document.getElementById('appointmentsList');
-        const noAppointmentsMessageEl = document.getElementById('noAppointmentsMessage');
-        const productSummaryListEl = document.getElementById('productSummaryList');
-
+        const appointmentsList = document.getElementById('appointmentsList');
+        const noAppointmentsMessage = document.getElementById('noAppointmentsMessage');
+        const productSummaryList = document.getElementById('productSummaryList');
+        
         // Modal Elements
         const confirmationModal = document.getElementById('confirmation-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -531,381 +531,510 @@
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
 
-
-        // App state
-        let auth, db, userId;
-        let clients = [];
+        let app;
+        let db;
+        let auth;
+        let userId = '';
+        let currentAppointments = [];
         let reps = [];
+        let clients = [];
         let products = [];
-        let appointments = [];
-        let currentDate = new Date();
+        let currentCalendarDate = new Date();
 
-        // UI Functions
+        // --- Utility Functions ---
+
+        /**
+         * Shows a message box with the given content and style.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success', 'error', or 'info'.
+         */
         function showMessage(message, type = 'info') {
             messageBox.textContent = message;
-            messageBox.className = `p-4 rounded-md text-sm text-center ${type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`;
-            messageBox.classList.remove('hidden');
+            messageBox.classList.remove('hidden', 'bg-green-100', 'text-green-700', 'bg-red-100', 'text-red-700', 'bg-blue-100', 'text-blue-700');
+            messageBox.classList.add('block');
+            if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-700');
+            } else if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                messageBox.classList.add('bg-blue-100', 'text-blue-700');
+            }
             setTimeout(() => {
                 messageBox.classList.add('hidden');
             }, 5000);
         }
 
-        function showProgress() {
-            loadingSpinner.classList.remove('hidden');
-            messageBox.classList.add('hidden');
+        /**
+         * Shows or hides the loading spinner.
+         * @param {boolean} show - True to show, false to hide.
+         */
+        function showLoading(show) {
+            if (show) {
+                loadingSpinner.classList.remove('hidden');
+                loadingSpinner.classList.add('flex');
+            } else {
+                loadingSpinner.classList.remove('flex');
+                loadingSpinner.classList.add('hidden');
+            }
         }
 
-        function hideProgress() {
-            loadingSpinner.classList.add('hidden');
+        /**
+         * Prompts the user for confirmation using a modal.
+         * @param {string} message - The message to display in the modal.
+         * @returns {Promise<boolean>} - Resolves to true if the user confirms, false otherwise.
+         */
+        function showConfirmationModal(message) {
+            return new Promise((resolve) => {
+                modalMessage.textContent = message;
+                confirmationModal.classList.remove('hidden');
+
+                const handleConfirm = () => {
+                    confirmationModal.classList.add('hidden');
+                    modalConfirmBtn.removeEventListener('click', handleConfirm);
+                    modalCancelBtn.removeEventListener('click', handleCancel);
+                    resolve(true);
+                };
+
+                const handleCancel = () => {
+                    confirmationModal.classList.add('hidden');
+                    modalConfirmBtn.removeEventListener('click', handleConfirm);
+                    modalCancelBtn.removeEventListener('click', handleCancel);
+                    resolve(false);
+                };
+
+                modalConfirmBtn.addEventListener('click', handleConfirm);
+                modalCancelBtn.addEventListener('click', handleCancel);
+            });
         }
 
-        function navigateTo(pageId) {
-            document.querySelectorAll('.page-container').forEach(page => page.classList.add('hidden'));
-            document.getElementById(`${pageId}-page`).classList.remove('hidden');
-            pageTitle.textContent = document.querySelector(`.menu-item[data-page="${pageId}"]`)?.textContent || 'Dashboard';
+        /**
+         * Switches the active page and updates the title.
+         * @param {string} pageId - The ID of the page to show.
+         */
+        function showPage(pageId) {
+            const allPages = document.querySelectorAll('.page-container');
+            allPages.forEach(page => page.classList.add('hidden'));
+            
+            const targetPage = document.getElementById(`${pageId}-page`);
+            if (targetPage) {
+                targetPage.classList.remove('hidden');
+                pageTitle.textContent = targetPage.querySelector('h2').textContent;
+            }
+
             // Update active menu item
             menuItems.forEach(item => item.classList.remove('active'));
-            document.querySelector(`.menu-item[data-page="${pageId}"]`)?.classList.add('active');
-            
-            // Re-render data for the new page
-            if (pageId === 'dashboard') renderCalendar();
-            if (pageId === 'clientes') renderClients();
-            if (pageId === 'representantes') renderReps();
-            if (pageId === 'produtos') renderProducts();
-            if (pageId === 'agendamentos') {
-                renderAppointmentClients();
-                renderAppointmentProducts();
-                renderAppointments();
+            const activeMenuItem = document.querySelector(`.menu-item[data-page="${pageId}"]`);
+            if (activeMenuItem) {
+                activeMenuItem.classList.add('active');
+                // Open parent submenu if needed
+                const parentSubmenu = activeMenuItem.closest('.submenu');
+                if (parentSubmenu) {
+                    parentSubmenu.classList.add('open');
+                    const parentDropdown = parentSubmenu.previousElementSibling;
+                    if (parentDropdown) {
+                        parentDropdown.querySelector('svg').style.transform = 'rotate(180deg)';
+                    }
+                }
             }
-            if (pageId === 'relatorios') {
-                renderReportFilters();
-                reportResults.classList.add('hidden');
-                reportTableBody.innerHTML = '';
+            if (sidebar.classList.contains('collapsed')) {
+                sidebar.classList.remove('collapsed');
             }
         }
 
-        // Modal Confirmation
-        function showConfirmationModal(title, message, callback) {
-            modalTitle.textContent = title;
-            modalMessage.textContent = message;
-            confirmationModal.classList.remove('hidden');
-            confirmationModal.style.opacity = '1';
+        // --- Firebase Initialization and Auth ---
 
-            modalConfirmBtn.onclick = () => {
-                callback(true);
-                hideModal();
-            };
-
-            modalCancelBtn.onclick = () => {
-                callback(false);
-                hideModal();
-            };
-        }
-
-        function hideModal() {
-            confirmationModal.style.opacity = '0';
-            setTimeout(() => {
-                confirmationModal.classList.add('hidden');
-            }, 300);
+        /**
+         * Handles user authentication state changes.
+         * @param {object} user - The authenticated user object or null.
+         */
+        async function handleAuthState(user) {
+            if (user) {
+                userId = user.uid;
+                userIdDisplay.textContent = userId;
+                userProfileId.textContent = userId;
+                userNameDisplay.textContent = user.displayName || 'Usuário';
+                userEmailDisplay.textContent = user.email || 'N/A';
+                userProfileImage.src = user.photoURL || 'https://placehold.co/100x100/E0E7FF/4F46E5?text=Foto';
+                
+                // Start listening to data
+                setupRealtimeListeners();
+            } else {
+                console.log('No user is signed in. Attempting to sign in anonymously...');
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        showMessage('Login com token personalizado bem-sucedido!', 'success');
+                    } else {
+                        await signInAnonymously(auth);
+                        showMessage('Login anônimo bem-sucedido!', 'success');
+                    }
+                } catch (error) {
+                    console.error('Authentication failed:', error);
+                    showMessage(`Erro de autenticação: ${error.message}`, 'error');
+                }
+            }
         }
         
-        // Firestore CRUD Operations
-        // Clients
-        async function addClient(name, whatsapp, repId) {
-            showProgress();
+        /**
+         * Initializes Firebase and sets up auth listeners.
+         */
+        function initFirebase() {
             try {
-                const clientData = {
-                    name: name,
-                    whatsapp: whatsapp,
-                    repId: repId,
-                    createdAt: new Date(),
-                };
-                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/clients`), clientData);
-                showMessage('Cliente adicionado com sucesso!');
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                onAuthStateChanged(auth, handleAuthState);
             } catch (error) {
-                console.error("Erro ao adicionar cliente:", error);
-                showMessage('Erro ao adicionar cliente. Tente novamente.', 'error');
-            } finally {
-                hideProgress();
+                console.error("Firebase initialization error:", error);
+                showMessage(`Erro ao inicializar o Firebase: ${error.message}`, 'error');
             }
         }
 
+        // --- Firestore Data Management ---
+
+        /**
+         * Gets the collection reference for a given entity type.
+         * @param {string} entityType - The type of entity ('clientes', 'representantes', 'produtos', 'agendamentos').
+         * @returns {object} - The Firestore collection reference.
+         */
+        function getCollectionRef(entityType) {
+            const userId = auth.currentUser?.uid || 'anonymous';
+            const collectionPath = `/artifacts/${appId}/users/${userId}/${entityType}`;
+            return collection(db, collectionPath);
+        }
+
+        /**
+         * Sets up real-time listeners for all collections.
+         */
+        function setupRealtimeListeners() {
+            // Listen for clients
+            onSnapshot(getCollectionRef('clientes'), (snapshot) => {
+                clients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderClients();
+                renderClientSelects();
+            });
+
+            // Listen for representatives
+            onSnapshot(getCollectionRef('representantes'), (snapshot) => {
+                reps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderReps();
+                renderRepSelects();
+            });
+
+            // Listen for products
+            onSnapshot(getCollectionRef('produtos'), (snapshot) => {
+                products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderProducts();
+                renderProductSelects();
+            });
+
+            // Listen for appointments
+            onSnapshot(getCollectionRef('agendamentos'), (snapshot) => {
+                currentAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderCalendar();
+                renderAppointments(currentAppointments);
+            });
+        }
+
+        // --- CRUD Operations ---
+
+        /**
+         * Adds a new document to a collection.
+         * @param {string} collectionName - The name of the collection.
+         * @param {object} data - The data to add.
+         */
+        async function addData(collectionName, data) {
+            showLoading(true);
+            try {
+                const docRef = await addDoc(getCollectionRef(collectionName), data);
+                showMessage(`${collectionName.charAt(0).toUpperCase() + collectionName.slice(1)} adicionado com sucesso!`, 'success');
+                return docRef;
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                showMessage(`Erro ao adicionar: ${e.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        /**
+         * Deletes a document from a collection.
+         * @param {string} collectionName - The name of the collection.
+         * @param {string} docId - The ID of the document to delete.
+         */
+        async function deleteData(collectionName, docId) {
+            const confirmed = await showConfirmationModal('Tem certeza que deseja excluir este item?');
+            if (confirmed) {
+                showLoading(true);
+                try {
+                    await deleteDoc(doc(db, getCollectionRef(collectionName).path, docId));
+                    showMessage('Item excluído com sucesso!', 'success');
+                } catch (e) {
+                    console.error("Error deleting document: ", e);
+                    showMessage(`Erro ao excluir: ${e.message}`, 'error');
+                } finally {
+                    showLoading(false);
+                }
+            }
+        }
+        
+        /**
+         * Updates a document in a collection.
+         * @param {string} collectionName - The name of the collection.
+         * @param {string} docId - The ID of the document to update.
+         * @param {object} data - The data to update.
+         */
+        async function updateData(collectionName, docId, data) {
+            showLoading(true);
+            try {
+                await setDoc(doc(db, getCollectionRef(collectionName).path, docId), data, { merge: true });
+                showMessage(`${collectionName.charAt(0).toUpperCase() + collectionName.slice(1)} atualizado com sucesso!`, 'success');
+            } catch (e) {
+                console.error("Error updating document: ", e);
+                showMessage(`Erro ao atualizar: ${e.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // --- Form Submission Handlers ---
+
+        clientForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('client-name').value;
+            const whatsapp = document.getElementById('client-whatsapp').value;
+            const repId = document.getElementById('client-rep').value;
+            const rep = reps.find(r => r.id === repId);
+            const data = { name, whatsapp, repId, repName: rep ? rep.name : '' };
+            await addData('clientes', data);
+            clientForm.reset();
+        });
+
+        repForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('rep-name').value;
+            const data = { name };
+            await addData('representantes', data);
+            repForm.reset();
+        });
+
+        productForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('product-name').value;
+            const category = document.getElementById('product-category').value;
+            const price = parseFloat(document.getElementById('product-price').value);
+            const imageUrl = document.getElementById('product-image-url').value;
+            const data = { name, category, price, imageUrl };
+            await addData('produtos', data);
+            productForm.reset();
+        });
+
+        appointmentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const clientId = document.getElementById('appointment-client').value;
+            const productId = document.getElementById('appointment-product').value;
+            const date = document.getElementById('appointment-date').value;
+            const time = document.getElementById('appointment-time').value;
+
+            const client = clients.find(c => c.id === clientId);
+            const product = products.find(p => p.id === productId);
+
+            if (!client || !product) {
+                showMessage('Cliente ou Produto não encontrado.', 'error');
+                return;
+            }
+
+            const data = {
+                clientId,
+                clientName: client.name,
+                productId,
+                productName: product.name,
+                productPrice: product.price,
+                repId: client.repId || null,
+                repName: client.repName || null,
+                date,
+                time,
+                timestamp: new Date(`${date}T${time}`).toISOString(),
+            };
+            await addData('agendamentos', data);
+            appointmentForm.reset();
+        });
+
+        // --- Render Functions ---
+
+        /**
+         * Renders the list of clients.
+         */
         function renderClients() {
             clientList.innerHTML = '';
+            if (clients.length === 0) {
+                clientList.innerHTML = '<p class="text-gray-500 text-center">Nenhum cliente cadastrado.</p>';
+            }
             clients.forEach(client => {
-                const rep = reps.find(r => r.id === client.repId);
                 const li = document.createElement('li');
-                li.className = 'p-3 bg-gray-50 rounded-md flex justify-between items-center shadow-sm';
+                li.className = 'p-4 container-card rounded-md flex justify-between items-center';
                 li.innerHTML = `
                     <div>
-                        <p class="font-semibold">${client.name}</p>
-                        <p class="text-sm text-gray-500">${client.whatsapp}</p>
-                        ${rep ? `<p class="text-xs text-gray-400">Representante: ${rep.name}</p>` : ''}
+                        <p class="font-bold">${client.name}</p>
+                        <p class="text-sm text-gray-600">WhatsApp: ${client.whatsapp}</p>
+                        <p class="text-sm text-gray-600">Representante: ${client.repName || 'N/A'}</p>
                     </div>
-                    <div class="flex space-x-2">
-                        <button class="text-orange-600 hover:text-orange-800 transition-colors edit-btn" data-id="${client.id}">Editar</button>
-                        <button class="text-red-600 hover:text-red-800 transition-colors delete-btn" data-id="${client.id}">Excluir</button>
-                    </div>
+                    <button class="delete-btn text-red-600 hover:text-red-800 transition-colors" data-id="${client.id}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
                 `;
-                li.querySelector('.edit-btn').addEventListener('click', () => editClient(client));
-                li.querySelector('.delete-btn').addEventListener('click', () => deleteClient(client.id));
                 clientList.appendChild(li);
             });
-            // Also update the select dropdowns
-            renderAppointmentClients();
-            renderReportFilters();
-        }
-
-        async function editClient(client) {
-            const newName = prompt("Editar nome:", client.name);
-            if (!newName) return;
-            const newWhatsapp = prompt("Editar WhatsApp:", client.whatsapp);
-            if (!newWhatsapp) return;
-            const newRep = reps.find(r => r.name === prompt("Editar representante (nome):", reps.find(rep => rep.id === client.repId)?.name || ''));
-            
-            showProgress();
-            try {
-                const clientDocRef = doc(db, `/artifacts/${appId}/users/${userId}/clients`, client.id);
-                await setDoc(clientDocRef, { 
-                    name: newName, 
-                    whatsapp: newWhatsapp, 
-                    repId: newRep ? newRep.id : null 
-                }, { merge: true });
-                showMessage('Cliente atualizado com sucesso!');
-            } catch (error) {
-                console.error("Erro ao atualizar cliente:", error);
-                showMessage('Erro ao atualizar cliente. Tente novamente.', 'error');
-            } finally {
-                hideProgress();
-            }
-        }
-
-        async function deleteClient(id) {
-            showConfirmationModal('Excluir Cliente', 'Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.', async (confirmed) => {
-                if (confirmed) {
-                    showProgress();
-                    try {
-                        const clientDocRef = doc(db, `/artifacts/${appId}/users/${userId}/clients`, id);
-                        await deleteDoc(clientDocRef);
-                        showMessage('Cliente excluído com sucesso!');
-                    } catch (error) {
-                        console.error("Erro ao excluir cliente:", error);
-                        showMessage('Erro ao excluir cliente. Tente novamente.', 'error');
-                    } finally {
-                        hideProgress();
-                    }
-                }
+            document.querySelectorAll('#client-list .delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => deleteData('clientes', e.currentTarget.dataset.id));
             });
         }
-        
-        // Reps
-        async function addRep(name) {
-            showProgress();
-            try {
-                const repData = {
-                    name: name,
-                    createdAt: new Date(),
-                };
-                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/reps`), repData);
-                showMessage('Representante adicionado com sucesso!');
-            } catch (error) {
-                console.error("Erro ao adicionar representante:", error);
-                showMessage('Erro ao adicionar representante. Tente novamente.', 'error');
-            } finally {
-                hideProgress();
-            }
-        }
 
+        /**
+         * Renders the list of representatives.
+         */
         function renderReps() {
             repList.innerHTML = '';
+            if (reps.length === 0) {
+                repList.innerHTML = '<p class="text-gray-500 text-center">Nenhum representante cadastrado.</p>';
+            }
             reps.forEach(rep => {
                 const li = document.createElement('li');
-                li.className = 'p-3 bg-gray-50 rounded-md flex justify-between items-center shadow-sm';
+                li.className = 'p-4 container-card rounded-md flex justify-between items-center';
                 li.innerHTML = `
-                    <span>${rep.name}</span>
-                    <button class="text-red-600 hover:text-red-800 transition-colors delete-btn" data-id="${rep.id}">Excluir</button>
+                    <p class="font-bold">${rep.name}</p>
+                    <button class="delete-btn text-red-600 hover:text-red-800 transition-colors" data-id="${rep.id}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
                 `;
-                li.querySelector('.delete-btn').addEventListener('click', () => deleteRep(rep.id));
                 repList.appendChild(li);
             });
-            // Also update the select dropdowns
-            renderClientReps();
-            renderReportFilters();
-        }
-
-        async function deleteRep(id) {
-            showConfirmationModal('Excluir Representante', 'Tem certeza que deseja excluir este representante? Esta ação não pode ser desfeita.', async (confirmed) => {
-                if (confirmed) {
-                    showProgress();
-                    try {
-                        const repDocRef = doc(db, `/artifacts/${appId}/users/${userId}/reps`, id);
-                        await deleteDoc(repDocRef);
-                        showMessage('Representante excluído com sucesso!');
-                    } catch (error) {
-                        console.error("Erro ao excluir representante:", error);
-                        showMessage('Erro ao excluir representante. Tente novamente.', 'error');
-                    } finally {
-                        hideProgress();
-                    }
-                }
+            document.querySelectorAll('#rep-list .delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => deleteData('representantes', e.currentTarget.dataset.id));
             });
         }
-        
-        // Products
-        async function addProduct(name, category, price, imageUrl) {
-            showProgress();
-            try {
-                const productData = {
-                    name: name,
-                    category: category,
-                    price: parseFloat(price),
-                    imageUrl: imageUrl || `https://placehold.co/100x100/A8A29E/374151?text=${name.substring(0,3).toUpperCase()}`,
-                    createdAt: new Date(),
-                };
-                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/products`), productData);
-                showMessage('Produto adicionado com sucesso!');
-            } catch (error) {
-                console.error("Erro ao adicionar produto:", error);
-                showMessage('Erro ao adicionar produto. Tente novamente.', 'error');
-            } finally {
-                hideProgress();
-            }
-        }
 
+        /**
+         * Renders the list of products.
+         */
         function renderProducts() {
             productList.innerHTML = '';
+            if (products.length === 0) {
+                productList.innerHTML = '<p class="text-gray-500 text-center">Nenhum produto cadastrado.</p>';
+            }
             products.forEach(product => {
                 const li = document.createElement('li');
-                li.className = 'p-3 bg-gray-50 rounded-md flex items-center shadow-sm space-x-4';
+                li.className = 'p-4 container-card rounded-md flex justify-between items-center';
                 li.innerHTML = `
-                    <img src="${product.imageUrl}" onerror="this.src='https://placehold.co/100x100/A8A29E/374151?text=N/A'" alt="${product.name}" class="w-16 h-16 rounded-md object-cover border-2 border-orange-300">
-                    <div class="flex-grow">
-                        <p class="font-semibold">${product.name}</p>
-                        <p class="text-sm text-gray-500">${product.category}</p>
-                        <p class="text-sm text-orange-600 font-bold">R$ ${product.price.toFixed(4)}</p>
+                    <div class="flex items-center space-x-4">
+                        <img src="${product.imageUrl || 'https://placehold.co/50x50/FCD34D/374151?text=Produto'}" alt="${product.name}" class="w-12 h-12 rounded-md object-cover">
+                        <div>
+                            <p class="font-bold">${product.name}</p>
+                            <p class="text-sm text-gray-600">Categoria: ${product.category}</p>
+                            <p class="text-sm text-gray-600">Preço: R$ ${product.price.toFixed(2)}</p>
+                        </div>
                     </div>
-                    <div class="flex space-x-2">
-                        <button class="text-red-600 hover:text-red-800 transition-colors delete-btn" data-id="${product.id}">Excluir</button>
-                    </div>
+                    <button class="delete-btn text-red-600 hover:text-red-800 transition-colors" data-id="${product.id}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
                 `;
-                li.querySelector('.delete-btn').addEventListener('click', () => deleteProduct(product.id));
                 productList.appendChild(li);
             });
-            // Also update the select dropdowns
-            renderAppointmentProducts();
-        }
-
-        async function deleteProduct(id) {
-            showConfirmationModal('Excluir Produto', 'Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.', async (confirmed) => {
-                if (confirmed) {
-                    showProgress();
-                    try {
-                        const productDocRef = doc(db, `/artifacts/${appId}/users/${userId}/products`, id);
-                        await deleteDoc(productDocRef);
-                        showMessage('Produto excluído com sucesso!');
-                    } catch (error) {
-                        console.error("Erro ao excluir produto:", error);
-                        showMessage('Erro ao excluir produto. Tente novamente.', 'error');
-                    } finally {
-                        hideProgress();
-                    }
-                }
+            document.querySelectorAll('#product-list .delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => deleteData('produtos', e.currentTarget.dataset.id));
             });
         }
         
-        // Appointments
-        async function addAppointment(clientId, productId, date, time) {
-            showProgress();
-            try {
-                const appointmentData = {
-                    clientId: clientId,
-                    productId: productId,
-                    date: date,
-                    time: time,
-                    createdAt: new Date(),
-                };
-                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/appointments`), appointmentData);
-                showMessage('Agendamento adicionado com sucesso!');
-            } catch (error) {
-                console.error("Erro ao adicionar agendamento:", error);
-                showMessage('Erro ao adicionar agendamento. Tente novamente.', 'error');
-            } finally {
-                hideProgress();
+        /**
+         * Renders the appointment list.
+         * @param {Array} appointmentsToRender - Array of appointment objects.
+         */
+        function renderAppointments(appointmentsToRender) {
+            appointmentsList.innerHTML = '';
+            if (appointmentsToRender.length === 0) {
+                noAppointmentsMessage.classList.remove('hidden');
+            } else {
+                noAppointmentsMessage.classList.add('hidden');
+                appointmentsToRender.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                appointmentsToRender.forEach(appointment => {
+                    const li = document.createElement('li');
+                    li.className = 'p-4 container-card rounded-md flex justify-between items-center';
+                    li.innerHTML = `
+                        <div>
+                            <p class="font-bold">${appointment.clientName} - ${appointment.productName}</p>
+                            <p class="text-sm text-gray-600">Data: ${new Date(appointment.timestamp).toLocaleDateString()} Hora: ${new Date(appointment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p class="text-sm text-gray-600">Preço: R$ ${appointment.productPrice.toFixed(2)}</p>
+                            <p class="text-sm text-gray-600">Representante: ${appointment.repName || 'N/A'}</p>
+                        </div>
+                        <button class="delete-btn text-red-600 hover:text-red-800 transition-colors" data-id="${appointment.id}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    `;
+                    appointmentsList.appendChild(li);
+                });
+                document.querySelectorAll('#appointment-list .delete-btn, #appointmentsList .delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => deleteData('agendamentos', e.currentTarget.dataset.id));
+                });
             }
         }
 
-        function renderAppointments() {
-            appointmentList.innerHTML = '';
-            if (appointments.length === 0) {
-                appointmentList.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum agendamento futuro.</p>';
-            }
-            // Sort appointments by date and time
-            const sortedAppointments = appointments.sort((a, b) => {
-                const dateA = new Date(`${a.date}T${a.time}`);
-                const dateB = new Date(`${b.date}T${b.time}`);
-                return dateA - dateB;
-            });
-
-            sortedAppointments.forEach(appointment => {
-                const client = clients.find(c => c.id === appointment.clientId);
-                const product = products.find(p => p.id === appointment.productId);
-                
-                const li = document.createElement('li');
-                li.className = 'p-3 bg-gray-50 rounded-md flex justify-between items-center shadow-sm';
-                li.innerHTML = `
-                    <div>
-                        <p class="font-semibold">${client?.name || 'Cliente não encontrado'}</p>
-                        <p class="text-sm text-gray-500">${product?.name || 'Produto não encontrado'}</p>
-                        <p class="text-xs text-gray-400">${new Date(appointment.date).toLocaleDateString()} às ${appointment.time}</p>
-                    </div>
-                    <button class="text-red-600 hover:text-red-800 transition-colors delete-btn" data-id="${appointment.id}">Excluir</button>
-                `;
-                li.querySelector('.delete-btn').addEventListener('click', () => deleteAppointment(appointment.id));
-                appointmentList.appendChild(li);
-            });
-        }
-
-        async function deleteAppointment(id) {
-            showConfirmationModal('Excluir Agendamento', 'Tem certeza que deseja excluir este agendamento?', async (confirmed) => {
-                if (confirmed) {
-                    showProgress();
-                    try {
-                        const appointmentDocRef = doc(db, `/artifacts/${appId}/users/${userId}/appointments`, id);
-                        await deleteDoc(appointmentDocRef);
-                        showMessage('Agendamento excluído com sucesso!');
-                    } catch (error) {
-                        console.error("Erro ao excluir agendamento:", error);
-                        showMessage('Erro ao excluir agendamento. Tente novamente.', 'error');
-                    } finally {
-                        hideProgress();
-                    }
+        /**
+         * Renders select options for clients and representatives.
+         */
+        function renderClientSelects() {
+            const selects = [clientRepSelect, appointmentClientSelect, reportClientSelect];
+            selects.forEach(select => {
+                const selectedValue = select.value;
+                select.innerHTML = '';
+                if (select.id === 'client-rep') {
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = 'Sem Representante';
+                    select.appendChild(defaultOption);
+                } else if (select.id === 'report-client') {
+                    const allOption = document.createElement('option');
+                    allOption.value = '';
+                    allOption.textContent = 'Todos';
+                    select.appendChild(allOption);
                 }
             });
-        }
-
-        // Helper functions for select dropdowns
-        function renderClientReps() {
-            clientRepSelect.innerHTML = '<option value="">Nenhum Representante</option>';
-            reps.forEach(rep => {
-                const option = document.createElement('option');
-                option.value = rep.id;
-                option.textContent = rep.name;
-                clientRepSelect.appendChild(option);
-            });
-        }
-
-        function renderAppointmentClients() {
-            appointmentClientSelect.innerHTML = '<option value="">Selecione um cliente</option>';
             clients.forEach(client => {
                 const option = document.createElement('option');
                 option.value = client.id;
                 option.textContent = client.name;
-                appointmentClientSelect.appendChild(option);
+                appointmentClientSelect.appendChild(option.cloneNode(true));
+                reportClientSelect.appendChild(option.cloneNode(true));
             });
         }
 
-        function renderAppointmentProducts() {
-            appointmentProductSelect.innerHTML = '<option value="">Selecione um produto</option>';
+        function renderRepSelects() {
+            const selects = [clientRepSelect, reportRepSelect];
+            selects.forEach(select => {
+                const selectedValue = select.value;
+                select.innerHTML = '';
+                if (select.id === 'client-rep') {
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = 'Sem Representante';
+                    select.appendChild(defaultOption);
+                } else if (select.id === 'report-rep') {
+                    const allOption = document.createElement('option');
+                    allOption.value = '';
+                    allOption.textContent = 'Todos';
+                    select.appendChild(allOption);
+                }
+            });
+            reps.forEach(rep => {
+                const option = document.createElement('option');
+                option.value = rep.id;
+                option.textContent = rep.name;
+                clientRepSelect.appendChild(option.cloneNode(true));
+                reportRepSelect.appendChild(option.cloneNode(true));
+            });
+        }
+
+        function renderProductSelects() {
+            appointmentProductSelect.innerHTML = '';
             products.forEach(product => {
                 const option = document.createElement('option');
                 option.value = product.id;
@@ -914,453 +1043,366 @@
             });
         }
 
-        // Dashboard Calendar and Filtering
+        // --- Dashboard Calendar Logic ---
+
         function renderCalendar() {
-            const month = currentDate.getMonth();
-            const year = currentDate.getFullYear();
-            currentMonthYear.textContent = `${currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`;
-            calendarEl.innerHTML = `
-                <div class="col-span-7 grid grid-cols-7 text-sm font-semibold text-gray-500 mb-2">
-                    <span class="p-2">Dom</span>
-                    <span class="p-2">Seg</span>
-                    <span class="p-2">Ter</span>
-                    <span class="p-2">Qua</span>
-                    <span class="p-2">Qui</span>
-                    <span class="p-2">Sex</span>
-                    <span class="p-2">Sáb</span>
-                </div>`;
+            const month = currentCalendarDate.getMonth();
+            const year = currentCalendarDate.getFullYear();
+            currentMonthYear.textContent = currentCalendarDate.toLocaleString('pt-br', { month: 'long', year: 'numeric' });
             
-            const firstDay = new Date(year, month, 1).getDay();
-            const lastDay = new Date(year, month + 1, 0).getDate();
+            const firstDayOfMonth = new Date(year, month, 1);
+            const lastDayOfMonth = new Date(year, month + 1, 0);
+            
+            calendar.innerHTML = '';
+            const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            weekdays.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'text-center font-semibold text-gray-500';
+                dayHeader.textContent = day;
+                calendar.appendChild(dayHeader);
+            });
 
-            for (let i = 0; i < firstDay; i++) {
-                calendarEl.innerHTML += '<div></div>';
+            // Add empty cells for days before the first day of the month
+            const startDay = firstDayOfMonth.getDay();
+            for (let i = 0; i < startDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'day-cell invisible';
+                calendar.appendChild(emptyCell);
             }
 
-            for (let day = 1; day <= lastDay; day++) {
-                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const hasAppointment = appointments.some(app => app.date === dateString);
+            // Add day cells for the month
+            for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
+                const date = new Date(year, month, day);
+                const dateStr = date.toISOString().split('T')[0];
+                const hasAppointment = currentAppointments.some(app => app.date === dateStr);
                 
-                calendarEl.innerHTML += `
-                    <div class="day-cell relative">
-                        <span class="text-sm font-bold text-gray-800">${day}</span>
-                        ${hasAppointment ? '<div class="marker"></div>' : ''}
-                    </div>
+                const dayCell = document.createElement('div');
+                dayCell.className = 'day-cell text-center relative';
+                dayCell.innerHTML = `
+                    <span class="text-sm">${day}</span>
+                    ${hasAppointment ? '<div class="marker"></div>' : ''}
                 `;
-            }
-        }
-
-        function filterAppointments() {
-            const start = startDateEl.value;
-            const end = endDateEl.value;
-
-            if (!start || !end) {
-                showMessage('Por favor, selecione uma data de início e fim.', 'error');
-                appointmentsListEl.innerHTML = '<p class="text-gray-500 text-center py-8" id="noAppointmentsMessage">Selecione um período e clique em "Filtrar Agendamentos".</p>';
-                productSummaryListEl.innerHTML = '<p class="text-gray-500 text-center">Nenhum produto para exibir.</p>';
-                return;
-            }
-
-            const filteredAppointments = appointments.filter(app => {
-                const appDate = new Date(app.date);
-                const startDate = new Date(start);
-                const endDate = new Date(end);
-                return appDate >= startDate && appDate <= endDate;
-            }).sort((a,b) => new Date(a.date) - new Date(b.date));
-
-            appointmentsListEl.innerHTML = '';
-            productSummaryListEl.innerHTML = '';
-
-            if (filteredAppointments.length === 0) {
-                appointmentsListEl.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum agendamento encontrado no período.</p>';
-                productSummaryListEl.innerHTML = '<p class="text-gray-500 text-center">Nenhum produto para exibir.</p>';
-                return;
-            }
-
-            const summary = {};
-            filteredAppointments.forEach(app => {
-                const client = clients.find(c => c.id === app.clientId);
-                const product = products.find(p => p.id === app.productId);
-                
-                if (product) {
-                    if (summary[product.id]) {
-                        summary[product.id].count++;
-                    } else {
-                        summary[product.id] = { name: product.name, count: 1 };
-                    }
-                }
-                
-                const li = document.createElement('li');
-                li.className = 'p-3 bg-white rounded-md shadow-sm border-l-4 border-orange-500';
-                li.innerHTML = `
-                    <p class="font-semibold">${client?.name || 'Cliente não encontrado'}</p>
-                    <p class="text-sm text-gray-600">${product?.name || 'Produto não encontrado'}</p>
-                    <p class="text-xs text-gray-400">${new Date(app.date).toLocaleDateString()} às ${app.time}</p>
-                `;
-                appointmentsListEl.appendChild(li);
-            });
-            
-            for (const productId in summary) {
-                const item = summary[productId];
-                const p = document.createElement('p');
-                p.textContent = `${item.name}: ${item.count} agendamento(s)`;
-                productSummaryListEl.appendChild(p);
-            }
-        }
-
-        // Reports
-        function renderReportFilters() {
-            reportClientSelect.innerHTML = '<option value="">Todos</option>';
-            clients.forEach(client => {
-                const option = document.createElement('option');
-                option.value = client.id;
-                option.textContent = client.name;
-                reportClientSelect.appendChild(option);
-            });
-            reportRepSelect.innerHTML = '<option value="">Todos</option>';
-            reps.forEach(rep => {
-                const option = document.createElement('option');
-                option.value = rep.id;
-                option.textContent = rep.name;
-                reportRepSelect.appendChild(option);
-            });
-        }
-
-        function generateReport() {
-            const startDate = reportStartDate.value;
-            const endDate = reportEndDate.value;
-            const clientId = reportClientSelect.value;
-            const repId = reportRepSelect.value;
-
-            if (!startDate || !endDate) {
-                showMessage('Por favor, selecione as datas de início e fim.', 'error');
-                return;
-            }
-            
-            showProgress();
-            
-            const filteredAppointments = appointments.filter(app => {
-                const appDate = new Date(app.date);
-                const sDate = new Date(startDate);
-                const eDate = new Date(endDate);
-                
-                const client = clients.find(c => c.id === app.clientId);
-
-                const dateMatch = appDate >= sDate && appDate <= eDate;
-                const clientMatch = !clientId || app.clientId === clientId;
-                const repMatch = !repId || (client && client.repId === repId);
-
-                return dateMatch && clientMatch && repMatch;
-            });
-            
-            reportTableBody.innerHTML = '';
-            let totalValue = 0;
-            const productSales = {};
-
-            filteredAppointments.forEach(app => {
-                const client = clients.find(c => c.id === app.clientId);
-                const product = products.find(p => p.id === app.productId);
-                const rep = client ? reps.find(r => r.id === client.repId) : null;
-                
-                if (product) {
-                    totalValue += product.price;
-                    if (productSales[product.id]) {
-                        productSales[product.id].count++;
-                        productSales[product.id].total += product.price;
-                    } else {
-                        productSales[product.id] = {
-                            name: product.name,
-                            count: 1,
-                            total: product.price
-                        };
-                    }
-                }
-                
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50';
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">${new Date(app.date).toLocaleDateString()}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${client?.name || 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${product?.name || 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">R$ ${product?.price.toFixed(2) || '0.00'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${rep?.name || 'N/A'}</td>
-                `;
-                reportTableBody.appendChild(row);
-            });
-
-            reportSummary.innerHTML = `
-                <p class="font-bold">Total de Agendamentos: <span class="text-orange-600">${filteredAppointments.length}</span></p>
-                <p class="font-bold">Valor Total das Vendas: <span class="text-green-600">R$ ${totalValue.toFixed(2)}</span></p>
-                <div class="mt-4">
-                    <h4 class="font-semibold text-lg">Vendas por Produto:</h4>
-                    ${Object.values(productSales).map(item => `<p class="text-sm">${item.name}: ${item.count} unidade(s) (R$ ${item.total.toFixed(2)})</p>`).join('')}
-                </div>
-            `;
-            
-            reportResults.classList.remove('hidden');
-            hideProgress();
-        }
-        
-        // Excel Import Logic
-        function importClientsFromExcel(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            showProgress();
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                // Assuming the first row is header: Name, WhatsApp, RepName
-                if (jsonData.length < 2) {
-                    showMessage('A planilha não contém dados suficientes.', 'error');
-                    hideProgress();
-                    return;
-                }
-
-                const clientsToImport = [];
-                for (let i = 1; i < jsonData.length; i++) {
-                    const row = jsonData[i];
-                    if (row.length >= 2) {
-                        const rep = reps.find(r => r.name === (row[2] || ''));
-                        clientsToImport.push({
-                            name: row[0],
-                            whatsapp: row[1],
-                            repId: rep ? rep.id : null,
-                            createdAt: new Date()
-                        });
-                    }
-                }
-                
-                const batch = writeBatch(db);
-                clientsToImport.forEach(client => {
-                    const docRef = doc(collection(db, `/artifacts/${appId}/users/${userId}/clients`));
-                    batch.set(docRef, client);
+                dayCell.dataset.date = dateStr;
+                dayCell.addEventListener('click', () => {
+                    startDateInput.value = dateStr;
+                    endDateInput.value = dateStr;
+                    filterAppointments();
                 });
-
-                try {
-                    await batch.commit();
-                    showMessage(`Foram importados ${clientsToImport.length} clientes com sucesso!`);
-                } catch (error) {
-                    console.error('Erro ao importar clientes:', error);
-                    showMessage('Erro ao importar clientes. Verifique o formato da planilha.', 'error');
-                } finally {
-                    hideProgress();
-                    event.target.value = ''; // Reset file input
-                }
-            };
-            reader.readAsArrayBuffer(file);
+                calendar.appendChild(dayCell);
+            }
         }
 
-        // Event Listeners
-        window.addEventListener('DOMContentLoaded', async () => {
-            if (Object.keys(firebaseConfig).length > 0) {
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-            } else {
-                console.error("Firebase config is missing.");
-                showMessage("Erro de configuração do Firebase.", "error");
-                return;
-            }
-
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    userIdDisplay.textContent = userId;
-                    userProfileId.textContent = userId;
-                    userNameDisplay.textContent = user.displayName || 'Usuário Anônimo';
-                    userEmailDisplay.textContent = user.email || 'N/A';
-                    if (user.photoURL) {
-                        userProfileImage.src = user.photoURL;
-                    }
-                    
-                    // Set up Firestore listeners
-                    onSnapshot(query(collection(db, `/artifacts/${appId}/users/${userId}/clients`)), (snapshot) => {
-                        clients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        renderClients();
-                    });
-                    
-                    onSnapshot(query(collection(db, `/artifacts/${appId}/users/${userId}/reps`)), (snapshot) => {
-                        reps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        renderReps();
-                    });
-                    
-                    onSnapshot(query(collection(db, `/artifacts/${appId}/users/${userId}/products`)), (snapshot) => {
-                        products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        renderProducts();
-                    });
-                    
-                    onSnapshot(query(collection(db, `/artifacts/${appId}/users/${userId}/appointments`)), (snapshot) => {
-                        appointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        renderAppointments();
-                        renderCalendar();
-                    });
-
-                } else {
-                    try {
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (error) {
-                        console.error("Authentication failed:", error);
-                        showMessage("Falha na autenticação.", "error");
-                    }
-                }
-            });
-        });
-
-        // UI Events
-        document.getElementById('sidebar-toggle').addEventListener('click', () => {
-            sidebar.classList.remove('collapsed');
-        });
-
-        document.getElementById('close-sidebar-btn').addEventListener('click', () => {
-            sidebar.classList.add('collapsed');
-        });
-        
-        logoutButton.addEventListener('click', async () => {
-            showConfirmationModal('Sair', 'Tem certeza que deseja sair?', async (confirmed) => {
-                if (confirmed) {
-                    try {
-                        await signOut(auth);
-                        window.location.reload(); // Reload the page to reset state
-                    } catch (error) {
-                        console.error("Error signing out:", error);
-                        showMessage("Erro ao sair.", "error");
-                    }
-                }
-            });
-        });
-
-        menuItems.forEach(item => {
-            item.addEventListener('click', () => {
-                navigateTo(item.dataset.page);
-                if (window.innerWidth < 768) {
-                    sidebar.classList.add('collapsed');
-                }
-            });
-        });
-        
-        menuDropdowns.forEach(dropdown => {
-            dropdown.addEventListener('click', () => {
-                const submenu = dropdown.nextElementSibling;
-                submenu.classList.toggle('open');
-                const svg = dropdown.querySelector('svg');
-                svg.classList.toggle('rotate-180');
-            });
-        });
-
-        clientForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = document.getElementById('client-name').value;
-            const whatsapp = document.getElementById('client-whatsapp').value;
-            const repId = document.getElementById('client-rep').value || null;
-            addClient(name, whatsapp, repId);
-            clientForm.reset();
-        });
-
-        clientFile.addEventListener('change', importClientsFromExcel);
-
-        repForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = document.getElementById('rep-name').value;
-            addRep(name);
-            repForm.reset();
-        });
-
-        productForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = document.getElementById('product-name').value;
-            const category = document.getElementById('product-category').value;
-            const price = document.getElementById('product-price').value;
-            const imageUrl = document.getElementById('product-image-url').value;
-            addProduct(name, category, price, imageUrl);
-            productForm.reset();
-        });
-
-        appointmentForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const clientId = document.getElementById('appointment-client').value;
-            const productId = document.getElementById('appointment-product').value;
-            const date = document.getElementById('appointment-date').value;
-            const time = document.getElementById('appointment-time').value;
-            
-            if (!clientId || !productId || !date || !time) {
-                showMessage('Por favor, preencha todos os campos do agendamento.', 'error');
-                return;
-            }
-            
-            addAppointment(clientId, productId, date, time);
-            appointmentForm.reset();
-        });
-        
-        // Dashboard Navigation
         prevMonthBtn.addEventListener('click', () => {
-            currentDate.setMonth(currentDate.getMonth() - 1);
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
             renderCalendar();
         });
 
         nextMonthBtn.addEventListener('click', () => {
-            currentDate.setMonth(currentDate.getMonth() + 1);
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
             renderCalendar();
         });
 
+        // --- Filter and Report Logic ---
+
         filterBtn.addEventListener('click', filterAppointments);
+
+        async function filterAppointments() {
+            const startDateStr = startDateInput.value;
+            const endDateStr = endDateInput.value;
+
+            if (!startDateStr || !endDateStr) {
+                showMessage('Por favor, selecione as datas de início e fim para filtrar.', 'error');
+                renderAppointments([]);
+                renderProductSummary([]);
+                return;
+            }
+
+            const filtered = currentAppointments.filter(app => {
+                const appDate = new Date(app.date);
+                const start = new Date(startDateStr);
+                const end = new Date(endDateStr);
+                end.setDate(end.getDate() + 1); // Make end date inclusive
+                return appDate >= start && appDate < end;
+            });
+            renderAppointments(filtered);
+            renderProductSummary(filtered);
+        }
+
+        function renderProductSummary(appointments) {
+            productSummaryList.innerHTML = '';
+            if (appointments.length === 0) {
+                productSummaryList.innerHTML = '<p class="text-gray-500 text-center">Nenhum produto para exibir.</p>';
+                return;
+            }
+
+            const summary = appointments.reduce((acc, app) => {
+                const key = app.productName;
+                if (!acc[key]) {
+                    acc[key] = {
+                        name: app.productName,
+                        count: 0,
+                        totalPrice: 0
+                    };
+                }
+                acc[key].count++;
+                acc[key].totalPrice += app.productPrice;
+                return acc;
+            }, {});
+
+            Object.values(summary).forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-white rounded-md flex justify-between items-center';
+                div.innerHTML = `
+                    <div>
+                        <p class="font-bold">${item.name}</p>
+                        <p class="text-sm text-gray-600">${item.count} Venda(s)</p>
+                    </div>
+                    <p class="font-semibold">R$ ${item.totalPrice.toFixed(2)}</p>
+                `;
+                productSummaryList.appendChild(div);
+            });
+        }
         
-        generateReportBtn.addEventListener('click', generateReport);
-        
-        printReportBtn.addEventListener('click', () => {
-            const printContents = document.getElementById('report-results').outerHTML;
-            const originalContents = document.body.innerHTML;
-            document.body.innerHTML = printContents;
-            window.print();
-            document.body.innerHTML = originalContents;
-            window.location.reload(); // Reload to restore original page
+        generateReportBtn.addEventListener('click', async () => {
+            showLoading(true);
+            try {
+                const start = reportStartDate.value;
+                const end = reportEndDate.value;
+                const clientFilter = reportClientSelect.value;
+                const repFilter = reportRepSelect.value;
+
+                let q = query(getCollectionRef('agendamentos'));
+
+                // Sort appointments by date
+                const allAppointments = currentAppointments.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+                const filteredAppointments = allAppointments.filter(app => {
+                    const appDate = new Date(app.date);
+                    let meetsCriteria = true;
+
+                    if (start) {
+                        const startDate = new Date(start);
+                        if (appDate < startDate) {
+                            meetsCriteria = false;
+                        }
+                    }
+                    if (end) {
+                        const endDate = new Date(end);
+                        if (appDate > endDate) {
+                            meetsCriteria = false;
+                        }
+                    }
+                    if (clientFilter && app.clientId !== clientFilter) {
+                        meetsCriteria = false;
+                    }
+                    if (repFilter && app.repId !== repFilter) {
+                        meetsCriteria = false;
+                    }
+                    return meetsCriteria;
+                });
+                
+                renderReportTable(filteredAppointments);
+                calculateReportSummary(filteredAppointments);
+                reportResults.classList.remove('hidden');
+                showMessage('Relatório gerado com sucesso!', 'success');
+            } catch (e) {
+                console.error("Error generating report:", e);
+                showMessage(`Erro ao gerar relatório: ${e.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
         });
+
+        function renderReportTable(appointments) {
+            reportTableBody.innerHTML = '';
+            if (appointments.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="5" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">Nenhum agendamento encontrado para o filtro.</td>`;
+                reportTableBody.appendChild(row);
+                return;
+            }
+            appointments.forEach(app => {
+                const row = document.createElement('tr');
+                row.className = 'bg-white';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${new Date(app.date).toLocaleDateString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.clientName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.productName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ ${app.productPrice.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.repName || 'N/A'}</td>
+                `;
+                reportTableBody.appendChild(row);
+            });
+        }
+
+        function calculateReportSummary(appointments) {
+            const totalSales = appointments.reduce((sum, app) => sum + app.productPrice, 0);
+            const totalAppointments = appointments.length;
+            const uniqueClients = new Set(appointments.map(app => app.clientId)).size;
+
+            reportSummary.innerHTML = `
+                <p><strong>Total de Vendas:</strong> R$ ${totalSales.toFixed(2)}</p>
+                <p><strong>Total de Agendamentos:</strong> ${totalAppointments}</p>
+                <p><strong>Total de Clientes Únicos:</strong> ${uniqueClients}</p>
+            `;
+        }
+
+        printReportBtn.addEventListener('click', () => {
+            const printContents = reportResults.innerHTML;
+            const originalContents = document.body.innerHTML;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Relatório de Vendas</title>
+                    <style>
+                        body { font-family: 'Courier Prime', monospace; padding: 20px; }
+                        h2, h3 { color: #111827; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+                        thead tr { background-color: #f3f4f6; }
+                    </style>
+                </head>
+                <body>
+                    ${printContents}
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        });
+
+        // --- File Import Logic ---
+
+        clientFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                showLoading(true);
+                const batch = writeBatch(db);
+                const clientsCollection = getCollectionRef('clientes');
+
+                jsonData.forEach(item => {
+                    const clientData = {
+                        name: item.Nome || '',
+                        whatsapp: item.WhatsApp ? String(item.WhatsApp) : '',
+                        repId: '',
+                        repName: item.Representante || ''
+                    };
+                    const rep = reps.find(r => r.name === item.Representante);
+                    if (rep) {
+                        clientData.repId = rep.id;
+                    }
+
+                    const newDocRef = doc(clientsCollection);
+                    batch.set(newDocRef, clientData);
+                });
+
+                try {
+                    await batch.commit();
+                    showMessage(`Importação de ${jsonData.length} clientes concluída!`, 'success');
+                } catch (e) {
+                    console.error("Error batch writing documents: ", e);
+                    showMessage(`Erro durante a importação: ${e.message}`, 'error');
+                } finally {
+                    showLoading(false);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // --- User Profile Logic ---
         
-        // User Profile
         changePasswordForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const newPassword = newPasswordInput.value;
             const confirmPassword = confirmPasswordInput.value;
-
+            
             if (newPassword !== confirmPassword) {
                 showMessage('As senhas não coincidem.', 'error');
                 return;
             }
+            if (newPassword.length < 6) {
+                showMessage('A senha deve ter pelo menos 6 caracteres.', 'error');
+                return;
+            }
             
-            showProgress();
+            showLoading(true);
             try {
                 await updatePassword(auth.currentUser, newPassword);
-                showMessage('Senha atualizada com sucesso!');
+                showMessage('Senha alterada com sucesso!', 'success');
             } catch (error) {
-                console.error("Erro ao atualizar senha:", error);
-                showMessage(`Erro ao atualizar senha: ${error.message}`, 'error');
+                console.error("Error updating password: ", error);
+                showMessage(`Erro ao alterar a senha: ${error.message}`, 'error');
             } finally {
-                hideProgress();
+                showLoading(false);
             }
         });
 
         changeProfileImageForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const imageUrl = profileImageInput.value;
-            showProgress();
+            
+            showLoading(true);
             try {
                 await updateProfile(auth.currentUser, { photoURL: imageUrl });
                 userProfileImage.src = imageUrl;
-                showMessage('Foto de perfil atualizada com sucesso!');
+                showMessage('Foto de perfil alterada com sucesso!', 'success');
             } catch (error) {
-                console.error("Erro ao atualizar foto:", error);
-                showMessage(`Erro ao atualizar foto: ${error.message}`, 'error');
+                console.error("Error updating profile image: ", error);
+                showMessage(`Erro ao alterar a foto de perfil: ${error.message}`, 'error');
             } finally {
-                hideProgress();
+                showLoading(false);
+            }
+        });
+
+        // --- Event Listeners ---
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initFirebase();
+            showPage('dashboard');
+            renderCalendar();
+        });
+
+        menuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                showPage(item.dataset.page);
+            });
+        });
+
+        menuDropdowns.forEach(dropdown => {
+            dropdown.addEventListener('click', () => {
+                const submenu = dropdown.nextElementSibling;
+                submenu.classList.toggle('open');
+                const icon = dropdown.querySelector('svg');
+                icon.style.transform = submenu.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
+            });
+        });
+
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+        });
+        
+        closeSidebarBtn.addEventListener('click', () => {
+            sidebar.classList.add('collapsed');
+        });
+
+        logoutButton.addEventListener('click', async () => {
+            const confirmed = await showConfirmationModal('Tem certeza que deseja sair?');
+            if (confirmed) {
+                await signOut(auth);
+                // The onAuthStateChanged listener will handle the re-auth
             }
         });
 
