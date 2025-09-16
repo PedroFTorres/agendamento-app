@@ -12,11 +12,21 @@ import {
 // Ativa logs para debug
 setLogLevel('debug');
 
-// 🔧 Configuração Firebase (coloque aqui a sua config real!)
-const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+// 🔧 Configuração Firebase (a sua config real)
+const firebaseConfig = {
+  apiKey: "AIzaSyAza98u8-NVn9hNbuLwcsaCZX2hXbtVaHk",
+  authDomain: "meu-app-de-login.firebaseapp.com",
+  projectId: "meu-app-de-login",
+  storageBucket: "meu-app-de-login.firebasestorage.app",
+  messagingSenderId: "61119567504",
+  appId: "1:61119567504:web:556bb893c9eba6c4e12a15",
+  measurementId: "G-YY6QTZX57K"
+};
 
-let auth, db;
+// Inicializa Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 // UI Elements
 const messageBox = document.getElementById('message-box');
@@ -40,43 +50,28 @@ function showMessage(message, type = 'info') {
     messageBox.classList.remove('hidden');
 }
 
-// Inicializar Firebase
-if (Object.keys(firebaseConfig).length > 0) {
-    fallbackMessage.classList.add('hidden');
-    try {
-        const app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
+// Listener login/logout
+onAuthStateChanged(auth, async (user) => {
+    loadingSpinner.classList.add('hidden');
+    if (user) {
+        loginFormContainer.classList.add('hidden');
+        authContent.classList.remove('hidden');
+        userIdElem.textContent = user.uid;
+        showMessage('Login bem-sucedido!', 'success');
 
-        // Listener login/logout
-        onAuthStateChanged(auth, async (user) => {
-            loadingSpinner.classList.add('hidden');
-            if (user) {
-                loginFormContainer.classList.add('hidden');
-                authContent.classList.remove('hidden');
-                userIdElem.textContent = user.uid;
-                showMessage('Login bem-sucedido!', 'success');
-
-                // Salvar perfil mínimo do usuário
-                const userDocRef = doc(db, `artifacts/${appId}/users/${user.uid}/user-data/profile`);
-                await setDoc(userDocRef, { 
-                    lastLogin: new Date().toISOString(),
-                    email: user.email
-                }, { merge: true });
-            } else {
-                loginFormContainer.classList.remove('hidden');
-                authContent.classList.add('hidden');
-                userIdElem.textContent = '';
-                showMessage('Faça login ou crie uma conta para continuar.', 'info');
-            }
-        });
-    } catch (error) {
-        console.error("Erro ao inicializar Firebase:", error);
-        showMessage(`Erro fatal: ${error.message}`, 'error');
+        // Salva perfil do usuário
+        const userDocRef = doc(db, `users/${user.uid}`);
+        await setDoc(userDocRef, { 
+            lastLogin: new Date().toISOString(),
+            email: user.email
+        }, { merge: true });
+    } else {
+        loginFormContainer.classList.remove('hidden');
+        authContent.classList.add('hidden');
+        userIdElem.textContent = '';
+        showMessage('Faça login ou crie uma conta para continuar.', 'info');
     }
-} else {
-    fallbackMessage.classList.remove('hidden');
-}
+});
 
 // Eventos Login / Cadastro / Logout
 loginButton?.addEventListener('click', async () => {
