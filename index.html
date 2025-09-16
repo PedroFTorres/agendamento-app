@@ -1,72 +1,137 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login com Firebase</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #1e293b;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meu App com Firebase</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #1e293b;
+    }
+    .container-card {
+      background-color: #f8fafc;
+      color: #1e293b;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+    }
+  </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4 text-white">
+<body class="flex flex-col min-h-screen text-white">
 
-    <div id="app" class="w-full max-w-sm p-8 space-y-6 bg-slate-800 rounded-xl shadow-lg border border-slate-700">
-        <h1 class="text-3xl font-bold text-center text-white mb-6">Autenticação Firebase</h1>
-        
-        <!-- Mensagem de feedback do usuário -->
-        <div id="message-box" class="hidden p-4 rounded-md text-sm" role="alert"></div>
+  <!-- Header -->
+  <header class="w-full p-4 bg-slate-900 text-center">
+    <h1 class="text-2xl font-bold">Meu App com Firebase</h1>
+  </header>
 
-        <div id="loading-spinner" class="hidden flex justify-center items-center">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-        </div>
+  <!-- Mensagem -->
+  <div id="message-box" class="hidden p-4 rounded-md text-sm text-center"></div>
+  <div id="loading-spinner" class="hidden flex justify-center items-center my-4">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+  </div>
 
-        <!-- Formulário de Login -->
-        <div id="login-form-container" class="space-y-4">
-            <div>
-                <label for="email" class="block text-sm font-medium text-gray-400">E-mail</label>
-                <input type="email" id="email" placeholder="seu-email@exemplo.com"
-                       class="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-            </div>
-            <div>
-                <label for="password" class="block text-sm font-medium text-gray-400">Senha</label>
-                <input type="password" id="password" placeholder="Sua senha"
-                       class="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-            </div>
-            <button id="login-button"
-                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                Entrar
-            </button>
-            <button id="signup-button"
-                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
-                Criar Conta
-            </button>
-        </div>
+  <!-- Área principal -->
+  <main class="flex-1 p-6 space-y-8">
 
-        <!-- Conteúdo do usuário após o login -->
-        <div id="auth-content" class="text-center space-y-4 hidden">
-            <p id="user-status" class="text-lg font-semibold text-green-400">Você está logado!</p>
-            <p id="user-id" class="break-all font-mono text-xs p-2 bg-slate-700 rounded-md shadow-inner"></p>
-            <p class="text-xs text-slate-400">Este é o seu ID de usuário. Em uma aplicação real, ele é usado para identificar seus dados no banco de dados.</p>
-            <button id="logout-button"
-                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
-                Sair
-            </button>
-        </div>
-
-        <!-- Conteúdo de fallback para quando as variáveis do Firebase não estiverem disponíveis -->
-        <div id="fallback-message" class="hidden text-center p-4 rounded-md bg-red-500/20 text-red-400">
-            <p><strong>Erro de Carregamento</strong></p>
-            <p class="text-sm mt-2">O aplicativo não pôde se conectar ao Firebase. Isso pode acontecer ao executar o arquivo localmente.</p>
-            <p class="text-sm mt-2">Para funcionar, o site precisa ser hospedado em um ambiente web.</p>
-        </div>
+    <!-- Login -->
+    <div id="login-form-container" class="container-card p-6 space-y-4">
+      <h2 class="text-xl font-bold">Login</h2>
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700">E-mail</label>
+        <input type="email" id="email" placeholder="seu-email@exemplo.com"
+          class="mt-1 block w-full px-3 py-2 bg-slate-100 text-black border rounded-md">
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
+        <input type="password" id="password" placeholder="Sua senha"
+          class="mt-1 block w-full px-3 py-2 bg-slate-100 text-black border rounded-md">
+      </div>
+      <button id="login-button"
+        class="w-full py-2 px-4 rounded-md bg-blue-600 hover:bg-blue-700 text-white">Entrar</button>
+      <button id="signup-button"
+        class="w-full py-2 px-4 rounded-md bg-green-600 hover:bg-green-700 text-white">Criar Conta</button>
     </div>
 
-    <!-- 🔗 Chama o JS externo -->
-    <script type="module" src="app.js"></script>
+    <!-- Após login -->
+    <div id="auth-content" class="hidden space-y-6">
+      <div class="container-card p-6 text-center">
+        <p id="user-status" class="text-lg font-semibold text-green-600">Você está logado!</p>
+        <p>ID do Usuário: <span id="user-id" class="font-mono text-sm bg-slate-200 px-2 py-1 rounded"></span></p>
+        <button id="logout-button"
+          class="mt-4 w-full py-2 px-4 rounded-md bg-red-600 hover:bg-red-700 text-white">Sair</button>
+      </div>
+
+      <!-- Clientes -->
+      <div class="container-card p-6">
+        <h2 class="text-xl font-bold mb-4">Clientes</h2>
+        <form id="client-form" class="space-y-4">
+          <div>
+            <label for="client-name" class="block text-sm font-medium">Nome</label>
+            <input type="text" id="client-name" required class="mt-1 block w-full px-3 py-2 border rounded-md">
+          </div>
+          <div>
+            <label for="client-whatsapp" class="block text-sm font-medium">WhatsApp</label>
+            <input type="tel" id="client-whatsapp" required class="mt-1 block w-full px-3 py-2 border rounded-md">
+          </div>
+          <div>
+            <label for="client-rep" class="block text-sm font-medium">Representante</label>
+            <input type="text" id="client-rep" class="mt-1 block w-full px-3 py-2 border rounded-md">
+          </div>
+          <button type="submit" class="w-full py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-md">Adicionar Cliente</button>
+        </form>
+        <ul id="client-list" class="mt-4 space-y-2 text-black"></ul>
+      </div>
+
+      <!-- Representantes -->
+      <div class="container-card p-6">
+        <h2 class="text-xl font-bold mb-4">Representantes</h2>
+        <form id="rep-form" class="space-y-4">
+          <div>
+            <label for="rep-name" class="block text-sm font-medium">Nome</label>
+            <input type="text" id="rep-name" required class="mt-1 block w-full px-3 py-2 border rounded-md">
+          </div>
+          <button type="submit" class="w-full py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-md">Adicionar Representante</button>
+        </form>
+        <ul id="rep-list" class="mt-4 space-y-2 text-black"></ul>
+      </div>
+
+      <!-- Produtos -->
+      <div class="container-card p-6">
+        <h2 class="text-xl font-bold mb-4">Produtos</h2>
+        <form id="product-form" class="space-y-4">
+          <div>
+            <label for="product-name" class="block text-sm font-medium">Nome</label>
+            <input type="text" id="product-name" required class="mt-1 block w-full px-3 py-2 border rounded-md">
+          </div>
+          <div>
+            <label for="product-category" class="block text-sm font-medium">Categoria</label>
+            <input type="text" id="product-category" required class="mt-1 block w-full px-3 py-2 border rounded-md">
+          </div>
+          <div>
+            <label for="product-price" class="block text-sm font-medium">Preço</label>
+            <input type="number" id="product-price" step="0.01" required class="mt-1 block w-full px-3 py-2 border rounded-md">
+          </div>
+          <div>
+            <label for="product-image-url" class="block text-sm font-medium">URL da Imagem</label>
+            <input type="url" id="product-image-url" class="mt-1 block w-full px-3 py-2 border rounded-md">
+          </div>
+          <button type="submit" class="w-full py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-md">Adicionar Produto</button>
+        </form>
+        <ul id="product-list" class="mt-4 space-y-2 text-black"></ul>
+      </div>
+    </div>
+
+    <!-- Fallback -->
+    <div id="fallback-message" class="hidden text-center p-4 rounded-md bg-red-500/20 text-red-400">
+      <p><strong>Erro de Carregamento</strong></p>
+      <p class="text-sm mt-2">O aplicativo não pôde se conectar ao Firebase. Isso pode acontecer ao executar o arquivo localmente.</p>
+      <p class="text-sm mt-2">Use Live Server ou publique no GitHub Pages / Vercel.</p>
+    </div>
+  </main>
+
+  <!-- Chamada para o app.js -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>
