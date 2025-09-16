@@ -37,21 +37,24 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
-// ==============================
 // LOGIN
-// ==============================
-const loginForm = document.getElementById("login-form");
-if (loginForm) {
-  loginForm.addEventListener("submit", async (e) => {
+const loginBtn = document.getElementById("login-button");
+if (loginBtn) {
+  loginBtn.addEventListener("click", async (e) => {
     e.preventDefault();
-    const email = document.getElementById("login-email").value.trim();
-    const senha = document.getElementById("login-password").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const senha = document.getElementById("password").value.trim();
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, senha);
       console.log("Usuário logado:", userCredential.user);
-      window.location.href = "index.html"; // redireciona para o painel principal
+
+      // Mostra área autenticada
+      document.getElementById("login-form-container").classList.add("hidden");
+      document.getElementById("auth-content").classList.remove("hidden");
+
+      // Preenche dados do usuário
+      document.getElementById("user-id").textContent = userCredential.user.uid;
     } catch (error) {
       console.error("Erro no login:", error);
       alert("Falha no login: " + error.message);
@@ -59,21 +62,18 @@ if (loginForm) {
   });
 }
 
-// ==============================
 // CRIAR CONTA
-// ==============================
-const signupForm = document.getElementById("signup-form");
-if (signupForm) {
-  signupForm.addEventListener("submit", async (e) => {
+const signupBtn = document.getElementById("signup-button");
+if (signupBtn) {
+  signupBtn.addEventListener("click", async (e) => {
     e.preventDefault();
-    const email = document.getElementById("signup-email").value.trim();
-    const senha = document.getElementById("signup-password").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const senha = document.getElementById("password").value.trim();
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
       console.log("Conta criada:", userCredential.user);
       alert("Conta criada com sucesso!");
-      signupForm.reset();
     } catch (error) {
       console.error("Erro ao criar conta:", error);
       alert("Erro: " + error.message);
