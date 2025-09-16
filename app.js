@@ -2,7 +2,13 @@
 // Import Firebase SDKs
 // ==============================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
   getFirestore,
   collection,
@@ -33,14 +39,57 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // ==============================
-// Logout
+// LOGIN
+// ==============================
+const loginForm = document.getElementById("login-form");
+if (loginForm) {
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("login-email").value.trim();
+    const senha = document.getElementById("login-password").value.trim();
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+      console.log("Usuário logado:", userCredential.user);
+      window.location.href = "index.html"; // redireciona para o painel principal
+    } catch (error) {
+      console.error("Erro no login:", error);
+      alert("Falha no login: " + error.message);
+    }
+  });
+}
+
+// ==============================
+// CRIAR CONTA
+// ==============================
+const signupForm = document.getElementById("signup-form");
+if (signupForm) {
+  signupForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("signup-email").value.trim();
+    const senha = document.getElementById("signup-password").value.trim();
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+      console.log("Conta criada:", userCredential.user);
+      alert("Conta criada com sucesso!");
+      signupForm.reset();
+    } catch (error) {
+      console.error("Erro ao criar conta:", error);
+      alert("Erro: " + error.message);
+    }
+  });
+}
+
+// ==============================
+// LOGOUT
 // ==============================
 const logoutBtn = document.getElementById("logout-button");
 if (logoutBtn) {
   logoutBtn.addEventListener("click", async () => {
     try {
       await signOut(auth);
-      window.location.href = "index.html"; // volta pro login
+      window.location.href = "login.html"; // volta para tela de login
     } catch (error) {
       console.error("Erro ao sair:", error);
       alert("Erro ao sair, tente novamente.");
@@ -52,23 +101,24 @@ if (logoutBtn) {
 // Monitorar login
 // ==============================
 onAuthStateChanged(auth, (user) => {
+  const userIdDisplay = document.getElementById("userIdDisplay");
   if (user) {
     console.log("Usuário logado:", user.email);
-    const userIdDisplay = document.getElementById("userIdDisplay");
     if (userIdDisplay) userIdDisplay.textContent = user.uid;
   } else {
     console.log("Nenhum usuário logado");
+    if (userIdDisplay) userIdDisplay.textContent = "Desconectado";
   }
 });
 
 // ==============================
-// Funções Auxiliares
+// Função Auxiliar - Listagem
 // ==============================
 async function carregarLista(colecao, listaId, campos = []) {
   const listaEl = document.getElementById(listaId);
   if (!listaEl) return;
 
-  listaEl.innerHTML = ""; // limpa lista
+  listaEl.innerHTML = "";
 
   try {
     const q = query(collection(db, colecao), orderBy("nome", "asc"));
@@ -92,7 +142,7 @@ async function carregarLista(colecao, listaId, campos = []) {
 }
 
 // ==============================
-// Clientes
+// CLIENTES
 // ==============================
 const clientForm = document.getElementById("client-form");
 if (clientForm) {
@@ -125,7 +175,7 @@ if (clientForm) {
 }
 
 // ==============================
-// Representantes
+// REPRESENTANTES
 // ==============================
 const repForm = document.getElementById("rep-form");
 if (repForm) {
@@ -156,7 +206,7 @@ if (repForm) {
 }
 
 // ==============================
-// Produtos
+// PRODUTOS
 // ==============================
 const productForm = document.getElementById("product-form");
 if (productForm) {
