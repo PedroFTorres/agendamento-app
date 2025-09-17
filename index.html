@@ -37,6 +37,14 @@
           <input type="text" id="client-whatsapp" placeholder="WhatsApp" class="w-full p-2 border rounded" required>
           <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Salvar</button>
         </form>
+
+        <!-- Importar Excel -->
+        <div class="mt-4">
+          <label for="client-file" class="block mb-2 font-medium text-gray-700">Importar clientes (.xlsx)</label>
+          <input type="file" id="client-file" accept=".xlsx,.xls" class="block w-full p-2 border rounded" />
+          <p class="text-sm text-gray-500 mt-1">Cabeçalho esperado: <strong>Nome</strong> e <strong>WhatsApp</strong>.</p>
+        </div>
+
         <ul id="client-list" class="space-y-2 mt-4"></ul>
       </section>
 
