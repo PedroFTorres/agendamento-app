@@ -1,299 +1,190 @@
-// ==============================
-// Import Firebase SDKs
-// ==============================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-  signOut,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  orderBy,
-  doc,
-  updateDoc,
-  deleteDoc
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// Importando Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// ==============================
-// Configuração Firebase
-// ==============================
+// Configuração do Firebase (substituir se usar outro projeto)
 const firebaseConfig = {
   apiKey: "AIzaSyAza98u8-NVn9hNbuLwcsaCZX2hXbtVaHk",
   authDomain: "meu-app-de-login.firebaseapp.com",
   projectId: "meu-app-de-login",
-  storageBucket: "meu-app-de-login.firebasestorage.app",
+  storageBucket: "meu-app-de-login.appspot.com",
   messagingSenderId: "61119567504",
   appId: "1:61119567504:web:556bb893c9eba6c4e12a15",
   measurementId: "G-YY6QTZX57K"
 };
 
-// ==============================
-// Inicializações
-// ==============================
+// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ==============================
-// LOGIN
-// ==============================
-const loginBtn = document.getElementById("login-button");
-if (loginBtn) {
-  loginBtn.addEventListener("click", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("email").value.trim();
-    const senha = document.getElementById("password").value.trim();
+// Referências no HTML
+const loginForm = document.getElementById("login-form");
+const loginContainer = document.getElementById("login-form-container");
+const authContent = document.getElementById("auth-content");
 
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, senha);
-      console.log("Usuário logado:", userCredential.user);
+const clientForm = document.getElementById("client-form");
+const clientList = document.getElementById("client-list");
 
-      document.getElementById("login-form-container").classList.add("hidden");
-      document.getElementById("auth-content").classList.remove("hidden");
+const repForm = document.getElementById("rep-form");
+const repList = document.getElementById("rep-list");
 
-      document.getElementById("user-id").textContent = userCredential.user.uid;
-    } catch (error) {
-      console.error("Erro no login:", error);
-      alert("Falha no login: " + error.message);
-    }
-  });
-}
+const productForm = document.getElementById("product-form");
+const productList = document.getElementById("product-list");
 
-// ==============================
-// CRIAR CONTA
-// ==============================
-const signupBtn = document.getElementById("signup-button");
-if (signupBtn) {
-  signupBtn.addEventListener("click", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("email").value.trim();
-    const senha = document.getElementById("password").value.trim();
-
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
-      console.log("Conta criada:", userCredential.user);
-      alert("Conta criada com sucesso!");
-    } catch (error) {
-      console.error("Erro ao criar conta:", error);
-      alert("Erro: " + error.message);
-    }
-  });
-}
-
-// ==============================
-// LOGOUT (corrigido)
-// ==============================
-const logoutBtn = document.getElementById("logout-button");
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", async () => {
-    try {
-      await signOut(auth);
-      window.location.href = "index.html"; // volta para login
-    } catch (error) {
-      console.error("Erro ao sair:", error);
-      alert("Erro ao sair, tente novamente.");
-    }
-  });
-}
-
-// ==============================
-// Monitorar login
-// ==============================
-onAuthStateChanged(auth, (user) => {
-  const userIdDisplay = document.getElementById("userIdDisplay");
-  if (user) {
-    console.log("Usuário logado:", user.email);
-    if (userIdDisplay) userIdDisplay.textContent = user.uid;
-  } else {
-    console.log("Nenhum usuário logado");
-    if (userIdDisplay) userIdDisplay.textContent = "Desconectado";
+// ---------------------- AUTENTICAÇÃO ----------------------
+document.getElementById("login-button").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    alert("Erro no login: " + error.message);
   }
 });
 
-// ==============================
-// Função Auxiliar - Listagem CRUD
-// ==============================
-async function carregarLista(colecao, listaId, campos = [], editarFunc, excluirFunc) {
-  const listaEl = document.getElementById(listaId);
-  if (!listaEl) return;
+document.getElementById("signup-button").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  try {
+    await createUserWithEmailAndPassword(auth, email, password);
+    alert("Conta criada com sucesso!");
+  } catch (error) {
+    alert("Erro no cadastro: " + error.message);
+  }
+});
 
-  listaEl.innerHTML = "";
+document.getElementById("logout-button").addEventListener("click", async () => {
+  await signOut(auth);
+});
+
+// Alteração de estado do usuário
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    loginContainer.classList.add("hidden");
+    authContent.classList.remove("hidden");
+    carregarDados(); // Carrega CRUD ao logar
+  } else {
+    loginContainer.classList.remove("hidden");
+    authContent.classList.add("hidden");
+  }
+});
+
+// ---------------------- CRUD CLIENTES ----------------------
+clientForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("client-name").value;
+  const whatsapp = document.getElementById("client-whatsapp").value;
 
   try {
-    const q = query(collection(db, colecao), orderBy("nome", "asc"));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      listaEl.innerHTML = "<li class='text-gray-500'>Nenhum registro encontrado.</li>";
-      return;
-    }
-
-    querySnapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      const li = document.createElement("li");
-      li.className = "p-2 bg-gray-100 rounded-md flex justify-between items-center";
-      li.innerHTML = `
-        <span>${campos.map(c => data[c] || "").join(" - ")}</span>
-        <div class="space-x-2">
-          <button class="px-2 py-1 bg-yellow-400 rounded" onclick="${editarFunc}('${docSnap.id}')">Editar</button>
-          <button class="px-2 py-1 bg-red-500 text-white rounded" onclick="${excluirFunc}('${docSnap.id}')">Excluir</button>
-        </div>
-      `;
-      listaEl.appendChild(li);
-    });
-  } catch (error) {
-    console.error("Erro ao carregar lista:", error);
-  }
-}
-
-// ==============================
-// CLIENTES
-// ==============================
-const clientForm = document.getElementById("client-form");
-if (clientForm) {
-  clientForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const nome = document.getElementById("client-name").value.trim();
-    const whatsapp = document.getElementById("client-whatsapp").value.trim();
-
-    if (!nome || !whatsapp) {
-      alert("Preencha os campos obrigatórios!");
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, "clientes"), { nome, whatsapp, criadoEm: new Date() });
-      alert("Cliente adicionado!");
-      clientForm.reset();
-      carregarClientes();
-    } catch (error) {
-      console.error("Erro ao salvar cliente:", error);
-      alert("Erro ao salvar cliente.");
-    }
-  });
-
-  window.carregarClientes = async () => {
-    await carregarLista("clientes", "client-list", ["nome", "whatsapp"], "editarCliente", "excluirCliente");
-  };
-
-  window.excluirCliente = async (id) => {
-    await deleteDoc(doc(db, "clientes", id));
+    await addDoc(collection(db, "clientes"), { name, whatsapp });
+    clientForm.reset();
     carregarClientes();
-  };
+  } catch (error) {
+    alert("Erro ao salvar cliente: " + error.message);
+  }
+});
 
-  window.editarCliente = async (id) => {
-    const ref = doc(db, "clientes", id);
-    const novoNome = prompt("Novo nome:");
-    const novoWhats = prompt("Novo WhatsApp:");
-    if (novoNome && novoWhats) {
-      await updateDoc(ref, { nome: novoNome, whatsapp: novoWhats });
+async function carregarClientes() {
+  clientList.innerHTML = "";
+  const querySnapshot = await getDocs(collection(db, "clientes"));
+  querySnapshot.forEach((docSnap) => {
+    const li = document.createElement("li");
+    li.className = "flex justify-between items-center bg-gray-100 p-2 rounded";
+    li.textContent = `${docSnap.data().name} - ${docSnap.data().whatsapp}`;
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Excluir";
+    delBtn.className = "bg-red-500 text-white px-2 py-1 rounded ml-2";
+    delBtn.addEventListener("click", async () => {
+      await deleteDoc(doc(db, "clientes", docSnap.id));
       carregarClientes();
-    }
-  };
+    });
 
-  carregarClientes();
+    li.appendChild(delBtn);
+    clientList.appendChild(li);
+  });
 }
 
-// ==============================
-// REPRESENTANTES
-// ==============================
-const repForm = document.getElementById("rep-form");
-if (repForm) {
-  repForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const nome = document.getElementById("rep-name").value.trim();
+// ---------------------- CRUD REPRESENTANTES ----------------------
+repForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("rep-name").value;
 
-    if (!nome) {
-      alert("Informe o nome do representante!");
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, "representantes"), { nome, criadoEm: new Date() });
-      alert("Representante adicionado!");
-      repForm.reset();
-      carregarRepresentantes();
-    } catch (error) {
-      console.error("Erro ao salvar representante:", error);
-      alert("Erro ao salvar representante.");
-    }
-  });
-
-  window.carregarRepresentantes = async () => {
-    await carregarLista("representantes", "rep-list", ["nome"], "editarRepresentante", "excluirRepresentante");
-  };
-
-  window.excluirRepresentante = async (id) => {
-    await deleteDoc(doc(db, "representantes", id));
+  try {
+    await addDoc(collection(db, "representantes"), { name });
+    repForm.reset();
     carregarRepresentantes();
-  };
+  } catch (error) {
+    alert("Erro ao salvar representante: " + error.message);
+  }
+});
 
-  window.editarRepresentante = async (id) => {
-    const ref = doc(db, "representantes", id);
-    const novoNome = prompt("Novo nome:");
-    if (novoNome) {
-      await updateDoc(ref, { nome: novoNome });
+async function carregarRepresentantes() {
+  repList.innerHTML = "";
+  const querySnapshot = await getDocs(collection(db, "representantes"));
+  querySnapshot.forEach((docSnap) => {
+    const li = document.createElement("li");
+    li.className = "flex justify-between items-center bg-gray-100 p-2 rounded";
+    li.textContent = `${docSnap.data().name}`;
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Excluir";
+    delBtn.className = "bg-red-500 text-white px-2 py-1 rounded ml-2";
+    delBtn.addEventListener("click", async () => {
+      await deleteDoc(doc(db, "representantes", docSnap.id));
       carregarRepresentantes();
-    }
-  };
+    });
 
-  carregarRepresentantes();
+    li.appendChild(delBtn);
+    repList.appendChild(li);
+  });
 }
 
-// ==============================
-// PRODUTOS
-// ==============================
-const productForm = document.getElementById("product-form");
-if (productForm) {
-  productForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const nome = document.getElementById("product-name").value.trim();
-    const categoria = document.getElementById("product-category").value.trim();
-    const preco = parseFloat(document.getElementById("product-price").value);
-    const imagem = document.getElementById("product-image-url").value.trim();
+// ---------------------- CRUD PRODUTOS ----------------------
+productForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("product-name").value;
+  const category = document.getElementById("product-category").value;
+  const price = document.getElementById("product-price").value;
+  const image = document.getElementById("product-image-url").value;
 
-    if (!nome || !categoria || isNaN(preco)) {
-      alert("Preencha todos os campos obrigatórios!");
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, "produtos"), { nome, categoria, preco, imagem, criadoEm: new Date() });
-      alert("Produto adicionado!");
-      productForm.reset();
-      carregarProdutos();
-    } catch (error) {
-      console.error("Erro ao salvar produto:", error);
-      alert("Erro ao salvar produto.");
-    }
-  });
-
-  window.carregarProdutos = async () => {
-    await carregarLista("produtos", "product-list", ["nome", "categoria", "preco"], "editarProduto", "excluirProduto");
-  };
-
-  window.excluirProduto = async (id) => {
-    await deleteDoc(doc(db, "produtos", id));
+  try {
+    await addDoc(collection(db, "produtos"), { name, category, price, image });
+    productForm.reset();
     carregarProdutos();
-  };
+  } catch (error) {
+    alert("Erro ao salvar produto: " + error.message);
+  }
+});
 
-  window.editarProduto = async (id) => {
-    const ref = doc(db, "produtos", id);
-    const novoNome = prompt("Novo nome:");
-    const novaCategoria = prompt("Nova categoria:");
-    const novoPreco = parseFloat(prompt("Novo preço:"));
-    if (novoNome && novaCategoria && !isNaN(novoPreco)) {
-      await updateDoc(ref, { nome: novoNome, categoria: novaCategoria, preco: novoPreco });
+async function carregarProdutos() {
+  productList.innerHTML = "";
+  const querySnapshot = await getDocs(collection(db, "produtos"));
+  querySnapshot.forEach((docSnap) => {
+    const li = document.createElement("li");
+    li.className = "flex justify-between items-center bg-gray-100 p-2 rounded";
+    li.textContent = `${docSnap.data().name} - R$${docSnap.data().price}`;
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Excluir";
+    delBtn.className = "bg-red-500 text-white px-2 py-1 rounded ml-2";
+    delBtn.addEventListener("click", async () => {
+      await deleteDoc(doc(db, "produtos", docSnap.id));
       carregarProdutos();
-    }
-  };
+    });
 
-  carregarProdutos();
+    li.appendChild(delBtn);
+    productList.appendChild(li);
+  });
+}
+
+// ---------------------- FUNÇÃO GERAL ----------------------
+async function carregarDados() {
+  await carregarClientes();
+  await carregarRepresentantes();
+  await carregarProdutos();
 }
