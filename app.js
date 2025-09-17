@@ -15,7 +15,10 @@ import {
   addDoc,
   getDocs,
   query,
-  orderBy
+  orderBy,
+  doc,
+  updateDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // ==============================
@@ -37,7 +40,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// ==============================
 // LOGIN
+// ==============================
 const loginBtn = document.getElementById("login-button");
 if (loginBtn) {
   loginBtn.addEventListener("click", async (e) => {
@@ -49,11 +55,9 @@ if (loginBtn) {
       const userCredential = await signInWithEmailAndPassword(auth, email, senha);
       console.log("Usuário logado:", userCredential.user);
 
-      // Mostra área autenticada
       document.getElementById("login-form-container").classList.add("hidden");
       document.getElementById("auth-content").classList.remove("hidden");
 
-      // Preenche dados do usuário
       document.getElementById("user-id").textContent = userCredential.user.uid;
     } catch (error) {
       console.error("Erro no login:", error);
@@ -62,7 +66,9 @@ if (loginBtn) {
   });
 }
 
+// ==============================
 // CRIAR CONTA
+// ==============================
 const signupBtn = document.getElementById("signup-button");
 if (signupBtn) {
   signupBtn.addEventListener("click", async (e) => {
@@ -82,14 +88,14 @@ if (signupBtn) {
 }
 
 // ==============================
-// LOGOUT
+// LOGOUT (corrigido)
 // ==============================
 const logoutBtn = document.getElementById("logout-button");
 if (logoutBtn) {
   logoutBtn.addEventListener("click", async () => {
     try {
       await signOut(auth);
-      window.location.href = "login.html"; // volta para tela de login
+      window.location.href = "index.html"; // volta para login
     } catch (error) {
       console.error("Erro ao sair:", error);
       alert("Erro ao sair, tente novamente.");
@@ -112,9 +118,9 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // ==============================
-// Função Auxiliar - Listagem
+// Função Auxiliar - Listagem CRUD
 // ==============================
-async function carregarLista(colecao, listaId, campos = []) {
+async function carregarLista(colecao, listaId, campos = [], editarFunc, excluirFunc) {
   const listaEl = document.getElementById(listaId);
   if (!listaEl) return;
 
@@ -129,11 +135,17 @@ async function carregarLista(colecao, listaId, campos = []) {
       return;
     }
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
       const li = document.createElement("li");
-      li.className = "p-2 bg-gray-100 rounded-md";
-      li.textContent = campos.map(c => data[c] || "").join(" - ");
+      li.className = "p-2 bg-gray-100 rounded-md flex justify-between items-center";
+      li.innerHTML = `
+        <span>${campos.map(c => data[c] || "").join(" - ")}</span>
+        <div class="space-x-2">
+          <button class="px-2 py-1 bg-yellow-400 rounded" onclick="${editarFunc}('${docSnap.id}')">Editar</button>
+          <button class="px-2 py-1 bg-red-500 text-white rounded" onclick="${excluirFunc}('${docSnap.id}')">Excluir</button>
+        </div>
+      `;
       listaEl.appendChild(li);
     });
   } catch (error) {
@@ -157,21 +169,36 @@ if (clientForm) {
     }
 
     try {
-      await addDoc(collection(db, "clientes"), {
-        nome,
-        whatsapp,
-        criadoEm: new Date()
-      });
+      await addDoc(collection(db, "clientes"), { nome, whatsapp, criadoEm: new Date() });
       alert("Cliente adicionado!");
       clientForm.reset();
-      carregarLista("clientes", "client-list", ["nome", "whatsapp"]);
+      carregarClientes();
     } catch (error) {
       console.error("Erro ao salvar cliente:", error);
       alert("Erro ao salvar cliente.");
     }
   });
 
-  carregarLista("clientes", "client-list", ["nome", "whatsapp"]);
+  window.carregarClientes = async () => {
+    await carregarLista("clientes", "client-list", ["nome", "whatsapp"], "editarCliente", "excluirCliente");
+  };
+
+  window.excluirCliente = async (id) => {
+    await deleteDoc(doc(db, "clientes", id));
+    carregarClientes();
+  };
+
+  window.editarCliente = async (id) => {
+    const ref = doc(db, "clientes", id);
+    const novoNome = prompt("Novo nome:");
+    const novoWhats = prompt("Novo WhatsApp:");
+    if (novoNome && novoWhats) {
+      await updateDoc(ref, { nome: novoNome, whatsapp: novoWhats });
+      carregarClientes();
+    }
+  };
+
+  carregarClientes();
 }
 
 // ==============================
@@ -189,20 +216,35 @@ if (repForm) {
     }
 
     try {
-      await addDoc(collection(db, "representantes"), {
-        nome,
-        criadoEm: new Date()
-      });
+      await addDoc(collection(db, "representantes"), { nome, criadoEm: new Date() });
       alert("Representante adicionado!");
       repForm.reset();
-      carregarLista("representantes", "rep-list", ["nome"]);
+      carregarRepresentantes();
     } catch (error) {
       console.error("Erro ao salvar representante:", error);
       alert("Erro ao salvar representante.");
     }
   });
 
-  carregarLista("representantes", "rep-list", ["nome"]);
+  window.carregarRepresentantes = async () => {
+    await carregarLista("representantes", "rep-list", ["nome"], "editarRepresentante", "excluirRepresentante");
+  };
+
+  window.excluirRepresentante = async (id) => {
+    await deleteDoc(doc(db, "representantes", id));
+    carregarRepresentantes();
+  };
+
+  window.editarRepresentante = async (id) => {
+    const ref = doc(db, "representantes", id);
+    const novoNome = prompt("Novo nome:");
+    if (novoNome) {
+      await updateDoc(ref, { nome: novoNome });
+      carregarRepresentantes();
+    }
+  };
+
+  carregarRepresentantes();
 }
 
 // ==============================
@@ -223,21 +265,35 @@ if (productForm) {
     }
 
     try {
-      await addDoc(collection(db, "produtos"), {
-        nome,
-        categoria,
-        preco,
-        imagem,
-        criadoEm: new Date()
-      });
+      await addDoc(collection(db, "produtos"), { nome, categoria, preco, imagem, criadoEm: new Date() });
       alert("Produto adicionado!");
       productForm.reset();
-      carregarLista("produtos", "product-list", ["nome", "categoria", "preco"]);
+      carregarProdutos();
     } catch (error) {
       console.error("Erro ao salvar produto:", error);
       alert("Erro ao salvar produto.");
     }
   });
 
-  carregarLista("produtos", "product-list", ["nome", "categoria", "preco"]);
+  window.carregarProdutos = async () => {
+    await carregarLista("produtos", "product-list", ["nome", "categoria", "preco"], "editarProduto", "excluirProduto");
+  };
+
+  window.excluirProduto = async (id) => {
+    await deleteDoc(doc(db, "produtos", id));
+    carregarProdutos();
+  };
+
+  window.editarProduto = async (id) => {
+    const ref = doc(db, "produtos", id);
+    const novoNome = prompt("Novo nome:");
+    const novaCategoria = prompt("Nova categoria:");
+    const novoPreco = parseFloat(prompt("Novo preço:"));
+    if (novoNome && novaCategoria && !isNaN(novoPreco)) {
+      await updateDoc(ref, { nome: novoNome, categoria: novaCategoria, preco: novoPreco });
+      carregarProdutos();
+    }
+  };
+
+  carregarProdutos();
 }
