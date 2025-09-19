@@ -13,17 +13,17 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// ==================== LOGIN E AUTENTICAÇÃO ====================
-const loginScreen = document.getElementById("login-screen");
-const appScreen = document.getElementById("app-screen");
+// ==================== TELAS ====================
+const loginPage = document.getElementById("login-page");
+const appPage = document.getElementById("app");
 const userEmail = document.getElementById("user-email");
 
+// ==================== AUTENTICAÇÃO ====================
 document.getElementById("login-btn").addEventListener("click", () => {
   const email = document.getElementById("login-email").value;
   const password = document.getElementById("login-password").value;
 
   auth.signInWithEmailAndPassword(email, password)
-    .then(() => console.log("Login realizado"))
     .catch(err => alert("Erro no login: " + err.message));
 });
 
@@ -32,7 +32,6 @@ document.getElementById("register-btn").addEventListener("click", () => {
   const password = document.getElementById("login-password").value;
 
   auth.createUserWithEmailAndPassword(email, password)
-    .then(() => console.log("Usuário registrado"))
     .catch(err => alert("Erro ao registrar: " + err.message));
 });
 
@@ -42,52 +41,31 @@ document.getElementById("logout-btn").addEventListener("click", () => {
 
 auth.onAuthStateChanged(user => {
   if (user) {
-    loginScreen.classList.add("hidden");
-    appScreen.classList.remove("hidden");
+    loginPage.classList.add("hidden");
+    appPage.classList.remove("hidden");
     userEmail.textContent = user.email;
+    carregarClientes();
   } else {
-    loginScreen.classList.remove("hidden");
-    appScreen.classList.add("hidden");
+    loginPage.classList.remove("hidden");
+    appPage.classList.add("hidden");
     userEmail.textContent = "-";
   }
 });
 
-// ==================== NAVEGAÇÃO ENTRE SEÇÕES ====================
-function showSection(sectionId) {
+// ==================== NAVEGAÇÃO ====================
+function showPage(pageId) {
   document.querySelectorAll("main section").forEach(sec => sec.classList.add("hidden"));
-  document.getElementById(sectionId).classList.remove("hidden");
+  document.getElementById(pageId).classList.remove("hidden");
 }
 
 // ==================== CRUD CLIENTES ====================
 const clientesRef = db.collection("clientes");
-const clientesContent = document.getElementById("clientes-content");
+const listaClientes = document.getElementById("lista-clientes");
 
-function loadClientes() {
-  clientesRef.onSnapshot(snapshot => {
-    clientesContent.innerHTML = `
-      <input id="cliente-nome" placeholder="Nome" class="border p-2 mr-2">
-      <input id="cliente-whatsapp" placeholder="WhatsApp" class="border p-2 mr-2">
-      <button onclick="salvarCliente()" class="bg-blue-500 text-white px-3 py-1 rounded">Salvar</button>
-      <div class="mt-4"></div>
-    `;
-    snapshot.forEach(doc => {
-      const cliente = doc.data();
-      clientesContent.innerHTML += `
-        <div class="flex justify-between items-center border-b py-2">
-          <span>${cliente.nome} - ${cliente.whatsapp}</span>
-          <div>
-            <button onclick="editarCliente('${doc.id}','${cliente.nome}','${cliente.whatsapp}')" class="bg-yellow-500 text-white px-2 py-1 rounded mr-2">Editar</button>
-            <button onclick="excluirCliente('${doc.id}')" class="bg-red-500 text-white px-2 py-1 rounded">Excluir</button>
-          </div>
-        </div>
-      `;
-    });
-  });
-}
-
-function salvarCliente() {
+document.getElementById("salvar-cliente").addEventListener("click", () => {
   const nome = document.getElementById("cliente-nome").value;
   const whatsapp = document.getElementById("cliente-whatsapp").value;
+
   if (!nome || !whatsapp) return alert("Preencha todos os campos!");
 
   clientesRef.add({ nome, whatsapp })
@@ -95,32 +73,45 @@ function salvarCliente() {
       document.getElementById("cliente-nome").value = "";
       document.getElementById("cliente-whatsapp").value = "";
     })
-    .catch(err => alert("Erro salvar cliente: " + err.message));
+    .catch(err => alert("Erro ao salvar cliente: " + err.message));
+});
+
+function carregarClientes() {
+  clientesRef.onSnapshot(snapshot => {
+    listaClientes.innerHTML = "";
+    snapshot.forEach(doc => {
+      const c = doc.data();
+      const li = document.createElement("li");
+      li.className = "flex justify-between items-center border-b py-2";
+      li.innerHTML = `
+        <span>${c.nome} - ${c.whatsapp}</span>
+        <div>
+          <button class="bg-yellow-500 text-white px-2 py-1 rounded mr-2"
+            onclick="editarCliente('${doc.id}', '${c.nome}', '${c.whatsapp}')">Editar</button>
+          <button class="bg-red-500 text-white px-2 py-1 rounded"
+            onclick="excluirCliente('${doc.id}')">Excluir</button>
+        </div>
+      `;
+      listaClientes.appendChild(li);
+    });
+  });
 }
 
 function excluirCliente(id) {
-  clientesRef.doc(id).delete().catch(err => alert("Erro excluir cliente: " + err.message));
+  clientesRef.doc(id).delete().catch(err => alert("Erro ao excluir: " + err.message));
 }
 
 function editarCliente(id, nome, whatsapp) {
-  document.getElementById("cliente-nome").value = nome;
-  document.getElementById("cliente-whatsapp").value = whatsapp;
+  const novoNome = prompt("Novo nome:", nome);
+  const novoWhatsapp = prompt("Novo WhatsApp:", whatsapp);
 
-  const btn = document.createElement("button");
-  btn.textContent = "Atualizar";
-  btn.className = "bg-green-500 text-white px-3 py-1 rounded ml-2";
-  btn.onclick = () => {
-    clientesRef.doc(id).update({
-      nome: document.getElementById("cliente-nome").value,
-      whatsapp: document.getElementById("cliente-whatsapp").value
-    }).then(() => {
-      btn.remove();
-    }).catch(err => alert("Erro atualizar: " + err.message));
-  };
-  clientesContent.appendChild(btn);
+  if (novoNome && novoWhatsapp) {
+    clientesRef.doc(id).update({ nome: novoNome, whatsapp: novoWhatsapp })
+      .catch(err => alert("Erro ao atualizar: " + err.message));
+  }
 }
 
-// ==================== RELATÓRIOS EM PDF ====================
+// ==================== RELATÓRIOS PDF ====================
 document.getElementById("gerar-pdf").addEventListener("click", async () => {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -142,7 +133,3 @@ document.getElementById("gerar-pdf").addEventListener("click", async () => {
 
   doc.save("relatorio-clientes.pdf");
 });
-
-// ==================== INICIALIZAÇÃO ====================
-loadClientes();
-showSection("dashboard");
