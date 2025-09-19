@@ -1,122 +1,87 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Agendamento App</title>
-
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js"></script>
-
-  <!-- ✅ jsPDF e AutoTable corrigidos -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Agendamentos</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-  <!-- 🔹 Tela de Login -->
-  <div id="loginPage" class="flex items-center justify-center min-h-screen bg-gray-900 text-white">
-    <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-96">
-      <h2 class="text-2xl font-bold mb-6 text-center">Autenticação</h2>
-      <input id="loginEmail" type="email" placeholder="Email" class="w-full p-2 mb-4 rounded text-black" />
-      <input id="loginPassword" type="password" placeholder="Senha" class="w-full p-2 mb-4 rounded text-black" />
-      <button id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded mb-2">Entrar</button>
-      <button id="registerBtn" class="w-full bg-green-600 hover:bg-green-700 p-2 rounded">Criar Conta</button>
+
+  <!-- Tela de Login -->
+  <div id="login-screen" class="flex items-center justify-center h-screen">
+    <div class="bg-white p-6 rounded shadow-md w-96">
+      <h1 class="text-xl font-bold mb-4">Login</h1>
+      <input id="login-email" type="email" placeholder="Email" class="w-full p-2 border rounded mb-2">
+      <input id="login-password" type="password" placeholder="Senha" class="w-full p-2 border rounded mb-2">
+      <button id="login-btn" class="bg-blue-500 text-white px-4 py-2 rounded w-full mb-2">Entrar</button>
+      <button id="register-btn" class="bg-green-500 text-white px-4 py-2 rounded w-full">Criar Conta</button>
     </div>
   </div>
 
-  <!-- 🔹 App principal -->
-  <div id="app" class="hidden min-h-screen flex">
+  <!-- Tela Principal -->
+  <div id="app-screen" class="hidden h-screen flex">
     <!-- Menu lateral -->
-    <aside class="w-64 bg-white shadow-md p-4 flex flex-col">
-      <h2 class="text-xl font-bold mb-6">Meu Painel</h2>
-      <nav class="flex-1 space-y-2">
-        <button data-page="dashboard" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Dashboard</button>
-        <button data-page="agendamentos" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Agendamentos</button>
-        <button data-page="clientes" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Clientes</button>
-        <button data-page="representantes" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Representantes</button>
-        <button data-page="produtos" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Produtos</button>
-        <button data-page="relatorios" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Relatórios</button>
+    <aside class="w-64 bg-white shadow-md p-4">
+      <h2 class="font-bold text-lg mb-4">Meu Painel</h2>
+      <nav class="space-y-2">
+        <button onclick="showSection('dashboard')" class="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded">Dashboard</button>
+        <button onclick="showSection('agendamentos')" class="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded">Agendamentos</button>
+        <button onclick="showSection('clientes')" class="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded">Clientes</button>
+        <button onclick="showSection('representantes')" class="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded">Representantes</button>
+        <button onclick="showSection('produtos')" class="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded">Produtos</button>
+        <button onclick="showSection('relatorios')" class="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded">Relatórios</button>
       </nav>
-      <div class="mt-6">
-        <p class="text-sm">Usuário: <span id="userEmail">-</span></p>
-        <button id="logoutBtn" class="w-full mt-2 bg-red-600 hover:bg-red-700 text-white py-2 rounded">Sair</button>
+      <div class="mt-4">
+        <p class="text-sm">Usuário: <span id="user-email">-</span></p>
+        <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded mt-2 w-full">Sair</button>
       </div>
     </aside>
 
     <!-- Conteúdo -->
-    <main class="flex-1 p-6 space-y-6 overflow-y-auto">
-      <!-- Dashboard -->
-      <section id="dashboardPage" class="hidden">
-        <h2 class="text-2xl font-bold mb-4">Dashboard</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div class="bg-white p-4 rounded shadow">Clientes: <span id="countClientes">0</span></div>
-          <div class="bg-white p-4 rounded shadow">Produtos: <span id="countProdutos">0</span></div>
-          <div class="bg-white p-4 rounded shadow">Representantes: <span id="countRepresentantes">0</span></div>
-          <div class="bg-white p-4 rounded shadow">Agendamentos: <span id="countAgendamentos">0</span></div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          <div class="bg-white p-4 rounded shadow">
-            <h3 class="font-bold mb-2">Ranking - Representantes</h3>
-            <canvas id="chartRepresentantes"></canvas>
-          </div>
-          <div class="bg-white p-4 rounded shadow">
-            <h3 class="font-bold mb-2">Ranking - Clientes</h3>
-            <canvas id="chartClientes"></canvas>
-          </div>
-        </div>
+    <main class="flex-1 p-6 overflow-y-auto">
+      <section id="dashboard" class="hidden">
+        <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+        <div id="dashboard-content"></div>
       </section>
-
-      <!-- Clientes -->
-      <section id="clientesPage" class="hidden">
-        <h2 class="text-2xl font-bold mb-4">Cadastro de Clientes</h2>
-        <form id="clientForm" class="flex space-x-2 mb-4">
-          <input id="clientName" type="text" placeholder="Nome" class="flex-1 p-2 border rounded" required />
-          <input id="clientWhatsapp" type="text" placeholder="WhatsApp" class="flex-1 p-2 border rounded" required />
-          <button type="submit" class="bg-blue-600 text-white px-4 rounded">Salvar</button>
-        </form>
-        <input type="file" id="importClientsFile" accept=".xlsx" class="mb-4" />
-        <ul id="clientList" class="space-y-2"></ul>
+      <section id="agendamentos" class="hidden">
+        <h1 class="text-2xl font-bold mb-4">Agendamentos</h1>
+        <div id="agendamentos-content"></div>
       </section>
-
-      <!-- Representantes -->
-      <section id="representantesPage" class="hidden">
-        <h2 class="text-2xl font-bold mb-4">Cadastro de Representantes</h2>
-        <form id="repForm" class="flex space-x-2 mb-4">
-          <input id="repName" type="text" placeholder="Nome" class="flex-1 p-2 border rounded" required />
-          <button type="submit" class="bg-blue-600 text-white px-4 rounded">Salvar</button>
-        </form>
-        <ul id="repList" class="space-y-2"></ul>
+      <section id="clientes" class="hidden">
+        <h1 class="text-2xl font-bold mb-4">Clientes</h1>
+        <div id="clientes-content"></div>
       </section>
-
-      <!-- Produtos -->
-      <section id="produtosPage" class="hidden">
-        <h2 class="text-2xl font-bold mb-4">Cadastro de Produtos</h2>
-        <form id="productForm" class="space-y-2 mb-4">
-          <input id="productName" type="text" placeholder="Nome" class="w-full p-2 border rounded" required />
-          <input id="productCategory" type="text" placeholder="Categoria" class="w-full p-2 border rounded" required />
-          <input id="productPrice" type="number" step="0.01" placeholder="Preço" class="w-full p-2 border rounded" required />
-          <button type="submit" class="bg-blue-600 text-white px-4 rounded">Salvar</button>
-        </form>
-        <ul id="productList" class="space-y-2"></ul>
+      <section id="representantes" class="hidden">
+        <h1 class="text-2xl font-bold mb-4">Representantes</h1>
+        <div id="representantes-content"></div>
       </section>
-
-      <!-- Relatórios -->
-      <section id="relatoriosPage" class="hidden">
-        <h2 class="text-2xl font-bold mb-4">Relatórios</h2>
-        <button id="generateReport" class="bg-green-600 text-white px-4 py-2 rounded">Gerar Relatório PDF</button>
+      <section id="produtos" class="hidden">
+        <h1 class="text-2xl font-bold mb-4">Produtos</h1>
+        <div id="produtos-content"></div>
+      </section>
+      <section id="relatorios" class="hidden">
+        <h1 class="text-2xl font-bold mb-4">Relatórios</h1>
+        <button id="gerar-pdf" class="bg-blue-500 text-white px-4 py-2 rounded">Gerar PDF</button>
+        <canvas id="grafico-representantes" class="my-4"></canvas>
+        <canvas id="grafico-clientes" class="my-4"></canvas>
       </section>
     </main>
   </div>
 
-  <!-- App -->
+  <!-- Firebase SDK (Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+  <!-- jsPDF + AutoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Seu código -->
   <script src="app.js"></script>
 </body>
 </html>
