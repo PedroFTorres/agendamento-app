@@ -1,12 +1,11 @@
-// ==================== Firebase Config ====================
+// ==================== CONFIGURAÇÃO FIREBASE ====================
 const firebaseConfig = {
-  apiKey: "AIzaSyAza98u8-NVn9hNbuLwcsaCZX2hXbtVaHk",
-  authDomain: "meu-app-de-login.firebaseapp.com",
-  projectId: "meu-app-de-login",
-  storageBucket: "meu-app-de-login.appspot.com",
-  messagingSenderId: "61119567504",
-  appId: "1:61119567504:web:556bb893c9eba6c4e12a15",
-  measurementId: "G-YY6QTZX57K"
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId: "SEU_APP_ID"
 };
 
 // Inicializa Firebase
@@ -14,266 +13,136 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// ==================== Autenticação ====================
-const loginPage = document.getElementById("loginPage");
-const appPage = document.getElementById("app");
-const userEmailDisplay = document.getElementById("userEmail");
+// ==================== LOGIN E AUTENTICAÇÃO ====================
+const loginScreen = document.getElementById("login-screen");
+const appScreen = document.getElementById("app-screen");
+const userEmail = document.getElementById("user-email");
 
-document.getElementById("loginBtn").addEventListener("click", async () => {
-  const email = document.getElementById("loginEmail").value;
-  const password = document.getElementById("loginPassword").value;
-  try {
-    await auth.signInWithEmailAndPassword(email, password);
-  } catch (error) {
-    alert("Erro no login: " + error.message);
-  }
+document.getElementById("login-btn").addEventListener("click", () => {
+  const email = document.getElementById("login-email").value;
+  const password = document.getElementById("login-password").value;
+
+  auth.signInWithEmailAndPassword(email, password)
+    .then(() => console.log("Login realizado"))
+    .catch(err => alert("Erro no login: " + err.message));
 });
 
-document.getElementById("registerBtn").addEventListener("click", async () => {
-  const email = document.getElementById("loginEmail").value;
-  const password = document.getElementById("loginPassword").value;
-  try {
-    await auth.createUserWithEmailAndPassword(email, password);
-    alert("Conta criada com sucesso!");
-  } catch (error) {
-    alert("Erro no cadastro: " + error.message);
-  }
+document.getElementById("register-btn").addEventListener("click", () => {
+  const email = document.getElementById("login-email").value;
+  const password = document.getElementById("login-password").value;
+
+  auth.createUserWithEmailAndPassword(email, password)
+    .then(() => console.log("Usuário registrado"))
+    .catch(err => alert("Erro ao registrar: " + err.message));
 });
 
-document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await auth.signOut();
+document.getElementById("logout-btn").addEventListener("click", () => {
+  auth.signOut();
 });
 
-auth.onAuthStateChanged((user) => {
+auth.onAuthStateChanged(user => {
   if (user) {
-    loginPage.classList.add("hidden");
-    appPage.classList.remove("hidden");
-    userEmailDisplay.textContent = user.email;
-    loadDashboard();
-    loadClientsUI();
-    loadRepresentantesUI();
-    loadProdutosUI();
+    loginScreen.classList.add("hidden");
+    appScreen.classList.remove("hidden");
+    userEmail.textContent = user.email;
   } else {
-    loginPage.classList.remove("hidden");
-    appPage.classList.add("hidden");
-    userEmailDisplay.textContent = "-";
+    loginScreen.classList.remove("hidden");
+    appScreen.classList.add("hidden");
+    userEmail.textContent = "-";
   }
 });
 
-// ==================== Navegação ====================
-const pages = {
-  dashboard: document.getElementById("dashboardPage"),
-  clientes: document.getElementById("clientesPage"),
-  representantes: document.getElementById("representantesPage"),
-  produtos: document.getElementById("produtosPage"),
-  relatorios: document.getElementById("relatoriosPage")
-};
+// ==================== NAVEGAÇÃO ENTRE SEÇÕES ====================
+function showSection(sectionId) {
+  document.querySelectorAll("main section").forEach(sec => sec.classList.add("hidden"));
+  document.getElementById(sectionId).classList.remove("hidden");
+}
 
-document.querySelectorAll("aside button[data-page]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    Object.values(pages).forEach((p) => p.classList.add("hidden"));
-    pages[btn.dataset.page].classList.remove("hidden");
-  });
-});
+// ==================== CRUD CLIENTES ====================
+const clientesRef = db.collection("clientes");
+const clientesContent = document.getElementById("clientes-content");
 
-// ==================== CRUD Clientes ====================
-const clientForm = document.getElementById("clientForm");
-const clientList = document.getElementById("clientList");
-
-clientForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const name = document.getElementById("clientName").value;
-  const whatsapp = document.getElementById("clientWhatsapp").value;
-  try {
-    await db.collection("clientes").add({ name, whatsapp });
-    clientForm.reset();
-    loadClientsUI();
-  } catch (error) {
-    alert("Erro salvar cliente");
-  }
-});
-
-async function loadClientsUI() {
-  clientList.innerHTML = "";
-  const snapshot = await db.collection("clientes").get();
-  snapshot.forEach((doc) => {
-    const li = document.createElement("li");
-    li.className = "bg-gray-100 p-2 flex justify-between items-center";
-    li.innerHTML = `
-      <span>${doc.data().name} - ${doc.data().whatsapp}</span>
-      <div>
-        <button class="bg-yellow-500 text-white px-2 py-1 rounded mr-2" onclick="editClient('${doc.id}', '${doc.data().name}', '${doc.data().whatsapp}')">Editar</button>
-        <button class="bg-red-500 text-white px-2 py-1 rounded" onclick="deleteClient('${doc.id}')">Excluir</button>
-      </div>
+function loadClientes() {
+  clientesRef.onSnapshot(snapshot => {
+    clientesContent.innerHTML = `
+      <input id="cliente-nome" placeholder="Nome" class="border p-2 mr-2">
+      <input id="cliente-whatsapp" placeholder="WhatsApp" class="border p-2 mr-2">
+      <button onclick="salvarCliente()" class="bg-blue-500 text-white px-3 py-1 rounded">Salvar</button>
+      <div class="mt-4"></div>
     `;
-    clientList.appendChild(li);
+    snapshot.forEach(doc => {
+      const cliente = doc.data();
+      clientesContent.innerHTML += `
+        <div class="flex justify-between items-center border-b py-2">
+          <span>${cliente.nome} - ${cliente.whatsapp}</span>
+          <div>
+            <button onclick="editarCliente('${doc.id}','${cliente.nome}','${cliente.whatsapp}')" class="bg-yellow-500 text-white px-2 py-1 rounded mr-2">Editar</button>
+            <button onclick="excluirCliente('${doc.id}')" class="bg-red-500 text-white px-2 py-1 rounded">Excluir</button>
+          </div>
+        </div>
+      `;
+    });
   });
 }
 
-async function deleteClient(id) {
-  await db.collection("clientes").doc(id).delete();
-  loadClientsUI();
+function salvarCliente() {
+  const nome = document.getElementById("cliente-nome").value;
+  const whatsapp = document.getElementById("cliente-whatsapp").value;
+  if (!nome || !whatsapp) return alert("Preencha todos os campos!");
+
+  clientesRef.add({ nome, whatsapp })
+    .then(() => {
+      document.getElementById("cliente-nome").value = "";
+      document.getElementById("cliente-whatsapp").value = "";
+    })
+    .catch(err => alert("Erro salvar cliente: " + err.message));
 }
 
-async function editClient(id, name, whatsapp) {
-  const newName = prompt("Editar nome:", name);
-  const newWhatsapp = prompt("Editar WhatsApp:", whatsapp);
-  if (newName && newWhatsapp) {
-    await db.collection("clientes").doc(id).update({ name: newName, whatsapp: newWhatsapp });
-    loadClientsUI();
-  }
+function excluirCliente(id) {
+  clientesRef.doc(id).delete().catch(err => alert("Erro excluir cliente: " + err.message));
 }
 
-// ==================== CRUD Representantes ====================
-const repForm = document.getElementById("repForm");
-const repList = document.getElementById("repList");
+function editarCliente(id, nome, whatsapp) {
+  document.getElementById("cliente-nome").value = nome;
+  document.getElementById("cliente-whatsapp").value = whatsapp;
 
-repForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const name = document.getElementById("repName").value;
-  await db.collection("representantes").add({ name });
-  repForm.reset();
-  loadRepresentantesUI();
-});
-
-async function loadRepresentantesUI() {
-  repList.innerHTML = "";
-  const snapshot = await db.collection("representantes").get();
-  snapshot.forEach((doc) => {
-    const li = document.createElement("li");
-    li.className = "bg-gray-100 p-2 flex justify-between items-center";
-    li.innerHTML = `
-      <span>${doc.data().name}</span>
-      <div>
-        <button class="bg-yellow-500 text-white px-2 py-1 rounded mr-2" onclick="editRep('${doc.id}', '${doc.data().name}')">Editar</button>
-        <button class="bg-red-500 text-white px-2 py-1 rounded" onclick="deleteRep('${doc.id}')">Excluir</button>
-      </div>
-    `;
-    repList.appendChild(li);
-  });
+  const btn = document.createElement("button");
+  btn.textContent = "Atualizar";
+  btn.className = "bg-green-500 text-white px-3 py-1 rounded ml-2";
+  btn.onclick = () => {
+    clientesRef.doc(id).update({
+      nome: document.getElementById("cliente-nome").value,
+      whatsapp: document.getElementById("cliente-whatsapp").value
+    }).then(() => {
+      btn.remove();
+    }).catch(err => alert("Erro atualizar: " + err.message));
+  };
+  clientesContent.appendChild(btn);
 }
 
-async function deleteRep(id) {
-  await db.collection("representantes").doc(id).delete();
-  loadRepresentantesUI();
-}
-
-async function editRep(id, name) {
-  const newName = prompt("Editar nome:", name);
-  if (newName) {
-    await db.collection("representantes").doc(id).update({ name: newName });
-    loadRepresentantesUI();
-  }
-}
-
-// ==================== CRUD Produtos ====================
-const productForm = document.getElementById("productForm");
-const productList = document.getElementById("productList");
-
-productForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const name = document.getElementById("productName").value;
-  const category = document.getElementById("productCategory").value;
-  const price = parseFloat(document.getElementById("productPrice").value);
-  await db.collection("produtos").add({ name, category, price });
-  productForm.reset();
-  loadProdutosUI();
-});
-
-async function loadProdutosUI() {
-  productList.innerHTML = "";
-  const snapshot = await db.collection("produtos").get();
-  snapshot.forEach((doc) => {
-    const li = document.createElement("li");
-    li.className = "bg-gray-100 p-2 flex justify-between items-center";
-    li.innerHTML = `
-      <span>${doc.data().name} - ${doc.data().category} - R$ ${doc.data().price.toFixed(2)}</span>
-      <div>
-        <button class="bg-yellow-500 text-white px-2 py-1 rounded mr-2" onclick="editProduct('${doc.id}', '${doc.data().name}', '${doc.data().category}', ${doc.data().price})">Editar</button>
-        <button class="bg-red-500 text-white px-2 py-1 rounded" onclick="deleteProduct('${doc.id}')">Excluir</button>
-      </div>
-    `;
-    productList.appendChild(li);
-  });
-}
-
-async function deleteProduct(id) {
-  await db.collection("produtos").doc(id).delete();
-  loadProdutosUI();
-}
-
-async function editProduct(id, name, category, price) {
-  const newName = prompt("Editar nome:", name);
-  const newCategory = prompt("Editar categoria:", category);
-  const newPrice = parseFloat(prompt("Editar preço:", price));
-  if (newName && newCategory && !isNaN(newPrice)) {
-    await db.collection("produtos").doc(id).update({ name: newName, category: newCategory, price: newPrice });
-    loadProdutosUI();
-  }
-}
-
-// ==================== Dashboard ====================
-async function loadDashboard() {
-  const clientes = await db.collection("clientes").get();
-  document.getElementById("countClientes").textContent = clientes.size;
-
-  const produtos = await db.collection("produtos").get();
-  document.getElementById("countProdutos").textContent = produtos.size;
-
-  const representantes = await db.collection("representantes").get();
-  document.getElementById("countRepresentantes").textContent = representantes.size;
-
-  const agendamentos = await db.collection("agendamentos").get();
-  document.getElementById("countAgendamentos").textContent = agendamentos.size;
-
-  loadCharts();
-}
-
-// ==================== Relatórios ====================
-document.getElementById("generateReport").addEventListener("click", async () => {
+// ==================== RELATÓRIOS EM PDF ====================
+document.getElementById("gerar-pdf").addEventListener("click", async () => {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  doc.text("Relatório de Cadastros", 14, 16);
+  doc.text("Relatório de Clientes", 10, 10);
 
-  // Clientes
-  const clientesSnapshot = await db.collection("clientes").get();
-  const clientes = [];
-  clientesSnapshot.forEach((d) => clientes.push([d.data().name, d.data().whatsapp]));
-  doc.autoTable({ head: [["Nome", "WhatsApp"]], body: clientes, startY: 20 });
+  const snapshot = await clientesRef.get();
+  const data = [];
+  snapshot.forEach(docSnap => {
+    const c = docSnap.data();
+    data.push([c.nome, c.whatsapp]);
+  });
 
-  // Produtos
-  const produtosSnapshot = await db.collection("produtos").get();
-  const produtos = [];
-  produtosSnapshot.forEach((d) => produtos.push([d.data().name, d.data().category, d.data().price]));
-  doc.autoTable({ head: [["Nome", "Categoria", "Preço"]], body: produtos, startY: doc.lastAutoTable.finalY + 10 });
+  doc.autoTable({
+    head: [["Nome", "WhatsApp"]],
+    body: data,
+    startY: 20
+  });
 
-  doc.save("relatorio.pdf");
+  doc.save("relatorio-clientes.pdf");
 });
 
-// ==================== Gráficos ====================
-async function loadCharts() {
-  const repsSnapshot = await db.collection("representantes").get();
-  const reps = [];
-  repsSnapshot.forEach((doc) => reps.push(doc.data().name));
-
-  new Chart(document.getElementById("chartRepresentantes"), {
-    type: "bar",
-    data: {
-      labels: reps,
-      datasets: [{ label: "Vendas", data: reps.map(() => Math.floor(Math.random() * 100)), backgroundColor: "blue" }]
-    }
-  });
-
-  const clientsSnapshot = await db.collection("clientes").get();
-  const clients = [];
-  clientsSnapshot.forEach((doc) => clients.push(doc.data().name));
-
-  new Chart(document.getElementById("chartClientes"), {
-    type: "bar",
-    data: {
-      labels: clients,
-      datasets: [{ label: "Compras", data: clients.map(() => Math.floor(Math.random() * 100)), backgroundColor: "green" }]
-    }
-  });
-}
+// ==================== INICIALIZAÇÃO ====================
+loadClientes();
+showSection("dashboard");
