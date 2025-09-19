@@ -3,149 +3,120 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Meu App de Agendamentos</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Bibliotecas externas -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.js"></script>
-</head>
-<body class="h-screen flex flex-col">
+  <title>Agendamento App</title>
 
-  <!-- Página de Login -->
-  <div id="loginPage" class="flex items-center justify-center min-h-screen bg-gray-100">
-    <div class="bg-white p-6 rounded shadow w-96">
-      <h2 class="text-xl font-bold mb-4">Entrar</h2>
-      <form id="login-form" class="space-y-3">
-        <input type="email" id="login-email" placeholder="Email" required class="w-full p-2 border rounded" />
-        <input type="password" id="login-password" placeholder="Senha" required class="w-full p-2 border rounded" />
-        <button class="w-full bg-blue-600 text-white py-2 rounded" type="submit">Entrar</button>
-      </form>
-      <p class="text-sm text-gray-500 mt-3">
-        Não tem conta?
-        <button id="signup-btn" class="text-blue-600">Criar conta</button>
-      </p>
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js"></script>
+
+  <!-- ✅ jsPDF e AutoTable corrigidos -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-gray-100">
+  <!-- 🔹 Tela de Login -->
+  <div id="loginPage" class="flex items-center justify-center min-h-screen bg-gray-900 text-white">
+    <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-96">
+      <h2 class="text-2xl font-bold mb-6 text-center">Autenticação</h2>
+      <input id="loginEmail" type="email" placeholder="Email" class="w-full p-2 mb-4 rounded text-black" />
+      <input id="loginPassword" type="password" placeholder="Senha" class="w-full p-2 mb-4 rounded text-black" />
+      <button id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded mb-2">Entrar</button>
+      <button id="registerBtn" class="w-full bg-green-600 hover:bg-green-700 p-2 rounded">Criar Conta</button>
     </div>
   </div>
 
-  <!-- Aplicativo (painel principal) -->
-  <div id="app" class="flex hidden h-screen">
-
-    <!-- Sidebar -->
-    <aside class="w-64 bg-orange-100 p-4 flex flex-col">
-      <h2 class="text-xl font-bold mb-6">Menu</h2>
-      <button class="nav-btn w-full text-left mb-2 p-2 rounded hover:bg-orange-200" data-page="dashboard">Dashboard</button>
-      <button class="nav-btn w-full text-left mb-2 p-2 rounded hover:bg-orange-200" data-page="clientes">Clientes</button>
-      <button class="nav-btn w-full text-left mb-2 p-2 rounded hover:bg-orange-200" data-page="representantes">Representantes</button>
-      <button class="nav-btn w-full text-left mb-2 p-2 rounded hover:bg-orange-200" data-page="produtos">Produtos</button>
-      <button class="nav-btn w-full text-left mb-2 p-2 rounded hover:bg-orange-200" data-page="agendamentos">Agendamentos</button>
-      <button class="nav-btn w-full text-left mb-2 p-2 rounded hover:bg-orange-200" data-page="relatorios">Relatórios</button>
-
-      <div class="mt-auto pt-4 border-t">
-        <p class="text-sm">Usuário: <span id="user-email-display">-</span></p>
-        <button id="logout-button" class="w-full mt-2 bg-red-600 text-white py-2 rounded">Sair</button>
+  <!-- 🔹 App principal -->
+  <div id="app" class="hidden min-h-screen flex">
+    <!-- Menu lateral -->
+    <aside class="w-64 bg-white shadow-md p-4 flex flex-col">
+      <h2 class="text-xl font-bold mb-6">Meu Painel</h2>
+      <nav class="flex-1 space-y-2">
+        <button data-page="dashboard" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Dashboard</button>
+        <button data-page="agendamentos" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Agendamentos</button>
+        <button data-page="clientes" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Clientes</button>
+        <button data-page="representantes" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Representantes</button>
+        <button data-page="produtos" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Produtos</button>
+        <button data-page="relatorios" class="w-full text-left px-4 py-2 rounded hover:bg-gray-200">Relatórios</button>
+      </nav>
+      <div class="mt-6">
+        <p class="text-sm">Usuário: <span id="userEmail">-</span></p>
+        <button id="logoutBtn" class="w-full mt-2 bg-red-600 hover:bg-red-700 text-white py-2 rounded">Sair</button>
       </div>
     </aside>
 
     <!-- Conteúdo -->
-    <main class="flex-1 p-6 overflow-y-auto">
-      <h1 id="page-title" class="text-2xl font-bold mb-4">Dashboard</h1>
-
+    <main class="flex-1 p-6 space-y-6 overflow-y-auto">
       <!-- Dashboard -->
-      <div id="dashboard" class="page">
-        <div class="grid grid-cols-4 gap-4 mb-6">
-          <div class="bg-white p-4 rounded shadow text-center">
-            <h3 class="text-gray-500">Clientes</h3>
-            <p id="card-clients" class="text-2xl font-bold">0</p>
+      <section id="dashboardPage" class="hidden">
+        <h2 class="text-2xl font-bold mb-4">Dashboard</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded shadow">Clientes: <span id="countClientes">0</span></div>
+          <div class="bg-white p-4 rounded shadow">Produtos: <span id="countProdutos">0</span></div>
+          <div class="bg-white p-4 rounded shadow">Representantes: <span id="countRepresentantes">0</span></div>
+          <div class="bg-white p-4 rounded shadow">Agendamentos: <span id="countAgendamentos">0</span></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <div class="bg-white p-4 rounded shadow">
+            <h3 class="font-bold mb-2">Ranking - Representantes</h3>
+            <canvas id="chartRepresentantes"></canvas>
           </div>
-          <div class="bg-white p-4 rounded shadow text-center">
-            <h3 class="text-gray-500">Produtos</h3>
-            <p id="card-products" class="text-2xl font-bold">0</p>
-          </div>
-          <div class="bg-white p-4 rounded shadow text-center">
-            <h3 class="text-gray-500">Representantes</h3>
-            <p id="card-reps" class="text-2xl font-bold">0</p>
-          </div>
-          <div class="bg-white p-4 rounded shadow text-center">
-            <h3 class="text-gray-500">Agendamentos</h3>
-            <p id="card-appts" class="text-2xl font-bold">0</p>
+          <div class="bg-white p-4 rounded shadow">
+            <h3 class="font-bold mb-2">Ranking - Clientes</h3>
+            <canvas id="chartClientes"></canvas>
           </div>
         </div>
-        <div id="calendar"></div>
-        <div class="grid grid-cols-2 gap-4 mt-6">
-          <canvas id="chart-reps"></canvas>
-          <canvas id="chart-clients"></canvas>
-        </div>
-      </div>
+      </section>
 
       <!-- Clientes -->
-      <div id="clientes" class="page hidden">
-        <h2 class="text-xl font-bold mb-4">Clientes</h2>
-        <form id="client-form" class="space-y-3 mb-4">
-          <input type="text" id="client-name" placeholder="Nome" required class="w-full p-2 border rounded" />
-          <input type="text" id="client-whatsapp" placeholder="WhatsApp" class="w-full p-2 border rounded" />
-          <button class="w-full bg-green-600 text-white py-2 rounded">Salvar Cliente</button>
+      <section id="clientesPage" class="hidden">
+        <h2 class="text-2xl font-bold mb-4">Cadastro de Clientes</h2>
+        <form id="clientForm" class="flex space-x-2 mb-4">
+          <input id="clientName" type="text" placeholder="Nome" class="flex-1 p-2 border rounded" required />
+          <input id="clientWhatsapp" type="text" placeholder="WhatsApp" class="flex-1 p-2 border rounded" required />
+          <button type="submit" class="bg-blue-600 text-white px-4 rounded">Salvar</button>
         </form>
-        <input type="file" id="client-file" accept=".xlsx" class="mb-4" />
-        <ul id="client-list" class="space-y-2"></ul>
-      </div>
+        <input type="file" id="importClientsFile" accept=".xlsx" class="mb-4" />
+        <ul id="clientList" class="space-y-2"></ul>
+      </section>
 
       <!-- Representantes -->
-      <div id="representantes" class="page hidden">
-        <h2 class="text-xl font-bold mb-4">Representantes</h2>
-        <form id="rep-form" class="space-y-3 mb-4">
-          <input type="text" id="rep-name" placeholder="Nome" required class="w-full p-2 border rounded" />
-          <button class="w-full bg-green-600 text-white py-2 rounded">Salvar Representante</button>
+      <section id="representantesPage" class="hidden">
+        <h2 class="text-2xl font-bold mb-4">Cadastro de Representantes</h2>
+        <form id="repForm" class="flex space-x-2 mb-4">
+          <input id="repName" type="text" placeholder="Nome" class="flex-1 p-2 border rounded" required />
+          <button type="submit" class="bg-blue-600 text-white px-4 rounded">Salvar</button>
         </form>
-        <ul id="rep-list" class="space-y-2"></ul>
-      </div>
+        <ul id="repList" class="space-y-2"></ul>
+      </section>
 
       <!-- Produtos -->
-      <div id="produtos" class="page hidden">
-        <h2 class="text-xl font-bold mb-4">Produtos</h2>
-        <form id="product-form" class="space-y-3 mb-4">
-          <input type="text" id="product-name" placeholder="Nome" required class="w-full p-2 border rounded" />
-          <input type="text" id="product-category" placeholder="Categoria" class="w-full p-2 border rounded" />
-          <input type="number" id="product-price" step="0.01" placeholder="Preço" class="w-full p-2 border rounded" />
-          <input type="url" id="product-image-url" placeholder="URL da imagem" class="w-full p-2 border rounded" />
-          <button class="w-full bg-green-600 text-white py-2 rounded">Salvar Produto</button>
+      <section id="produtosPage" class="hidden">
+        <h2 class="text-2xl font-bold mb-4">Cadastro de Produtos</h2>
+        <form id="productForm" class="space-y-2 mb-4">
+          <input id="productName" type="text" placeholder="Nome" class="w-full p-2 border rounded" required />
+          <input id="productCategory" type="text" placeholder="Categoria" class="w-full p-2 border rounded" required />
+          <input id="productPrice" type="number" step="0.01" placeholder="Preço" class="w-full p-2 border rounded" required />
+          <button type="submit" class="bg-blue-600 text-white px-4 rounded">Salvar</button>
         </form>
-        <ul id="product-list" class="space-y-2"></ul>
-      </div>
-
-      <!-- Agendamentos -->
-      <div id="agendamentos" class="page hidden">
-        <h2 class="text-xl font-bold mb-4">Agendamentos</h2>
-        <form id="appt-form" class="grid grid-cols-2 gap-3 mb-4">
-          <select id="appt-client" class="border p-2 rounded"></select>
-          <select id="appt-rep" class="border p-2 rounded"></select>
-          <select id="appt-product" class="border p-2 rounded"></select>
-          <input type="number" id="appt-qty" placeholder="Quantidade" class="border p-2 rounded" />
-          <input type="date" id="appt-date" class="border p-2 rounded" />
-          <button class="col-span-2 bg-green-600 text-white py-2 rounded">Salvar Agendamento</button>
-        </form>
-        <ul id="appts-list" class="space-y-2"></ul>
-      </div>
+        <ul id="productList" class="space-y-2"></ul>
+      </section>
 
       <!-- Relatórios -->
-      <div id="relatorios" class="page hidden">
-        <h2 class="text-xl font-bold mb-4">Relatórios</h2>
-        <form class="grid grid-cols-2 gap-3 mb-4">
-          <input type="date" id="report-start" class="border p-2 rounded" />
-          <input type="date" id="report-end" class="border p-2 rounded" />
-          <select id="report-client" class="border p-2 rounded"></select>
-          <select id="report-rep" class="border p-2 rounded"></select>
-          <button id="generate-pdf" class="col-span-2 bg-blue-600 text-white py-2 rounded">Gerar PDF</button>
-        </form>
-        <div id="report-table"></div>
-        <div id="report-totals" class="mt-3"></div>
-      </div>
+      <section id="relatoriosPage" class="hidden">
+        <h2 class="text-2xl font-bold mb-4">Relatórios</h2>
+        <button id="generateReport" class="bg-green-600 text-white px-4 py-2 rounded">Gerar Relatório PDF</button>
+      </section>
     </main>
   </div>
 
-  <!-- App.js -->
-  <script type="module" src="app.js"></script>
+  <!-- App -->
+  <script src="app.js"></script>
 </body>
 </html>
