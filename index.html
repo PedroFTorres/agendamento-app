@@ -11,7 +11,7 @@
   <!-- ================= LOGIN ================= -->
   <section id="login-section" class="flex items-center justify-center min-h-screen bg-gray-900 text-white">
     <div class="bg-gray-800 p-8 rounded shadow-md w-96">
-      <h2 class="text-2xl font-bold mb-4 text-center">Autenticação Firebase</h2>
+      <h2 class="text-2xl font-bold mb-4 text-center">Autenticação</h2>
       <input id="login-email" type="email" placeholder="E-mail" class="w-full p-2 mb-2 rounded text-black">
       <input id="login-senha" type="password" placeholder="Senha" class="w-full p-2 mb-4 rounded text-black">
       <button id="login-btn" class="w-full bg-blue-500 hover:bg-blue-600 p-2 rounded mb-2">Entrar</button>
@@ -50,43 +50,57 @@
         <section id="dashboard">
           <h2 class="text-2xl font-bold mb-4">Dashboard</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="bg-white p-4 rounded shadow">Resumo Rápido</div>
-            <div class="bg-white p-4 rounded shadow">Ranking Representantes</div>
-            <div class="bg-white p-4 rounded shadow">Ranking Clientes</div>
+            <div class="bg-white p-4 rounded shadow">
+              <h3 class="font-bold mb-2">Resumo Rápido</h3>
+              <p>Clientes: <span id="count-clientes">0</span></p>
+              <p>Representantes: <span id="count-rep">0</span></p>
+              <p>Produtos: <span id="count-produtos">0</span></p>
+              <p>Agendamentos: <span id="count-agenda">0</span></p>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+              <h3 class="font-bold mb-2">Ranking Representantes</h3>
+              <canvas id="grafico-rep"></canvas>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+              <h3 class="font-bold mb-2">Ranking Clientes</h3>
+              <canvas id="grafico-cli"></canvas>
+            </div>
           </div>
         </section>
 
         <!-- Agendamentos -->
         <section id="agendamentos" class="hidden">
           <h2 class="text-2xl font-bold mb-4">Agendamentos</h2>
-          <p>Aqui entra o CRUD de agendamentos.</p>
+          <div class="bg-white p-4 shadow rounded mb-4">
+            <input id="agenda-data" type="date" class="p-2 border rounded mr-2" />
+            <input id="agenda-cliente" placeholder="Cliente" class="p-2 border rounded mr-2" />
+            <input id="agenda-rep" placeholder="Representante" class="p-2 border rounded mr-2" />
+            <input id="agenda-produto" placeholder="Produto" class="p-2 border rounded mr-2" />
+            <input id="agenda-quantidade" type="number" placeholder="Qtd" class="p-2 border rounded mr-2" />
+            <button id="salvar-agenda" class="bg-blue-500 text-white px-4 py-2 rounded">Salvar</button>
+          </div>
+          <ul id="lista-agenda" class="bg-white p-4 shadow rounded"></ul>
         </section>
 
         <!-- Clientes -->
         <section id="clientes" class="hidden">
-          <h2 class="text-2xl font-bold mb-4">Cadastro de Clientes</h2>
-
-          <!-- Cadastro manual -->
+          <h2 class="text-2xl font-bold mb-4">Clientes</h2>
           <div class="bg-white p-4 shadow rounded mb-4">
             <input id="cliente-nome" placeholder="Nome" class="p-2 border rounded mr-2" />
             <input id="cliente-whatsapp" placeholder="WhatsApp" class="p-2 border rounded mr-2" />
             <button id="salvar-cliente" class="bg-blue-500 text-white px-4 py-2 rounded">Salvar</button>
           </div>
-
-          <!-- Importar planilha -->
           <div class="bg-white p-4 shadow rounded mb-4">
-            <label class="block mb-2 font-bold">Importar Clientes via Excel</label>
+            <label class="block mb-2 font-bold">Importar via Excel</label>
             <input type="file" id="upload-excel" accept=".xlsx" class="mb-2" />
             <button id="importar-clientes" class="bg-green-500 text-white px-4 py-2 rounded">Importar</button>
           </div>
-
-          <!-- Lista -->
           <ul id="lista-clientes" class="bg-white p-4 shadow rounded"></ul>
         </section>
 
         <!-- Representantes -->
         <section id="representantes" class="hidden">
-          <h2 class="text-2xl font-bold mb-4">Cadastro de Representantes</h2>
+          <h2 class="text-2xl font-bold mb-4">Representantes</h2>
           <div class="bg-white p-4 shadow rounded mb-4">
             <input id="rep-nome" placeholder="Nome" class="p-2 border rounded mr-2" />
             <button id="salvar-rep" class="bg-blue-500 text-white px-4 py-2 rounded">Salvar</button>
@@ -96,10 +110,9 @@
 
         <!-- Produtos -->
         <section id="produtos" class="hidden">
-          <h2 class="text-2xl font-bold mb-4">Cadastro de Produtos</h2>
+          <h2 class="text-2xl font-bold mb-4">Produtos</h2>
           <div class="bg-white p-4 shadow rounded mb-4">
             <input id="produto-nome" placeholder="Nome" class="p-2 border rounded mr-2" />
-            <input id="produto-categoria" placeholder="Categoria" class="p-2 border rounded mr-2" />
             <input id="produto-preco" placeholder="Preço" type="number" class="p-2 border rounded mr-2" />
             <button id="salvar-produto" class="bg-blue-500 text-white px-4 py-2 rounded">Salvar</button>
           </div>
@@ -109,9 +122,21 @@
         <!-- Relatórios -->
         <section id="relatorios" class="hidden">
           <h2 class="text-2xl font-bold mb-4">Relatórios</h2>
-          <button id="gerar-pdf" class="bg-red-500 text-white px-4 py-2 rounded">Gerar Relatório PDF</button>
-          <canvas id="grafico-representantes" class="mt-4"></canvas>
-          <canvas id="grafico-clientes" class="mt-4"></canvas>
+          <div class="bg-white p-4 shadow rounded mb-4">
+            <label>Período:</label>
+            <input id="filtro-inicio" type="date" class="p-2 border rounded mr-2" />
+            <input id="filtro-fim" type="date" class="p-2 border rounded mr-2" />
+            <input id="filtro-cliente" placeholder="Cliente" class="p-2 border rounded mr-2" />
+            <input id="filtro-rep" placeholder="Representante" class="p-2 border rounded mr-2" />
+            <input id="filtro-produto" placeholder="Produto" class="p-2 border rounded mr-2" />
+            <button id="aplicar-filtros" class="bg-blue-500 text-white px-4 py-2 rounded">Filtrar</button>
+            <button id="gerar-pdf" class="bg-red-500 text-white px-4 py-2 rounded">Gerar PDF</button>
+          </div>
+          <div class="bg-white p-4 shadow rounded">
+            <h3 class="font-bold mb-2">Relatório</h3>
+            <ul id="lista-relatorios"></ul>
+            <canvas id="grafico-relatorios" class="mt-4"></canvas>
+          </div>
         </section>
 
       </main>
@@ -128,12 +153,10 @@
   <script src="app.js"></script>
 
   <script>
-    // Alternar seções
     function showSection(id) {
       document.querySelectorAll("main section").forEach(sec => sec.classList.add("hidden"));
       document.getElementById(id).classList.remove("hidden");
     }
   </script>
-
 </body>
 </html>
