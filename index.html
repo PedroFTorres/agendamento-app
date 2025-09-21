@@ -28,12 +28,12 @@
         <h2 class="text-xl font-bold mb-6">Meu Painel</h2>
         <nav>
           <ul>
-            <li><button onclick="showSection('dashboard')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Dashboard</button></li>
-            <li><button onclick="showSection('agendamentos')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Agendamentos</button></li>
-            <li><button onclick="showSection('clientes')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Clientes</button></li>
-            <li><button onclick="showSection('representantes')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Representantes</button></li>
-            <li><button onclick="showSection('produtos')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Produtos</button></li>
-            <li><button onclick="showSection('relatorios')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Relatórios</button></li>
+            <li><button onclick="showSectionSafe('dashboard')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Dashboard</button></li>
+            <li><button onclick="showSectionSafe('agendamentos')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Agendamentos</button></li>
+            <li><button onclick="showSectionSafe('clientes')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Clientes</button></li>
+            <li><button onclick="showSectionSafe('representantes')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Representantes</button></li>
+            <li><button onclick="showSectionSafe('produtos')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Produtos</button></li>
+            <li><button onclick="showSectionSafe('relatorios')" class="w-full text-left p-2 hover:bg-gray-200 rounded">Relatórios</button></li>
           </ul>
         </nav>
         <div class="mt-6">
@@ -59,11 +59,15 @@
             </div>
             <div class="bg-white p-4 rounded shadow">
               <h3 class="font-bold mb-2">Ranking Representantes</h3>
-              <canvas id="grafico-rep"></canvas>
+              <div style="height:300px;">
+                <canvas id="grafico-rep"></canvas>
+              </div>
             </div>
             <div class="bg-white p-4 rounded shadow">
               <h3 class="font-bold mb-2">Ranking Clientes</h3>
-              <canvas id="grafico-cli"></canvas>
+              <div style="height:300px;">
+                <canvas id="grafico-cli"></canvas>
+              </div>
             </div>
           </div>
         </section>
@@ -135,7 +139,9 @@
           <div class="bg-white p-4 shadow rounded">
             <h3 class="font-bold mb-2">Relatório</h3>
             <ul id="lista-relatorios"></ul>
-            <canvas id="grafico-relatorios" class="mt-4"></canvas>
+            <div style="height:300px;">
+              <canvas id="grafico-relatorios"></canvas>
+            </div>
           </div>
         </section>
 
@@ -151,12 +157,5 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="app.js"></script>
-
-  <script>
-    function showSection(id) {
-      document.querySelectorAll("main section").forEach(sec => sec.classList.add("hidden"));
-      document.getElementById(id).classList.remove("hidden");
-    }
-  </script>
 </body>
 </html>
