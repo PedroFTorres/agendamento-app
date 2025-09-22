@@ -25,15 +25,20 @@ function header(title) {
 // ================== FORMULÁRIOS BÁSICOS ==================
 function formHTML(type) {
   if (type === "clientes") {
-    return `
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <input id="clientes-nome" class="border p-2 rounded" placeholder="Nome do cliente" required>
-        <input id="clientes-whatsapp" class="border p-2 rounded" placeholder="WhatsApp (ex: 98991234567)">
-        <input id="clientes-rep" class="border p-2 rounded" placeholder="Representante (opcional)">
-      </div>
-      <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
-    `;
-  }
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+      <input id="clientes-nome" class="border p-2 rounded" placeholder="Nome do cliente" required>
+      <input id="clientes-whatsapp" class="border p-2 rounded" placeholder="WhatsApp (ex: 98991234567)">
+      <input id="clientes-rep" class="border p-2 rounded" placeholder="Representante (opcional)">
+    </div>
+    <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
+
+    <div class="mt-4">
+      <label class="block text-sm font-medium mb-1">Importar Clientes de Planilha (.xlsx)</label>
+      <input type="file" id="import-clientes" accept=".xlsx" class="border p-2 rounded w-full">
+    </div>
+  `;
+}
   if (type === "representantes") {
     return `
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
