@@ -1,0 +1,1 @@
+// Código completo do app.js com login/cadastro/logout + CRUD + relatórios + gráficos
