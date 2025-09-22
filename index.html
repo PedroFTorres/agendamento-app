@@ -8,33 +8,122 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
   <div class="flex">
+    <!-- Sidebar -->
     <aside class="w-64 bg-white h-screen shadow-md p-4 flex flex-col">
       <div class="text-xl font-bold mb-6">Meu Painel</div>
-      <nav class="flex-1">
-        <button id="menu-dashboard">Dashboard</button>
-        <button id="menu-agendamentos">Agendamentos</button>
-        <button id="menu-clientes">Clientes</button>
-        <button id="menu-representantes">Representantes</button>
-        <button id="menu-produtos">Produtos</button>
-        <button id="menu-relatorios">Relatórios</button>
+      <nav class="flex-1 space-y-2">
+        <button id="menu-dashboard" class="w-full text-left p-2 rounded hover:bg-gray-200">Dashboard</button>
+        <button id="menu-agendamentos" class="w-full text-left p-2 rounded hover:bg-gray-200">Agendamentos</button>
+        <button id="menu-clientes" class="w-full text-left p-2 rounded hover:bg-gray-200">Clientes</button>
+        <button id="menu-representantes" class="w-full text-left p-2 rounded hover:bg-gray-200">Representantes</button>
+        <button id="menu-produtos" class="w-full text-left p-2 rounded hover:bg-gray-200">Produtos</button>
+        <button id="menu-relatorios" class="w-full text-left p-2 rounded hover:bg-gray-200">Relatórios</button>
       </nav>
       <div class="mt-6">
-        <div>Usuário: <span id="user-email">-</span></div>
-        <button id="logout-btn">Sair</button>
+        <div class="text-sm text-gray-600">Usuário:</div>
+        <div id="user-email" class="font-semibold mb-2">-</div>
+        <button id="logout-btn" class="w-full bg-red-500 text-white p-2 rounded">Sair</button>
       </div>
     </aside>
-    <main class="flex-1 p-6 overflow-auto">
-      <section id="dashboard-section"><h1>Dashboard</h1></section>
-      <section id="agendamentos-section" class="hidden"></section>
-      <section id="clientes-section" class="hidden"></section>
-      <section id="reps-section" class="hidden"></section>
-      <section id="prods-section" class="hidden"></section>
-      <section id="reports-section" class="hidden"></section>
+
+    <!-- Main -->
+    <main class="flex-1 p-6 overflow-auto space-y-8">
+      <!-- Dashboard -->
+      <section id="dashboard-section">
+        <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+        <div id="dashboard-summary" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-white p-4 rounded shadow">Resumo de Agendamentos</div>
+          <div class="bg-white p-4 rounded shadow">Ranking Representantes</div>
+          <div class="bg-white p-4 rounded shadow">Ranking Clientes</div>
+        </div>
+      </section>
+
+      <!-- Agendamentos -->
+      <section id="agendamentos-section" class="hidden">
+        <h2 class="text-xl font-bold mb-4">Gerenciar Agendamentos</h2>
+        <form id="agendamento-form" class="space-y-2 bg-white p-4 rounded shadow">
+          <input id="ag-cliente" placeholder="Cliente" class="w-full border p-2 rounded" required>
+          <input id="ag-rep" placeholder="Representante" class="w-full border p-2 rounded" required>
+          <input id="ag-prod" placeholder="Produto" class="w-full border p-2 rounded" required>
+          <input id="ag-quantidade" type="number" placeholder="Quantidade" class="w-full border p-2 rounded" required>
+          <input id="ag-data" type="date" class="w-full border p-2 rounded" required>
+          <button type="submit" class="w-full bg-green-600 text-white p-2 rounded">Adicionar</button>
+        </form>
+        <ul id="ag-list" class="mt-4 space-y-2"></ul>
+      </section>
+
+      <!-- Clientes -->
+      <section id="clientes-section" class="hidden">
+        <h2 class="text-xl font-bold mb-4">Gerenciar Clientes</h2>
+        <form id="client-form" class="space-y-2 bg-white p-4 rounded shadow">
+          <input id="client-name" placeholder="Nome" class="w-full border p-2 rounded" required>
+          <input id="client-whatsapp" placeholder="WhatsApp" class="w-full border p-2 rounded" required>
+          <input id="client-rep" placeholder="Representante" class="w-full border p-2 rounded">
+          <button type="submit" class="w-full bg-green-600 text-white p-2 rounded">Adicionar</button>
+        </form>
+        <ul id="client-list" class="mt-4 space-y-2"></ul>
+      </section>
+
+      <!-- Representantes -->
+      <section id="representantes-section" class="hidden">
+        <h2 class="text-xl font-bold mb-4">Gerenciar Representantes</h2>
+        <form id="rep-form" class="space-y-2 bg-white p-4 rounded shadow">
+          <input id="rep-name" placeholder="Nome" class="w-full border p-2 rounded" required>
+          <button type="submit" class="w-full bg-green-600 text-white p-2 rounded">Adicionar</button>
+        </form>
+        <ul id="rep-list" class="mt-4 space-y-2"></ul>
+      </section>
+
+      <!-- Produtos -->
+      <section id="produtos-section" class="hidden">
+        <h2 class="text-xl font-bold mb-4">Gerenciar Produtos</h2>
+        <form id="product-form" class="space-y-2 bg-white p-4 rounded shadow">
+          <input id="product-name" placeholder="Nome" class="w-full border p-2 rounded" required>
+          <input id="product-category" placeholder="Categoria" class="w-full border p-2 rounded" required>
+          <input id="product-price" type="number" step="0.01" placeholder="Preço" class="w-full border p-2 rounded" required>
+          <input id="product-image-url" type="url" placeholder="URL da Imagem" class="w-full border p-2 rounded">
+          <button type="submit" class="w-full bg-green-600 text-white p-2 rounded">Adicionar</button>
+        </form>
+        <ul id="product-list" class="mt-4 space-y-2"></ul>
+      </section>
+
+      <!-- Relatórios -->
+      <section id="reports-section" class="hidden p-6 bg-white rounded shadow">
+        <h2 class="text-2xl font-bold mb-4">Relatórios</h2>
+
+        <!-- Filtros -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label for="rel-start" class="block text-sm font-medium">Data Início</label>
+            <input type="date" id="rel-start" class="w-full border p-2 rounded">
+          </div>
+          <div>
+            <label for="rel-end" class="block text-sm font-medium">Data Fim</label>
+            <input type="date" id="rel-end" class="w-full border p-2 rounded">
+          </div>
+          <div class="flex items-end">
+            <button id="btn-relatorio" class="w-full bg-green-600 text-white p-2 rounded">
+              Gerar Relatório
+            </button>
+          </div>
+        </div>
+
+        <!-- Resultados aparecerão aqui -->
+        <div id="relatorio-result" class="mt-6"></div>
+      </section>
     </main>
   </div>
+
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+  <!-- Extras -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- App -->
   <script src="app.js"></script>
 </body>
 </html>
