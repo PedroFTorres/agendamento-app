@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Painel - Agendamento App</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="flex">
+    <aside class="w-64 bg-white h-screen shadow-md p-4 flex flex-col">
+      <div class="text-xl font-bold mb-6">Meu Painel</div>
+      <nav class="flex-1">
+        <button id="menu-dashboard">Dashboard</button>
+        <button id="menu-agendamentos">Agendamentos</button>
+        <button id="menu-clientes">Clientes</button>
+        <button id="menu-representantes">Representantes</button>
+        <button id="menu-produtos">Produtos</button>
+        <button id="menu-relatorios">Relatórios</button>
+      </nav>
+      <div class="mt-6">
+        <div>Usuário: <span id="user-email">-</span></div>
+        <button id="logout-btn">Sair</button>
+      </div>
+    </aside>
+    <main class="flex-1 p-6 overflow-auto">
+      <section id="dashboard-section"><h1>Dashboard</h1></section>
+      <section id="agendamentos-section" class="hidden"></section>
+      <section id="clientes-section" class="hidden"></section>
+      <section id="reps-section" class="hidden"></section>
+      <section id="prods-section" class="hidden"></section>
+      <section id="reports-section" class="hidden"></section>
+    </main>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
