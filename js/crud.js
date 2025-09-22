@@ -223,6 +223,7 @@ function bindItemActions(type, container) {
 document.querySelectorAll(".menu-item").forEach(btn => {
   btn.addEventListener("click", () => renderForm(btn.dataset.page));
 });
+
 // ========== FORMULÁRIO DE AGENDAMENTOS ==========
 function renderAgendamentos() {
   pageContent.innerHTML = `
