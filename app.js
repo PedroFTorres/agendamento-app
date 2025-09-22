@@ -1,172 +1,217 @@
-// ================= CONFIG FIREBASE =================
+// ==================== Firebase Config ====================
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_AUTH_DOMAIN",
-  projectId: "SEU_PROJECT_ID",
-  storageBucket: "SEU_STORAGE_BUCKET",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyAza98u8-NVn9hNbuLwcsaCZX2hXbtVaHk",
+  authDomain: "meu-app-de-login.firebaseapp.com",
+  projectId: "meu-app-de-login",
+  storageBucket: "meu-app-de-login.firebasestorage.app",
+  messagingSenderId: "61119567504",
+  appId: "1:61119567504:web:556bb893c9eba6c4e12a15",
+  measurementId: "G-YY6QTZX57K"
 };
 
+// Inicialização
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// ================= ELEMENTOS =================
-const loginSection = document.getElementById("login-section");
-const appSection = document.getElementById("app-section");
-const usuarioLogado = document.getElementById("usuario-logado");
-
-// ================= LOGIN =================
-document.getElementById("login-btn").addEventListener("click", () => {
-  const email = document.getElementById("login-email").value;
-  const senha = document.getElementById("login-senha").value;
-  auth.signInWithEmailAndPassword(email, senha)
-    .catch(err => alert("Erro no login: " + err.message));
-});
-
-document.getElementById("register-btn").addEventListener("click", () => {
-  const email = document.getElementById("login-email").value;
-  const senha = document.getElementById("login-senha").value;
-  auth.createUserWithEmailAndPassword(email, senha)
-    .catch(err => alert("Erro ao registrar: " + err.message));
-});
-
-document.getElementById("logout-btn").addEventListener("click", () => {
-  auth.signOut();
-});
-
-auth.onAuthStateChanged(user => {
+// ==================== LOGIN / LOGOUT ====================
+auth.onAuthStateChanged((user) => {
   if (user) {
-    loginSection.classList.add("hidden");
-    appSection.classList.remove("hidden");
-    usuarioLogado.textContent = user.email;
-    showSectionSafe("dashboard");
-    atualizarDashboard();
+    document.getElementById("user-email").textContent = user.email;
   } else {
-    loginSection.classList.remove("hidden");
-    appSection.classList.add("hidden");
+    window.location.href = "login.html"; // redireciona caso não logado
   }
 });
 
-// ================= FUNÇÃO SEÇÕES =================
-function showSectionSafe(id) {
-  document.querySelectorAll("main section").forEach(sec => sec.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
-
-  if (id === "clientes") loadClientesUI();
-  if (id === "representantes") loadRepresentantesUI();
-  if (id === "produtos") loadProdutosUI();
-  if (id === "agendamentos") loadAgendamentosUI();
-  if (id === "relatorios") aplicarFiltros();
+const logoutBtn = document.getElementById("logout-btn");
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    try {
+      await auth.signOut();
+      window.location.href = "login.html";
+    } catch (error) {
+      alert("Erro ao sair: " + error.message);
+    }
+  });
 }
 
-// ================= CLIENTES =================
-document.getElementById("salvar-cliente").addEventListener("click", async () => {
-  const nome = document.getElementById("cliente-nome").value;
-  const whatsapp = document.getElementById("cliente-whatsapp").value;
-  if (!nome) return;
-  await db.collection("clientes").add({ nome, whatsapp });
-  document.getElementById("cliente-nome").value = "";
-  document.getElementById("cliente-whatsapp").value = "";
-  loadClientesUI();
-});
+// ==================== DASHBOARD ====================
+async function atualizarDashboard() {
+  const clientes = await db.collection("clientes").get();
+  const representantes = await db.collection("representantes").get();
+  const produtos = await db.collection("produtos").get();
+  const agendamentos = await db.collection("agendamentos").get();
 
-async function loadClientesUI() {
+  document.getElementById("resumo-clientes").textContent = clientes.size;
+  document.getElementById("resumo-representantes").textContent = representantes.size;
+  document.getElementById("resumo-produtos").textContent = produtos.size;
+  document.getElementById("resumo-agendamentos").textContent = agendamentos.size;
+
+  desenharGraficos(agendamentos);
+}
+atualizarDashboard();
+
+function desenharGraficos(agendamentos) {
+  const reps = {};
+  const clientes = {};
+
+  agendamentos.forEach((doc) => {
+    const data = doc.data();
+    reps[data.representante] = (reps[data.representante] || 0) + data.quantidade;
+    clientes[data.cliente] = (clientes[data.cliente] || 0) + data.quantidade;
+  });
+
+  new Chart(document.getElementById("grafico-representantes"), {
+    type: "bar",
+    data: {
+      labels: Object.keys(reps),
+      datasets: [{ label: "Quantidade", data: Object.values(reps), backgroundColor: "lightblue" }]
+    }
+  });
+
+  new Chart(document.getElementById("grafico-clientes"), {
+    type: "bar",
+    data: {
+      labels: Object.keys(clientes),
+      datasets: [{ label: "Quantidade", data: Object.values(clientes), backgroundColor: "lightblue" }]
+    }
+  });
+}
+
+// ==================== CRUD CLIENTES ====================
+const formClientes = document.getElementById("form-clientes");
+if (formClientes) {
+  formClientes.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nome = document.getElementById("cliente-nome").value;
+    const whatsapp = document.getElementById("cliente-whatsapp").value;
+    try {
+      await db.collection("clientes").add({ nome, whatsapp });
+      formClientes.reset();
+      carregarClientes();
+    } catch (err) {
+      alert("Erro ao salvar cliente: " + err.message);
+    }
+  });
+}
+
+async function carregarClientes() {
   const lista = document.getElementById("lista-clientes");
   lista.innerHTML = "";
-  const snapshot = await db.collection("clientes").get();
-  snapshot.forEach(doc => {
-    const li = document.createElement("li");
-    li.textContent = `${doc.data().nome} - ${doc.data().whatsapp}`;
-    lista.appendChild(li);
+  const snap = await db.collection("clientes").get();
+  snap.forEach((doc) => {
+    const data = doc.data();
+    lista.innerHTML += `<div class="flex justify-between p-2 bg-gray-200">
+      <span>${data.nome} - ${data.whatsapp}</span>
+    </div>`;
   });
-  atualizarDashboard();
+}
+carregarClientes();
+
+// Importar clientes por planilha
+const importClientes = document.getElementById("import-clientes");
+if (importClientes) {
+  importClientes.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const clientes = XLSX.utils.sheet_to_json(sheet);
+    for (let c of clientes) {
+      await db.collection("clientes").add({ nome: c.Nome, whatsapp: c.WhatsApp });
+    }
+    carregarClientes();
+  });
 }
 
-// ================= REPRESENTANTES =================
-document.getElementById("salvar-rep").addEventListener("click", async () => {
-  const nome = document.getElementById("rep-nome").value;
-  if (!nome) return;
-  await db.collection("representantes").add({ nome });
-  document.getElementById("rep-nome").value = "";
-  loadRepresentantesUI();
-});
+// ==================== CRUD REPRESENTANTES ====================
+const formRepresentantes = document.getElementById("form-representantes");
+if (formRepresentantes) {
+  formRepresentantes.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nome = document.getElementById("representante-nome").value;
+    try {
+      await db.collection("representantes").add({ nome });
+      formRepresentantes.reset();
+      carregarRepresentantes();
+    } catch (err) {
+      alert("Erro ao salvar representante: " + err.message);
+    }
+  });
+}
 
-async function loadRepresentantesUI() {
-  const lista = document.getElementById("lista-rep");
+async function carregarRepresentantes() {
+  const lista = document.getElementById("lista-representantes");
   lista.innerHTML = "";
-  const snapshot = await db.collection("representantes").get();
-  snapshot.forEach(doc => {
-    const li = document.createElement("li");
-    li.textContent = doc.data().nome;
-    lista.appendChild(li);
+  const snap = await db.collection("representantes").get();
+  snap.forEach((doc) => {
+    const data = doc.data();
+    lista.innerHTML += `<div class="flex justify-between p-2 bg-gray-200">
+      <span>${data.nome}</span>
+    </div>`;
   });
-  atualizarDashboard();
+}
+carregarRepresentantes();
+
+// ==================== CRUD PRODUTOS ====================
+const formProdutos = document.getElementById("form-produtos");
+if (formProdutos) {
+  formProdutos.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nome = document.getElementById("produto-nome").value;
+    const preco = document.getElementById("produto-preco").value;
+    try {
+      await db.collection("produtos").add({ nome, preco });
+      formProdutos.reset();
+      carregarProdutos();
+    } catch (err) {
+      alert("Erro ao salvar produto: " + err.message);
+    }
+  });
 }
 
-// ================= PRODUTOS =================
-document.getElementById("salvar-produto").addEventListener("click", async () => {
-  const nome = document.getElementById("produto-nome").value;
-  const preco = document.getElementById("produto-preco").value;
-  if (!nome) return;
-  await db.collection("produtos").add({ nome, preco: Number(preco) });
-  document.getElementById("produto-nome").value = "";
-  document.getElementById("produto-preco").value = "";
-  loadProdutosUI();
-});
-
-async function loadProdutosUI() {
+async function carregarProdutos() {
   const lista = document.getElementById("lista-produtos");
   lista.innerHTML = "";
-  const snapshot = await db.collection("produtos").get();
-  snapshot.forEach(doc => {
-    const li = document.createElement("li");
-    li.textContent = `${doc.data().nome} - R$ ${doc.data().preco}`;
-    lista.appendChild(li);
+  const snap = await db.collection("produtos").get();
+  snap.forEach((doc) => {
+    const data = doc.data();
+    lista.innerHTML += `<div class="flex justify-between p-2 bg-gray-200">
+      <span>${data.nome} - R$ ${data.preco}</span>
+    </div>`;
   });
-  atualizarDashboard();
+}
+carregarProdutos();
+
+// ==================== CRUD AGENDAMENTOS ====================
+const formAgendamentos = document.getElementById("form-agendamentos");
+if (formAgendamentos) {
+  formAgendamentos.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = document.getElementById("agendamento-data").value;
+    const cliente = document.getElementById("agendamento-cliente").value;
+    const produto = document.getElementById("agendamento-produto").value;
+    const quantidade = parseInt(document.getElementById("agendamento-quantidade").value);
+    try {
+      await db.collection("agendamentos").add({ data, cliente, produto, quantidade });
+      formAgendamentos.reset();
+      carregarAgendamentos();
+    } catch (err) {
+      alert("Erro ao salvar agendamento: " + err.message);
+    }
+  });
 }
 
-// ================= AGENDAMENTOS =================
-document.getElementById("salvar-agenda").addEventListener("click", async () => {
-  const data = document.getElementById("agenda-data").value;
-  const cliente = document.getElementById("agenda-cliente").value;
-  const representante = document.getElementById("agenda-rep").value;
-  const produto = document.getElementById("agenda-produto").value;
-  const quantidade = Number(document.getElementById("agenda-quantidade").value);
-  if (!data || !cliente || !representante || !produto || !quantidade) return;
-  await db.collection("agendamentos").add({ data, cliente, representante, produto, quantidade });
-  document.getElementById("agenda-data").value = "";
-  document.getElementById("agenda-cliente").value = "";
-  document.getElementById("agenda-rep").value = "";
-  document.getElementById("agenda-produto").value = "";
-  document.getElementById("agenda-quantidade").value = "";
-  loadAgendamentosUI();
-});
-
-async function loadAgendamentosUI() {
-  const lista = document.getElementById("lista-agenda");
+async function carregarAgendamentos() {
+  const lista = document.getElementById("lista-agendamentos");
   lista.innerHTML = "";
-  const snapshot = await db.collection("agendamentos").get();
-  snapshot.forEach(doc => {
-    const a = doc.data();
-    const li = document.createElement("li");
-    li.textContent = `${a.data} | ${a.cliente} | ${a.produto} | ${a.quantidade} un | Rep: ${a.representante}`;
-    lista.appendChild(li);
+  const snap = await db.collection("agendamentos").get();
+  snap.forEach((doc) => {
+    const data = doc.data();
+    lista.innerHTML += `<div class="flex justify-between p-2 bg-gray-200">
+      <span>${data.data} - ${data.cliente} - ${data.produto} (${data.quantidade})</span>
+    </div>`;
   });
-  atualizarDashboard();
 }
-
-// ================= DASHBOARD =================
-async function atualizarDashboard() {
-  const countClientes = (await db.collection("clientes").get()).size;
-  const countRep = (await db.collection("representantes").get()).size;
-  const countProdutos = (await db.collection("produtos").get()).size;
-  const countAgenda = (await db.collection("agendamentos").get()).size;
-
-  document.getElementById("count-clientes").textContent = countClientes;
-  document.getElementById("count-rep").textContent = countRep;
-  document.getElementById("count-produtos").textContent = countProdutos;
-  document.getElementById("count-agenda").textContent = countAgenda;
-}
+carregarAgendamentos();
