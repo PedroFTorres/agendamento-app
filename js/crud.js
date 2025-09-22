@@ -445,5 +445,35 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     } else {
       renderForm(page);
     }
+// ================== IMPORTAÇÃO DE CLIENTES (PLANILHA) ==================
+document.getElementById("import-clientes")?.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    const user = await waitForAuth();
+    for (let row of rows) {
+      const nome = row["Nome"] || row["nome"];
+      const whatsapp = row["WhatsApp"] || row["whatsapp"];
+      if (nome) {
+        await db.collection("clientes").add({
+          userId: user.uid,
+          nome,
+          whatsapp: whatsapp || "",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+    alert("Importação concluída!");
+  };
+  reader.readAsArrayBuffer(file);
+});
+
   });
 });
