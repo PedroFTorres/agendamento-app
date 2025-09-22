@@ -223,3 +223,90 @@ function bindItemActions(type, container) {
 document.querySelectorAll(".menu-item").forEach(btn => {
   btn.addEventListener("click", () => renderForm(btn.dataset.page));
 });
+// ========== FORMULÁRIO DE AGENDAMENTOS ==========
+function renderAgendamentos() {
+  pageContent.innerHTML = `
+    <h2 class="text-xl font-bold mb-4">Gerenciar Agendamentos</h2>
+    <form id="agendamento-form" class="bg-white p-4 rounded shadow mb-4 space-y-2">
+      <input type="date" id="agendamento-data" class="border p-2 rounded w-full" required>
+      <input type="number" id="agendamento-quantidade" class="border p-2 rounded w-full" placeholder="Quantidade" required>
+      <input type="text" id="agendamento-observacao" class="border p-2 rounded w-full" placeholder="Observação (opcional)">
+      <button class="bg-blue-600 text-white p-2 rounded w-full">Salvar</button>
+    </form>
+    <ul id="agendamento-list" class="space-y-2"></ul>
+  `;
+
+  const form = document.getElementById("agendamento-form");
+  const list = document.getElementById("agendamento-list");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const user = await waitForAuth();
+    const data = document.getElementById("agendamento-data").value;
+    const quantidade = parseInt(document.getElementById("agendamento-quantidade").value);
+    const observacao = document.getElementById("agendamento-observacao").value;
+
+    try {
+      await db.collection("agendamentos").add({
+        userId: user.uid,
+        data,
+        quantidade,
+        observacao,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      form.reset();
+      toast("Agendamento salvo!");
+    } catch (err) {
+      console.error(err);
+      toast("Erro ao salvar: " + err.message);
+    }
+  });
+
+  waitForAuth().then(user => {
+    db.collection("agendamentos")
+      .where("userId", "==", user.uid)
+      .orderBy("createdAt", "desc")
+      .onSnapshot(snap => {
+        list.innerHTML = "";
+        if (snap.empty) {
+          list.innerHTML = `<li class="text-gray-500">Nenhum agendamento.</li>`;
+          return;
+        }
+        snap.forEach(doc => {
+          const d = doc.data();
+          const li = document.createElement("li");
+          li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
+          li.innerHTML = `
+            <div>
+              <div class="font-semibold">Data: ${d.data}</div>
+              <div class="text-sm text-gray-500">Qtd: ${d.quantidade} • Obs: ${d.observacao || "—"}</div>
+            </div>
+            <div>
+              <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded delete-agendamento">Excluir</button>
+            </div>
+          `;
+          list.appendChild(li);
+        });
+
+        document.querySelectorAll(".delete-agendamento").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            const id = e.target.getAttribute("data-id");
+            if (confirm("Excluir este agendamento?")) {
+              await db.collection("agendamentos").doc(id).delete();
+            }
+          });
+        });
+      });
+  });
+}
+
+// Hook no menu
+document.querySelectorAll(".menu-item").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.page === "agendamentos") {
+      renderAgendamentos();
+    } else {
+      renderForm(btn.dataset.page);
+    }
+  });
+});
