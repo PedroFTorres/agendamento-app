@@ -507,7 +507,7 @@ async function exportarPDF() {
     i++;
   }
 
-   // Gráficos na mesma página, organizados na vertical
+  // Gráficos na mesma página, organizados na vertical
   try {
     const chartReps = document.getElementById("chart-reps");
     const chartClis = document.getElementById("chart-clis");
@@ -530,6 +530,9 @@ async function exportarPDF() {
     console.log("Erro ao adicionar gráficos no PDF", e);
   }
 
+  doc.save("relatorio.pdf");
+} 
+
 // ================== MENU ==================
 document.querySelectorAll(".menu-item").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -539,3 +542,6 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else renderForm(page);
   });
 });
+
+
+  
