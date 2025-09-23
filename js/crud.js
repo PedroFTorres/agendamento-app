@@ -410,14 +410,12 @@ async function exportarPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("p", "mm", "a4");
 
-  // Cabeçalho com logo e nome
+  // Cabeçalho
   try {
     const logoImg = new Image();
     logoImg.src = "https://www.fortes.com.br/assets/images/logo.png";
     doc.addImage(logoImg, "PNG", 10, 5, 40, 20);
-  } catch (e) {
-    // se não conseguir carregar a logo, mostra só o nome
-  }
+  } catch (e) {}
 
   doc.setFontSize(14);
   doc.text("Cerâmica Fortes LTDA", 60, 15);
@@ -427,7 +425,6 @@ async function exportarPDF() {
   // Período
   const start = document.getElementById("rel-start").value;
   const end   = document.getElementById("rel-end").value;
-
   const formatDate = (d) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
   const periodo = start && end ? 
       `Período: ${formatDate(start)} a ${formatDate(end)}` : 
@@ -449,17 +446,18 @@ async function exportarPDF() {
 
   // Cabeçalho da tabela
   doc.setFontSize(9);
+  doc.setFillColor(200, 200, 200); // cinza claro
+  doc.rect(10, y - 4, 190, 8, "F");
+  doc.setTextColor(0, 0, 0);
   doc.text("Cliente", 12, y);
   doc.text("Produto", 72, y);
   doc.text("Qtd", 132, y);
-
-  // Desenhar linha do cabeçalho
-  doc.rect(10, y - 4, 190, 8);
 
   y += 6;
 
   let totalGeral = 0;
   const porProduto = {};
+  let rowIndex = 0;
 
   snap.forEach(docSnap => {
     const d = docSnap.data();
@@ -469,25 +467,44 @@ async function exportarPDF() {
     totalGeral += qtd;
     porProduto[prod] = (porProduto[prod] || 0) + qtd;
 
-    // Linha da tabela
+    // Fundo alternado
+    if (rowIndex % 2 === 0) {
+      doc.setFillColor(245, 245, 245); // cinza bem claro
+      doc.rect(10, y - 4, 190, 8, "F");
+    }
+
+    // Conteúdo
+    doc.setTextColor(0, 0, 0);
     doc.text(cli, 12, y);
     doc.text(prod, 72, y);
     doc.text(formatQuantidade(qtd), 132, y);
-    doc.rect(10, y - 4, 190, 8);
 
-    y += 8;
-    if (y > 250) { // quebra de página
-      doc.addPage(); y = 20;
-    }
+    y += 8; rowIndex++;
+    if (y > 250) { doc.addPage(); y = 20; }
   });
 
   y += 5;
-  doc.setFontSize(10);
+  doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
   doc.text(`Total Geral: ${formatQuantidade(totalGeral)}`, 10, y);
-  y += 5;
+
+  // Totais por produto com cores diferentes
+  const cores = [
+    [255, 99, 132],
+    [54, 162, 235],
+    [255, 206, 86],
+    [75, 192, 192],
+    [153, 102, 255],
+    [255, 159, 64]
+  ];
+  let i = 0;
+  y += 8;
   for (const [prod, qtd] of Object.entries(porProduto)) {
+    const [r, g, b] = cores[i % cores.length];
+    doc.setTextColor(r, g, b);
     doc.text(`Produto ${prod}: ${formatQuantidade(qtd)}`, 10, y);
-    y += 5;
+    y += 6;
+    i++;
   }
 
   // Gráficos menores lado a lado
