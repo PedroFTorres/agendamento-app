@@ -408,22 +408,89 @@ async function gerarRelatorio() {
 
 async function exportarPDF() {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.text("Relatório de Agendamentos", 10, 10);
-  doc.text(document.getElementById("rel-totais").innerText, 10, 20);
+  const doc = new jsPDF("p", "mm", "a4");
 
-  // Gráficos no PDF
-  const chartReps = document.getElementById("chart-reps");
-  const chartClis = document.getElementById("chart-clis");
-
-  if (chartReps) {
-    const imgData = chartReps.toDataURL("image/png", 1.0);
-    doc.addImage(imgData, "PNG", 10, 40, 180, 80);
+  // Logo da empresa (se não conseguir carregar a imagem, só o nome aparece)
+  try {
+    const logoImg = new Image();
+    logoImg.src = "https://www.fortes.com.br/assets/images/logo.png";
+    doc.addImage(logoImg, "PNG", 10, 5, 40, 20);
+  } catch (e) {
+    doc.setFontSize(14);
+    doc.text("Cerâmica Fortes LTDA", 10, 15);
   }
-  if (chartClis) {
-    const imgData2 = chartClis.toDataURL("image/png", 1.0);
-    doc.addPage();
-    doc.addImage(imgData2, "PNG", 10, 20, 180, 80);
+
+  doc.setFontSize(12);
+  doc.text("Cerâmica Fortes LTDA", 60, 15);
+  doc.setFontSize(10);
+  doc.text("Relatório de Agendamentos", 60, 22);
+
+  // Período
+  const start = document.getElementById("rel-start").value;
+  const end   = document.getElementById("rel-end").value;
+  const periodo = start && end ? `Período: ${start} a ${end}` : "Período não informado";
+  doc.text(periodo, 10, 35);
+
+  // Tabela Clientes / Produtos
+  const user = await waitForAuth();
+  let query = db.collection("agendamentos").where("userId", "==", user.uid);
+  if (start) query = query.where("data", ">=", start);
+  if (end)   query = query.where("data", "<=", end);
+  const snap = await query.get();
+
+  let y = 45;
+  doc.setFontSize(11);
+  doc.text("Clientes e Produtos", 10, y); 
+  y += 5;
+  doc.setFontSize(9);
+  doc.text("Cliente", 10, y);
+  doc.text("Produto", 70, y);
+  doc.text("Qtd", 130, y);
+  y += 5;
+
+  let totalGeral = 0;
+  const porProduto = {};
+
+  snap.forEach(docSnap => {
+    const d = docSnap.data();
+    const cli = d.clienteNome || "-";
+    const prod = d.produtoNome || "-";
+    const qtd = d.quantidade || 0;
+    totalGeral += qtd;
+    porProduto[prod] = (porProduto[prod] || 0) + qtd;
+
+    doc.text(cli, 10, y);
+    doc.text(prod, 70, y);
+    doc.text(formatQuantidade(qtd), 130, y);
+    y += 5;
+    if (y > 250) { // quebra de página
+      doc.addPage(); y = 20;
+    }
+  });
+
+  y += 5;
+  doc.setFontSize(10);
+  doc.text(`Total Geral: ${formatQuantidade(totalGeral)}`, 10, y);
+  y += 5;
+  for (const [prod, qtd] of Object.entries(porProduto)) {
+    doc.text(`Produto ${prod}: ${formatQuantidade(qtd)}`, 10, y);
+    y += 5;
+  }
+
+  // Gráficos (menores, na mesma página)
+  try {
+    const chartReps = document.getElementById("chart-reps");
+    const chartClis = document.getElementById("chart-clis");
+    if (chartReps && chartClis) {
+      const img1 = chartReps.toDataURL("image/png", 1.0);
+      const img2 = chartClis.toDataURL("image/png", 1.0);
+      doc.addPage();
+      doc.text("Gráficos", 10, 15);
+      doc.addImage(img1, "PNG", 10, 25, 90, 60);
+      doc.addImage(img2, "PNG", 110, 25, 90, 60);
+    }
+  } catch (e) {
+    console.log("Erro ao adicionar gráficos no PDF", e);
   }
 
   doc.save("relatorio.pdf");
