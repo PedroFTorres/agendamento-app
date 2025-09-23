@@ -411,11 +411,6 @@ async function exportarPDF() {
   const doc = new jsPDF("p", "mm", "a4");
 
   // Cabeçalho
-  try {
-    const logoImg = new Image();
-    logoImg.src = "https://www.fortes.com.br/assets/images/logo.png";
-    doc.addImage(logoImg, "PNG", 10, 5, 40, 20);
-  } catch (e) {}
 
   doc.setFontSize(14);
   doc.text("Cerâmica Fortes LTDA", 60, 15);
