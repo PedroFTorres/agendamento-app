@@ -2,7 +2,7 @@
 const pageContent = document.getElementById("page-content");
 
 function toast(msg) {
-  try { alert(msg); } catch(_) { console.log(msg); }
+  try { alert(msg); } catch (_) { console.log(msg); }
 }
 
 async function waitForAuth() {
@@ -22,23 +22,23 @@ function header(title) {
   return `<h2 class="text-xl font-bold mb-4">${title}</h2>`;
 }
 
-// ================== FORMULÁRIOS BÁSICOS ==================
+// ================== FORMULÁRIOS ==================
 function formHTML(type) {
   if (type === "clientes") {
-  return `
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-      <input id="clientes-nome" class="border p-2 rounded" placeholder="Nome do cliente" required>
-      <input id="clientes-whatsapp" class="border p-2 rounded" placeholder="WhatsApp (ex: 98991234567)">
-      <input id="clientes-rep" class="border p-2 rounded" placeholder="Representante (opcional)">
-    </div>
-    <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
+    return `
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <input id="clientes-nome" class="border p-2 rounded" placeholder="Nome do cliente" required>
+        <input id="clientes-whatsapp" class="border p-2 rounded" placeholder="WhatsApp (ex: 98991234567)">
+        <input id="clientes-rep" class="border p-2 rounded" placeholder="Representante (opcional)">
+      </div>
+      <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
 
-    <div class="mt-4">
-      <label class="block text-sm font-medium mb-1">Importar Clientes de Planilha (.xlsx)</label>
-      <input type="file" id="import-clientes" accept=".xlsx" class="border p-2 rounded w-full">
-    </div>
-  `;
-}
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-1">Importar Clientes de Planilha (.xlsx)</label>
+        <input type="file" id="import-clientes" accept=".xlsx" class="border p-2 rounded w-full">
+      </div>
+    `;
+  }
   if (type === "representantes") {
     return `
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -57,13 +57,13 @@ function formHTML(type) {
       <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
     `;
   }
-  // fallback
   return `
     <input id="${type}-name" class="border p-2 rounded w-full" placeholder="Nome" required>
     <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
   `;
 }
 
+// ================== LISTAGEM BÁSICA ==================
 function listItem(type, id, data) {
   let main = "";
   if (type === "clientes") {
@@ -99,58 +99,37 @@ function bindBasicActions(container) {
 
       if (a === "d") {
         if (!confirm("Excluir este registro?")) return;
-        try {
-          await db.collection(type).doc(id).delete();
-        } catch (err) {
-          console.error(err);
-          toast("Falha ao excluir: " + (err.message || err));
-        }
+        await db.collection(type).doc(id).delete();
       } else if (a === "e") {
-        try {
-          const snap = await db.collection(type).doc(id).get();
-          const d = snap.data() || {};
-          let resp, promptStr;
-          if (type === "clientes") {
-            promptStr = `Edite: nome, whatsapp, representante\nAtual: ${d.nome||""}, ${d.whatsapp||""}, ${d.representante||""}`;
-            resp = prompt(promptStr);
-            if (resp == null) return;
-            const [nome, whatsappRaw, rep] = resp.split(",").map(s => (s||"").trim());
-            const whatsapp = (whatsappRaw || "").replace(/^\+?55/, "");
-            await db.collection(type).doc(id).update({ nome, whatsapp, representante: rep || null });
-          } else if (type === "representantes") {
-            promptStr = `Edite: nome\nAtual: ${d.nome||""}`;
-            resp = prompt(promptStr);
-            if (resp == null) return;
-            await db.collection(type).doc(id).update({ nome: resp.trim() });
-          } else if (type === "produtos") {
-            promptStr = `Edite: nome, preco, categoria\nAtual: ${d.nome||""}, ${d.preco||0}, ${d.categoria||""}`;
-            resp = prompt(promptStr);
-            if (resp == null) return;
-            const [nome, precoStr, cat] = resp.split(",").map(s => (s||"").trim());
-            const preco = parseFloat(precoStr)||0;
-            await db.collection(type).doc(id).update({ nome, preco, categoria: cat || null });
-          } else {
-            promptStr = `Edite: name\nAtual: ${d.name||""}`;
-            resp = prompt(promptStr);
-            if (resp == null) return;
-            await db.collection(type).doc(id).update({ name: resp.trim() });
-          }
-        } catch (err) {
-          console.error(err);
-          toast("Falha ao editar: " + (err.message || err));
+        const snap = await db.collection(type).doc(id).get();
+        const d = snap.data() || {};
+        let resp;
+        if (type === "clientes") {
+          resp = prompt(`Edite: nome, whatsapp, representante\nAtual: ${d.nome||""}, ${d.whatsapp||""}, ${d.representante||""}`);
+          if (resp == null) return;
+          const [nome, whatsappRaw, rep] = resp.split(",").map(s => (s||"").trim());
+          const whatsapp = (whatsappRaw || "").replace(/^\+?55/, "");
+          await db.collection(type).doc(id).update({ nome, whatsapp, representante: rep || null });
+        } else if (type === "representantes") {
+          resp = prompt(`Edite: nome\nAtual: ${d.nome||""}`);
+          if (resp == null) return;
+          await db.collection(type).doc(id).update({ nome: resp.trim() });
+        } else if (type === "produtos") {
+          resp = prompt(`Edite: nome, preco, categoria\nAtual: ${d.nome||""}, ${d.preco||0}, ${d.categoria||""}`);
+          if (resp == null) return;
+          const [nome, precoStr, cat] = resp.split(",").map(s => (s||"").trim());
+          const preco = parseFloat(precoStr)||0;
+          await db.collection(type).doc(id).update({ nome, preco, categoria: cat || null });
         }
       }
     });
   });
 }
 
+// ================== RENDER FORM ==================
 function renderForm(type) {
   pageContent.innerHTML = `
-    ${header(
-      type === "clientes" ? "Gerenciar Clientes" :
-      type === "representantes" ? "Gerenciar Representantes" :
-      type === "produtos" ? "Gerenciar Produtos" : type
-    )}
+    ${header(type.charAt(0).toUpperCase() + type.slice(1))}
     <form id="${type}-form" class="bg-white p-4 rounded shadow mb-4">
       ${formHTML(type)}
     </form>
@@ -162,323 +141,237 @@ function renderForm(type) {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    try {
-      const user = await waitForAuth();
-      const uid = user.uid;
+    const user = await waitForAuth();
+    const uid = user.uid;
 
-      let payload = { userId: uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+    let payload = { userId: uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
 
-      if (type === "clientes") {
-        const nome = document.getElementById("clientes-nome").value.trim();
-        let whatsapp = document.getElementById("clientes-whatsapp").value.trim();
-        const representante = document.getElementById("clientes-rep").value.trim();
-        if (!nome) return toast("Informe o nome do cliente.");
-        whatsapp = whatsapp.replace(/^\+?55/, ""); // remove +55/55 se vier
-        payload = { ...payload, nome, whatsapp, representante: representante || null };
-      } else if (type === "representantes") {
-        const nome = document.getElementById("representantes-nome").value.trim();
-        if (!nome) return toast("Informe o nome do representante.");
-        payload = { ...payload, nome };
-      } else if (type === "produtos") {
-        const nome = document.getElementById("produtos-nome").value.trim();
-        const preco = parseFloat(document.getElementById("produtos-preco").value) || 0;
-        const categoria = document.getElementById("produtos-categoria").value.trim();
-        if (!nome) return toast("Informe o nome do produto.");
-        payload = { ...payload, nome, preco, categoria: categoria || null };
-      } else {
-        const name = document.getElementById(`${type}-name`).value.trim();
-        if (!name) return toast("Informe o nome.");
-        payload = { ...payload, name };
-      }
-
-      await db.collection(type).add(payload);
-      form.reset();
-      toast("Salvo com sucesso!");
-    } catch (err) {
-      console.error(err);
-      toast("Falha ao salvar: " + (err.message || err));
+    if (type === "clientes") {
+      const nome = document.getElementById("clientes-nome").value.trim();
+      let whatsapp = document.getElementById("clientes-whatsapp").value.trim();
+      const representante = document.getElementById("clientes-rep").value.trim();
+      if (!nome) return toast("Informe o nome do cliente.");
+      whatsapp = whatsapp.replace(/^\+?55/, "");
+      payload = { ...payload, nome, whatsapp, representante: representante || null };
+    } else if (type === "representantes") {
+      const nome = document.getElementById("representantes-nome").value.trim();
+      if (!nome) return toast("Informe o nome do representante.");
+      payload = { ...payload, nome };
+    } else if (type === "produtos") {
+      const nome = document.getElementById("produtos-nome").value.trim();
+      const preco = parseFloat(document.getElementById("produtos-preco").value) || 0;
+      const categoria = document.getElementById("produtos-categoria").value.trim();
+      if (!nome) return toast("Informe o nome do produto.");
+      payload = { ...payload, nome, preco, categoria: categoria || null };
     }
+
+    await db.collection(type).add(payload);
+    form.reset();
+    toast("Salvo com sucesso!");
   });
 
   waitForAuth().then(user => {
     db.collection(type)
       .where("userId", "==", user.uid)
-      .orderBy("createdAt", "desc") // exige índice
-      .onSnapshot(
-        (snap) => {
-          list.innerHTML = "";
-          if (snap.empty) {
-            list.innerHTML = `<li class="text-gray-500">Nenhum registro.</li>`;
-            return;
-          }
-          snap.forEach(doc => list.appendChild(listItem(type, doc.id, doc.data())));
-          bindBasicActions(list);
-        },
-        (err) => {
-          console.error(err);
-          toast("Erro ao listar: " + (err.message || err));
+      .orderBy("createdAt", "desc")
+      .onSnapshot(snap => {
+        list.innerHTML = "";
+        if (snap.empty) {
+          list.innerHTML = `<li class="text-gray-500">Nenhum registro.</li>`;
+          return;
         }
-      );
+        snap.forEach(doc => list.appendChild(listItem(type, doc.id, doc.data())));
+        bindBasicActions(list);
+      });
   });
+
+  // Importação de planilha para clientes
+  if (type === "clientes") {
+    document.getElementById("import-clientes")?.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+        const user = await waitForAuth();
+        for (let row of rows) {
+          const nome = row["Nome"] || row["nome"];
+          const whatsapp = row["WhatsApp"] || row["whatsapp"];
+          if (nome) {
+            await db.collection("clientes").add({
+              userId: user.uid,
+              nome,
+              whatsapp: whatsapp || "",
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+        }
+        alert("Importação concluída!");
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
 }
 
-// ================== AGENDAMENTOS ======================
+// ================== AGENDAMENTOS ==================
 function renderAgendamentos() {
   pageContent.innerHTML = `
-    ${header("Gerenciar Agendamentos")}
+    ${header("Agendamentos")}
     <form id="agendamento-form" class="bg-white p-4 rounded shadow mb-4 space-y-3">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <div>
-          <label class="text-sm text-gray-600">Cliente</label>
-          <select id="ag-cliente" class="border p-2 rounded w-full"></select>
-        </div>
-        <div>
-          <label class="text-sm text-gray-600">Representante</label>
-          <select id="ag-representante" class="border p-2 rounded w-full"></select>
-        </div>
-        <div>
-          <label class="text-sm text-gray-600">Produto</label>
-          <select id="ag-produto" class="border p-2 rounded w-full"></select>
-        </div>
+        <select id="ag-cliente" class="border p-2 rounded w-full"></select>
+        <select id="ag-representante" class="border p-2 rounded w-full"></select>
+        <select id="ag-produto" class="border p-2 rounded w-full"></select>
       </div>
-
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <div>
-          <label class="text-sm text-gray-600">Data</label>
-          <input type="date" id="ag-data" class="border p-2 rounded w-full" required>
-        </div>
-        <div>
-          <label class="text-sm text-gray-600">Quantidade</label>
-          <input type="number" id="ag-qtd" class="border p-2 rounded w-full" placeholder="Quantidade" required>
-        </div>
-        <div>
-          <label class="text-sm text-gray-600">Observação</label>
-          <input type="text" id="ag-obs" class="border p-2 rounded w-full" placeholder="Observação (opcional)">
-        </div>
+        <input type="date" id="ag-data" class="border p-2 rounded w-full" required>
+        <input type="number" id="ag-qtd" class="border p-2 rounded w-full" placeholder="Quantidade" required>
+        <input type="text" id="ag-obs" class="border p-2 rounded w-full" placeholder="Observação (opcional)">
       </div>
-
       <button class="bg-blue-600 text-white p-2 rounded w-full mt-2">Salvar</button>
-      <p id="ag-alert" class="text-sm text-red-600 mt-2 hidden"></p>
     </form>
-
     <ul id="ag-list" class="space-y-2"></ul>
   `;
 
   const $selCliente = document.getElementById("ag-cliente");
-  const $selRep     = document.getElementById("ag-representante");
-  const $selProd    = document.getElementById("ag-produto");
-  const $form       = document.getElementById("agendamento-form");
-  const $list       = document.getElementById("ag-list");
-  const $alert      = document.getElementById("ag-alert");
+  const $selRep = document.getElementById("ag-representante");
+  const $selProd = document.getElementById("ag-produto");
+  const $form = document.getElementById("agendamento-form");
+  const $list = document.getElementById("ag-list");
 
-  const setAlert = (msg) => {
-    if (!msg) { $alert.classList.add("hidden"); $alert.textContent = ""; }
-    else { $alert.classList.remove("hidden"); $alert.textContent = msg; }
-  };
-
-  // Carregar selects
-  (async () => {
+  async function loadOptions(coll, select, labelField = "nome") {
     const user = await waitForAuth();
-    const uid = user.uid;
+    select.innerHTML = `<option value="">Selecione ${coll}</option>`;
+    const snap = await db.collection(coll)
+      .where("userId", "==", user.uid)
+      .orderBy("createdAt", "desc")
+      .get();
+    snap.forEach(doc => {
+      const d = doc.data();
+      const opt = document.createElement("option");
+      opt.value = doc.id;
+      opt.textContent = d[labelField] || "(sem nome)";
+      select.appendChild(opt);
+    });
+  }
 
-    async function loadOptions(coll, select, labelField = "nome") {
-      select.innerHTML = `<option value="">Selecione...</option>`;
-      try {
-        const snap = await db.collection(coll)
-          .where("userId", "==", uid)
-          .orderBy("createdAt", "desc") // exige índice
-          .get();
+  loadOptions("clientes", $selCliente);
+  loadOptions("representantes", $selRep);
+  loadOptions("produtos", $selProd);
+
+  $form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const user = await waitForAuth();
+    const clienteNome = $selCliente.selectedOptions[0]?.textContent || "";
+    const repNome = $selRep.selectedOptions[0]?.textContent || "";
+    const prodNome = $selProd.selectedOptions[0]?.textContent || "";
+    const data = document.getElementById("ag-data").value;
+    const quantidade = parseInt(document.getElementById("ag-qtd").value);
+    const observacao = document.getElementById("ag-obs").value;
+    await db.collection("agendamentos").add({
+      userId: user.uid,
+      clienteNome,
+      representanteNome: repNome,
+      produtoNome: prodNome,
+      data,
+      quantidade,
+      observacao,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    $form.reset();
+  });
+
+  waitForAuth().then(user => {
+    db.collection("agendamentos")
+      .where("userId", "==", user.uid)
+      .orderBy("createdAt", "desc")
+      .onSnapshot(snap => {
+        $list.innerHTML = "";
         if (snap.empty) {
-          const label = coll.charAt(0).toUpperCase() + coll.slice(1);
-          select.innerHTML = `<option value="">Cadastre ${label} primeiro</option>`;
+          $list.innerHTML = `<li class="text-gray-500">Nenhum agendamento.</li>`;
           return;
         }
         snap.forEach(doc => {
           const d = doc.data();
-          const opt = document.createElement("option");
-          opt.value = doc.id;
-          opt.textContent = d[labelField] || "(sem nome)";
-          opt.setAttribute("data-nome", d[labelField] || "");
-          if (coll === "produtos") {
-            opt.setAttribute("data-preco", Number(d.preco || 0));
-          }
-          select.appendChild(opt);
+          const li = document.createElement("li");
+          li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
+          li.innerHTML = `
+            <div>
+              <div class="font-semibold">${d.data} • ${d.clienteNome}</div>
+              <div class="text-sm text-gray-500">Rep: ${d.representanteNome} • Prod: ${d.produtoNome} • Qtd: ${d.quantidade}</div>
+            </div>
+            <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
+          `;
+          $list.appendChild(li);
+          li.querySelector("button").addEventListener("click", async () => {
+            if (confirm("Excluir este agendamento?")) {
+              await db.collection("agendamentos").doc(doc.id).delete();
+            }
+          });
         });
-      } catch (err) {
-        console.error(err);
-        setAlert("Erro ao carregar " + coll + ": " + (err.message || err));
-      }
-    }
-
-    await loadOptions("clientes", $selCliente, "nome");
-    await loadOptions("representantes", $selRep, "nome");
-    await loadOptions("produtos", $selProd, "nome");
-  })();
-
-  // Salvar agendamento
-  $form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    setAlert("");
-
-    const user = await waitForAuth();
-    const uid = user.uid;
-
-    const clienteId = $selCliente.value;
-    const repId     = $selRep.value;
-    const prodId    = $selProd.value;
-
-    const clienteNome = $selCliente.selectedOptions[0]?.getAttribute("data-nome") || "";
-    const repNome     = $selRep.selectedOptions[0]?.getAttribute("data-nome") || "";
-    const prodNome    = $selProd.selectedOptions[0]?.getAttribute("data-nome") || "";
-    const prodPreco   = parseFloat($selProd.selectedOptions[0]?.getAttribute("data-preco") || "0") || 0;
-
-    const data        = document.getElementById("ag-data").value;
-    const quantidade  = parseFloat(document.getElementById("ag-qtd").value);
-    const observacao  = document.getElementById("ag-obs").value.trim();
-
-    if (!clienteId)  return setAlert("Selecione um cliente.");
-    if (!repId)      return setAlert("Selecione um representante.");
-    if (!prodId)     return setAlert("Selecione um produto.");
-    if (!data)       return setAlert("Informe a data.");
-    if (!quantidade || quantidade <= 0) return setAlert("Informe uma quantidade válida.");
-
-    try {
-      await db.collection("agendamentos").add({
-        userId: uid,
-        clienteId, clienteNome,
-        representanteId: repId, representanteNome: repNome,
-        produtoId: prodId, produtoNome: prodNome, produtoPreco: prodPreco,
-        data,
-        quantidade,
-        observacao: observacao || null,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
-      $form.reset();
-      toast("Agendamento salvo!");
-    } catch (err) {
-      console.error(err);
-      setAlert("Erro ao salvar: " + (err.message || err));
-    }
-  });
-
-  // Listar agendamentos em tempo real
-  waitForAuth().then(user => {
-    db.collection("agendamentos")
-      .where("userId", "==", user.uid)
-      .orderBy("createdAt", "desc") // exige índice
-      .onSnapshot(
-        (snap) => {
-          $list.innerHTML = "";
-          if (snap.empty) {
-            $list.innerHTML = `<li class="text-gray-500">Nenhum agendamento.</li>`;
-            return;
-          }
-          snap.forEach(doc => {
-            const d = doc.data();
-            const li = document.createElement("li");
-            li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
-            li.innerHTML = `
-              <div>
-                <div class="font-semibold">${d.data || "—"} • ${d.clienteNome || "—"}</div>
-                <div class="text-sm text-gray-500">
-                  Rep: ${d.representanteNome || "—"} • Prod: ${d.produtoNome || "—"} • Qtd: ${d.quantidade || 0}
-                </div>
-                <div class="text-xs text-gray-400">Obs: ${d.observacao || "—"}</div>
-              </div>
-              <div class="space-x-2">
-                ${btn("Editar", "bg-yellow-500 text-white", `data-a="edit-ag" data-id="${doc.id}"`)}
-                ${btn("Excluir", "bg-red-600 text-white", `data-a="del-ag" data-id="${doc.id}"`)}
-              </div>
-            `;
-            $list.appendChild(li);
-          });
-
-          // ações
-          $list.querySelectorAll('button[data-a="del-ag"]').forEach(b => {
-            b.addEventListener("click", async (e) => {
-              const id = e.currentTarget.getAttribute("data-id");
-              if (!confirm("Excluir este agendamento?")) return;
-              try {
-                await db.collection("agendamentos").doc(id).delete();
-              } catch (err) {
-                console.error(err);
-                toast("Falha ao excluir: " + (err.message || err));
-              }
-            });
-          });
-
-          $list.querySelectorAll('button[data-a="edit-ag"]').forEach(b => {
-            b.addEventListener("click", async (e) => {
-              const id = e.currentTarget.getAttribute("data-id");
-              try {
-                const snap = await db.collection("agendamentos").doc(id).get();
-                const d = snap.data() || {};
-                const resp = prompt(
-                  `Edite: data, quantidade, observacao\nAtual: ${d.data||""}, ${d.quantidade||0}, ${d.observacao||""}`
-                );
-                if (resp == null) return;
-                const [dataStr, qtdStr, obsStr] = resp.split(",").map(s => (s||"").trim());
-                const qtd = parseFloat(qtdStr)||0;
-                if (!dataStr) return toast("Data inválida.");
-                if (!qtd || qtd <= 0) return toast("Quantidade inválida.");
-                await db.collection("agendamentos").doc(id).update({
-                  data: dataStr,
-                  quantidade: qtd,
-                  observacao: obsStr || null
-                });
-              } catch (err) {
-                console.error(err);
-                toast("Falha ao editar: " + (err.message || err));
-              }
-            });
-          });
-        },
-        (err) => {
-          console.error(err);
-          toast("Erro ao listar: " + (err.message || err));
-        }
-      );
   });
 }
 
-// ================== MENU LATERAL ======================
-document.querySelectorAll(".menu-item").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const page = btn.dataset.page;
-    if (page === "agendamentos") {
-      renderAgendamentos();
-    } else {
-      renderForm(page);
-    }
-// ================== IMPORTAÇÃO DE CLIENTES (PLANILHA) ==================
-document.getElementById("import-clientes")?.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+// ================== RELATÓRIOS ==================
+function renderRelatorios() {
+  pageContent.innerHTML = `
+    ${header("Relatórios")}
+    <div class="bg-white p-4 rounded shadow mb-4 space-y-3">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div>
+          <label class="text-sm text-gray-600">Data Início</label>
+          <input type="date" id="rel-start" class="border p-2 rounded w-full">
+        </div>
+        <div>
+          <label class="text-sm text-gray-600">Data Fim</label>
+          <input type="date" id="rel-end" class="border p-2 rounded w-full">
+        </div>
+      </div>
+      <button id="rel-filtrar" class="bg-blue-600 text-white p-2 rounded w-full">Filtrar</button>
+      <button id="rel-pdf" class="bg-green-600 text-white p-2 rounded w-full">Exportar PDF</button>
+    </div>
+    <div class="bg-white p-4 rounded shadow mb-4">
+      <h3 class="text-lg font-semibold mb-2">Totais</h3>
+      <div id="rel-totais">Selecione um período.</div>
+    </div>
+    <div class="bg-white p-4 rounded shadow mb-4">
+      <h3 class="text-lg font-semibold mb-2">Ranking Representantes</h3>
+      <canvas id="chart-reps" height="100"></canvas>
+    </div>
+    <div class="bg-white p-4 rounded shadow">
+      <h3 class="text-lg font-semibold mb-2">Ranking Clientes</h3>
+      <canvas id="chart-clis" height="100"></canvas>
+    </div>
+  `;
 
-  const reader = new FileReader();
-  reader.onload = async (evt) => {
-    const data = new Uint8Array(evt.target.result);
-    const workbook = XLSX.read(data, { type: "array" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
+  document.getElementById("rel-filtrar").addEventListener("click", gerarRelatorio);
+  document.getElementById("rel-pdf").addEventListener("click", exportarPDF);
+}
 
-    const user = await waitForAuth();
-    for (let row of rows) {
-      const nome = row["Nome"] || row["nome"];
-      const whatsapp = row["WhatsApp"] || row["whatsapp"];
-      if (nome) {
-        await db.collection("clientes").add({
-          userId: user.uid,
-          nome,
-          whatsapp: whatsapp || "",
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      }
-    }
-    alert("Importação concluída!");
-  };
-  reader.readAsArrayBuffer(file);
-});
+async function gerarRelatorio() {
+  const user = await waitForAuth();
+  const uid = user.uid;
 
-  });
-});
+  const start = document.getElementById("rel-start").value;
+  const end   = document.getElementById("rel-end").value;
+
+  let query = db.collection("agendamentos").where("userId", "==", uid);
+  if (start) query = query.where("data", ">=", start);
+  if (end)   query = query.where("data", "<=", end);
+
+  const snap = await query.get();
+
+  let totalGeral = 0;
+  const porProduto = {};
+  const porRep = {};
+  const porCli = {};
+
+  snap.forEach(doc => {
+    const d = doc.data();
+    const qtd = d.quantidade || 0;
+    totalGeral += qtd;
+    porProduto[d.produtoNome] = (porProduto[d.produtoNome]||0
