@@ -507,24 +507,28 @@ async function exportarPDF() {
     i++;
   }
 
-  // Gráficos menores lado a lado
+   // Gráficos na mesma página, organizados na vertical
   try {
     const chartReps = document.getElementById("chart-reps");
     const chartClis = document.getElementById("chart-clis");
     if (chartReps && chartClis) {
       const img1 = chartReps.toDataURL("image/png", 1.0);
       const img2 = chartClis.toDataURL("image/png", 1.0);
+
       doc.addPage();
       doc.text("Gráficos", 10, 15);
-      doc.addImage(img1, "PNG", 10, 25, 90, 60);
-      doc.addImage(img2, "PNG", 110, 25, 90, 60);
+
+      // Representantes (em cima)
+      doc.text("Ranking de Representantes", 10, 25);
+      doc.addImage(img1, "PNG", 10, 30, 180, 60);
+
+      // Clientes (logo abaixo)
+      doc.text("Ranking de Clientes", 10, 100);
+      doc.addImage(img2, "PNG", 10, 105, 180, 60);
     }
   } catch (e) {
     console.log("Erro ao adicionar gráficos no PDF", e);
   }
-
-  doc.save("relatorio.pdf");
-}
 
 // ================== MENU ==================
 document.querySelectorAll(".menu-item").forEach(btn => {
