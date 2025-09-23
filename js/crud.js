@@ -410,28 +410,32 @@ async function exportarPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("p", "mm", "a4");
 
-  // Logo da empresa (se não conseguir carregar a imagem, só o nome aparece)
+  // Cabeçalho com logo e nome
   try {
     const logoImg = new Image();
     logoImg.src = "https://www.fortes.com.br/assets/images/logo.png";
     doc.addImage(logoImg, "PNG", 10, 5, 40, 20);
   } catch (e) {
-    doc.setFontSize(14);
-    doc.text("Cerâmica Fortes LTDA", 10, 15);
+    // se não conseguir carregar a logo, mostra só o nome
   }
 
-  doc.setFontSize(12);
+  doc.setFontSize(14);
   doc.text("Cerâmica Fortes LTDA", 60, 15);
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.text("Relatório de Agendamentos", 60, 22);
 
   // Período
   const start = document.getElementById("rel-start").value;
   const end   = document.getElementById("rel-end").value;
-  const periodo = start && end ? `Período: ${start} a ${end}` : "Período não informado";
+
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
+  const periodo = start && end ? 
+      `Período: ${formatDate(start)} a ${formatDate(end)}` : 
+      "Período não informado";
+  doc.setFontSize(10);
   doc.text(periodo, 10, 35);
 
-  // Tabela Clientes / Produtos
+  // Buscar dados
   const user = await waitForAuth();
   let query = db.collection("agendamentos").where("userId", "==", user.uid);
   if (start) query = query.where("data", ">=", start);
@@ -442,11 +446,17 @@ async function exportarPDF() {
   doc.setFontSize(11);
   doc.text("Clientes e Produtos", 10, y); 
   y += 5;
+
+  // Cabeçalho da tabela
   doc.setFontSize(9);
-  doc.text("Cliente", 10, y);
-  doc.text("Produto", 70, y);
-  doc.text("Qtd", 130, y);
-  y += 5;
+  doc.text("Cliente", 12, y);
+  doc.text("Produto", 72, y);
+  doc.text("Qtd", 132, y);
+
+  // Desenhar linha do cabeçalho
+  doc.rect(10, y - 4, 190, 8);
+
+  y += 6;
 
   let totalGeral = 0;
   const porProduto = {};
@@ -459,10 +469,13 @@ async function exportarPDF() {
     totalGeral += qtd;
     porProduto[prod] = (porProduto[prod] || 0) + qtd;
 
-    doc.text(cli, 10, y);
-    doc.text(prod, 70, y);
-    doc.text(formatQuantidade(qtd), 130, y);
-    y += 5;
+    // Linha da tabela
+    doc.text(cli, 12, y);
+    doc.text(prod, 72, y);
+    doc.text(formatQuantidade(qtd), 132, y);
+    doc.rect(10, y - 4, 190, 8);
+
+    y += 8;
     if (y > 250) { // quebra de página
       doc.addPage(); y = 20;
     }
@@ -477,7 +490,7 @@ async function exportarPDF() {
     y += 5;
   }
 
-  // Gráficos (menores, na mesma página)
+  // Gráficos menores lado a lado
   try {
     const chartReps = document.getElementById("chart-reps");
     const chartClis = document.getElementById("chart-clis");
