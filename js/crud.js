@@ -374,4 +374,49 @@ async function gerarRelatorio() {
     const d = doc.data();
     const qtd = d.quantidade || 0;
     totalGeral += qtd;
-    porProduto[d.produtoNome] = (porProduto[d.produtoNome]||0
+    porProduto[d.produtoNome] = (porProduto[d.produtoNome] || 0) + qtd;
+    porRep[d.representanteNome] = (porRep[d.representanteNome] || 0) + qtd;
+    porCli[d.clienteNome] = (porCli[d.clienteNome] || 0) + qtd;
+  });
+
+  // Totais
+  let html = `<p><strong>Total Geral:</strong> ${totalGeral}</p><ul>`;
+  for (const [prod, qtd] of Object.entries(porProduto)) {
+    html += `<li>${prod}: ${qtd}</li>`;
+  }
+  html += "</ul>";
+  document.getElementById("rel-totais").innerHTML = html;
+
+  // Gráficos
+  new Chart(document.getElementById("chart-reps"), {
+    type: "bar",
+    data: { labels: Object.keys(porRep), datasets: [{ label: "Qtd", data: Object.values(porRep), backgroundColor: "orange" }] }
+  });
+
+  new Chart(document.getElementById("chart-clis"), {
+    type: "bar",
+    data: { labels: Object.keys(porCli), datasets: [{ label: "Qtd", data: Object.values(porCli), backgroundColor: "blue" }] }
+  });
+}
+
+function exportarPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.text("Relatório de Agendamentos", 10, 10);
+  doc.text(document.getElementById("rel-totais").innerText, 10, 20);
+  doc.save("relatorio.pdf");
+}
+
+// ================== MENU LATERAL ======================
+document.querySelectorAll(".menu-item").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const page = btn.dataset.page;
+    if (page === "agendamentos") {
+      renderAgendamentos();
+    } else if (page === "relatorios") {
+      renderRelatorios();
+    } else {
+      renderForm(page);
+    }
+  });
+});
