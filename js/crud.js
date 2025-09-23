@@ -14,12 +14,19 @@ async function waitForAuth() {
   });
 }
 
-function btn(label, classes = "", attrs = "") {
-  return `<button class="px-2 py-1 rounded ${classes}" ${attrs}>${label}</button>`;
+// ================== FORMATAÇÕES ==================
+function formatQuantidade(num) {
+  return Number(num || 0).toLocaleString("pt-BR");
 }
-
-function header(title) {
-  return `<h2 class="text-xl font-bold mb-4">${title}</h2>`;
+function formatMoeda(num) {
+  return Number(num || 0).toLocaleString("pt-BR", {
+    style: "currency", currency: "BRL", minimumFractionDigits: 2
+  });
+}
+function formatPrecoProduto(num) {
+  return Number(num || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 4, maximumFractionDigits: 4
+  });
 }
 
 // ================== FORMULÁRIOS ==================
@@ -63,7 +70,7 @@ function formHTML(type) {
   `;
 }
 
-// ================== LISTAGEM BÁSICA ==================
+// ================== LISTAGEM ==================
 function listItem(type, id, data) {
   let main = "";
   if (type === "clientes") {
@@ -73,9 +80,7 @@ function listItem(type, id, data) {
     main = `<div class="font-semibold">${data.nome || "—"}</div>`;
   } else if (type === "produtos") {
     main = `<div class="font-semibold">${data.nome || "—"}</div>
-            <div class="text-sm text-gray-500">Preço: R$ ${(Number(data.preco || 0)).toFixed(4)} • Cat: ${data.categoria || "—"}</div>`;
-  } else {
-    main = `<div class="font-semibold">${data.name || "—"}</div>`;
+            <div class="text-sm text-gray-500">Preço: ${formatPrecoProduto(data.preco)} • Cat: ${data.categoria || "—"}</div>`;
   }
 
   const li = document.createElement("li");
@@ -83,8 +88,8 @@ function listItem(type, id, data) {
   li.innerHTML = `
     <div>${main}</div>
     <div class="space-x-2">
-      ${btn("Editar", "bg-yellow-500 text-white", `data-a="e" data-type="${type}" data-id="${id}"`)}
-      ${btn("Excluir", "bg-red-600 text-white", `data-a="d" data-type="${type}" data-id="${id}"`)}
+      <button data-a="e" data-type="${type}" data-id="${id}" class="bg-yellow-500 text-white px-2 py-1 rounded">Editar</button>
+      <button data-a="d" data-type="${type}" data-id="${id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
     </div>
   `;
   return li;
@@ -100,26 +105,27 @@ function bindBasicActions(container) {
       if (a === "d") {
         if (!confirm("Excluir este registro?")) return;
         await db.collection(type).doc(id).delete();
-      } else if (a === "e") {
+      }
+      // edição simples via prompt
+      if (a === "e") {
         const snap = await db.collection(type).doc(id).get();
         const d = snap.data() || {};
         let resp;
         if (type === "clientes") {
           resp = prompt(`Edite: nome, whatsapp, representante\nAtual: ${d.nome||""}, ${d.whatsapp||""}, ${d.representante||""}`);
-          if (resp == null) return;
+          if (!resp) return;
           const [nome, whatsappRaw, rep] = resp.split(",").map(s => (s||"").trim());
-          const whatsapp = (whatsappRaw || "").replace(/^\+?55/, "");
-          await db.collection(type).doc(id).update({ nome, whatsapp, representante: rep || null });
+          await db.collection(type).doc(id).update({ nome, whatsapp: whatsappRaw, representante: rep });
         } else if (type === "representantes") {
           resp = prompt(`Edite: nome\nAtual: ${d.nome||""}`);
-          if (resp == null) return;
+          if (!resp) return;
           await db.collection(type).doc(id).update({ nome: resp.trim() });
         } else if (type === "produtos") {
           resp = prompt(`Edite: nome, preco, categoria\nAtual: ${d.nome||""}, ${d.preco||0}, ${d.categoria||""}`);
-          if (resp == null) return;
+          if (!resp) return;
           const [nome, precoStr, cat] = resp.split(",").map(s => (s||"").trim());
           const preco = parseFloat(precoStr)||0;
-          await db.collection(type).doc(id).update({ nome, preco, categoria: cat || null });
+          await db.collection(type).doc(id).update({ nome, preco, categoria: cat });
         }
       }
     });
@@ -129,7 +135,7 @@ function bindBasicActions(container) {
 // ================== RENDER FORM ==================
 function renderForm(type) {
   pageContent.innerHTML = `
-    ${header(type.charAt(0).toUpperCase() + type.slice(1))}
+    <h2 class="text-xl font-bold mb-4">${type.charAt(0).toUpperCase() + type.slice(1)}</h2>
     <form id="${type}-form" class="bg-white p-4 rounded shadow mb-4">
       ${formHTML(type)}
     </form>
@@ -143,28 +149,19 @@ function renderForm(type) {
     e.preventDefault();
     const user = await waitForAuth();
     const uid = user.uid;
-
     let payload = { userId: uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
 
     if (type === "clientes") {
-      const nome = document.getElementById("clientes-nome").value.trim();
-      let whatsapp = document.getElementById("clientes-whatsapp").value.trim();
-      const representante = document.getElementById("clientes-rep").value.trim();
-      if (!nome) return toast("Informe o nome do cliente.");
-      whatsapp = whatsapp.replace(/^\+?55/, "");
-      payload = { ...payload, nome, whatsapp, representante: representante || null };
+      payload.nome = document.getElementById("clientes-nome").value.trim();
+      payload.whatsapp = document.getElementById("clientes-whatsapp").value.trim();
+      payload.representante = document.getElementById("clientes-rep").value.trim();
     } else if (type === "representantes") {
-      const nome = document.getElementById("representantes-nome").value.trim();
-      if (!nome) return toast("Informe o nome do representante.");
-      payload = { ...payload, nome };
+      payload.nome = document.getElementById("representantes-nome").value.trim();
     } else if (type === "produtos") {
-      const nome = document.getElementById("produtos-nome").value.trim();
-      const preco = parseFloat(document.getElementById("produtos-preco").value) || 0;
-      const categoria = document.getElementById("produtos-categoria").value.trim();
-      if (!nome) return toast("Informe o nome do produto.");
-      payload = { ...payload, nome, preco, categoria: categoria || null };
+      payload.nome = document.getElementById("produtos-nome").value.trim();
+      payload.preco = parseFloat(document.getElementById("produtos-preco").value)||0;
+      payload.categoria = document.getElementById("produtos-categoria").value.trim();
     }
-
     await db.collection(type).add(payload);
     form.reset();
     toast("Salvo com sucesso!");
@@ -185,7 +182,7 @@ function renderForm(type) {
       });
   });
 
-  // Importação de planilha para clientes
+  // Importação de planilha
   if (type === "clientes") {
     document.getElementById("import-clientes")?.addEventListener("change", async (e) => {
       const file = e.target.files[0];
@@ -204,7 +201,7 @@ function renderForm(type) {
             await db.collection("clientes").add({
               userId: user.uid,
               nome,
-              whatsapp: whatsapp || "",
+              whatsapp,
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           }
@@ -219,7 +216,7 @@ function renderForm(type) {
 // ================== AGENDAMENTOS ==================
 function renderAgendamentos() {
   pageContent.innerHTML = `
-    ${header("Agendamentos")}
+    <h2 class="text-xl font-bold mb-4">Agendamentos</h2>
     <form id="agendamento-form" class="bg-white p-4 rounded shadow mb-4 space-y-3">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
         <select id="ag-cliente" class="border p-2 rounded w-full"></select>
@@ -234,6 +231,7 @@ function renderAgendamentos() {
       <button class="bg-blue-600 text-white p-2 rounded w-full mt-2">Salvar</button>
     </form>
     <ul id="ag-list" class="space-y-2"></ul>
+    <div id="ag-resumo" class="mt-4 p-3 bg-gray-50 rounded"></div>
   `;
 
   const $selCliente = document.getElementById("ag-cliente");
@@ -294,6 +292,7 @@ function renderAgendamentos() {
           $list.innerHTML = `<li class="text-gray-500">Nenhum agendamento.</li>`;
           return;
         }
+        const resumo = {};
         snap.forEach(doc => {
           const d = doc.data();
           const li = document.createElement("li");
@@ -301,7 +300,7 @@ function renderAgendamentos() {
           li.innerHTML = `
             <div>
               <div class="font-semibold">${d.data} • ${d.clienteNome}</div>
-              <div class="text-sm text-gray-500">Rep: ${d.representanteNome} • Prod: ${d.produtoNome} • Qtd: ${d.quantidade}</div>
+              <div class="text-sm text-gray-500">Rep: ${d.representanteNome} • Prod: ${d.produtoNome} • Qtd: ${formatQuantidade(d.quantidade)}</div>
             </div>
             <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
           `;
@@ -311,7 +310,17 @@ function renderAgendamentos() {
               await db.collection("agendamentos").doc(doc.id).delete();
             }
           });
+          // resumo diário/produto
+          const key = `${d.data} - ${d.produtoNome}`;
+          resumo[key] = (resumo[key] || 0) + (d.quantidade || 0);
         });
+        // renderizar resumo
+        let htmlResumo = "<h4 class='font-semibold mb-2'>Totais por dia/produto</h4><ul>";
+        for (const [k, v] of Object.entries(resumo)) {
+          htmlResumo += `<li>${k}: ${formatQuantidade(v)}</li>`;
+        }
+        htmlResumo += "</ul>";
+        document.getElementById("ag-resumo").innerHTML = htmlResumo;
       });
   });
 }
@@ -319,7 +328,7 @@ function renderAgendamentos() {
 // ================== RELATÓRIOS ==================
 function renderRelatorios() {
   pageContent.innerHTML = `
-    ${header("Relatórios")}
+    <h2 class="text-xl font-bold mb-4">Relatórios</h2>
     <div class="bg-white p-4 rounded shadow mb-4 space-y-3">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
@@ -374,20 +383,18 @@ async function gerarRelatorio() {
     const d = doc.data();
     const qtd = d.quantidade || 0;
     totalGeral += qtd;
-    porProduto[d.produtoNome] = (porProduto[d.produtoNome] || 0) + qtd;
-    porRep[d.representanteNome] = (porRep[d.representanteNome] || 0) + qtd;
-    porCli[d.clienteNome] = (porCli[d.clienteNome] || 0) + qtd;
+    porProduto[d.produtoNome] = (porProduto[d.produtoNome]||0) + qtd;
+    porRep[d.representanteNome] = (porRep[d.representanteNome]||0) + qtd;
+    porCli[d.clienteNome] = (porCli[d.clienteNome]||0) + qtd;
   });
 
-  // Totais
-  let html = `<p><strong>Total Geral:</strong> ${totalGeral}</p><ul>`;
+  let html = `<p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p><ul>`;
   for (const [prod, qtd] of Object.entries(porProduto)) {
-    html += `<li>${prod}: ${qtd}</li>`;
+    html += `<li>${prod}: ${formatQuantidade(qtd)}</li>`;
   }
   html += "</ul>";
   document.getElementById("rel-totais").innerHTML = html;
 
-  // Gráficos
   new Chart(document.getElementById("chart-reps"), {
     type: "bar",
     data: { labels: Object.keys(porRep), datasets: [{ label: "Qtd", data: Object.values(porRep), backgroundColor: "orange" }] }
@@ -399,24 +406,35 @@ async function gerarRelatorio() {
   });
 }
 
-function exportarPDF() {
+async function exportarPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   doc.text("Relatório de Agendamentos", 10, 10);
   doc.text(document.getElementById("rel-totais").innerText, 10, 20);
+
+  // Gráficos no PDF
+  const chartReps = document.getElementById("chart-reps");
+  const chartClis = document.getElementById("chart-clis");
+
+  if (chartReps) {
+    const imgData = chartReps.toDataURL("image/png", 1.0);
+    doc.addImage(imgData, "PNG", 10, 40, 180, 80);
+  }
+  if (chartClis) {
+    const imgData2 = chartClis.toDataURL("image/png", 1.0);
+    doc.addPage();
+    doc.addImage(imgData2, "PNG", 10, 20, 180, 80);
+  }
+
   doc.save("relatorio.pdf");
 }
 
-// ================== MENU LATERAL ======================
+// ================== MENU ==================
 document.querySelectorAll(".menu-item").forEach(btn => {
   btn.addEventListener("click", () => {
     const page = btn.dataset.page;
-    if (page === "agendamentos") {
-      renderAgendamentos();
-    } else if (page === "relatorios") {
-      renderRelatorios();
-    } else {
-      renderForm(page);
-    }
+    if (page === "agendamentos") renderAgendamentos();
+    else if (page === "relatorios") renderRelatorios();
+    else renderForm(page);
   });
 });
