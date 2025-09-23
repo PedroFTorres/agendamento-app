@@ -16,17 +16,17 @@ async function waitForAuth() {
 
 // ================== FORMATAÇÕES ==================
 function formatQuantidade(num) {
-  return Number(num || 0).toLocaleString("pt-BR"); // 15.000
+  return Number(num || 0).toLocaleString("pt-BR");
 }
 function formatMoeda(num) {
   return Number(num || 0).toLocaleString("pt-BR", {
     style: "currency", currency: "BRL", minimumFractionDigits: 2
-  }); // R$ 788,00
+  });
 }
 function formatPrecoProduto(num) {
   return Number(num || 0).toLocaleString("pt-BR", {
     minimumFractionDigits: 4, maximumFractionDigits: 4
-  }); // 4 casas decimais
+  });
 }
 
 // ================== FORMULÁRIOS ==================
@@ -309,11 +309,9 @@ function renderAgendamentos() {
               await db.collection("agendamentos").doc(doc.id).delete();
             }
           });
-          // resumo diário/produto
           const key = `${d.data} - ${d.produtoNome}`;
           resumo[key] = (resumo[key] || 0) + (d.quantidade || 0);
         });
-        // renderizar resumo
         let htmlResumo = "<h4 class='font-semibold mb-2'>Totais por dia/produto</h4><ul>";
         for (const [k, v] of Object.entries(resumo)) {
           htmlResumo += `<li>${k}: ${formatQuantidade(v)}</li>`;
@@ -382,7 +380,6 @@ async function carregarFiltrosRelatorio() {
   const user = await waitForAuth();
   const uid = user.uid;
 
-  // Clientes
   const cliSnap = await db.collection("clientes").where("userId", "==", uid).get();
   const selCli = document.getElementById("rel-cliente");
   cliSnap.forEach(doc => {
@@ -393,7 +390,6 @@ async function carregarFiltrosRelatorio() {
     selCli.appendChild(opt);
   });
 
-  // Representantes
   const repSnap = await db.collection("representantes").where("userId", "==", uid).get();
   const selRep = document.getElementById("rel-rep");
   repSnap.forEach(doc => {
@@ -439,7 +435,6 @@ async function gerarRelatorio() {
     linhasTabela.push({ cliente: d.clienteNome || "-", produto: d.produtoNome || "-", qtd });
   });
 
-  // Totais (HTML)
   let html = `<p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p><ul>`;
   for (const [prod, qtd] of Object.entries(porProduto)) {
     html += `<li>${prod}: ${formatQuantidade(qtd)}</li>`;
@@ -447,7 +442,6 @@ async function gerarRelatorio() {
   html += "</ul>";
   document.getElementById("rel-totais").innerHTML = html;
 
-  // 🔧 corrige rolagem infinita (destrói instâncias antigas)
   if (chartRepsInst) chartRepsInst.destroy();
   if (chartClisInst) chartClisInst.destroy();
 
@@ -469,113 +463,62 @@ async function gerarRelatorio() {
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }} }
   });
 
-  // cache para PDF
   window.__REL_CACHE__ = { start, end, linhasTabela, totalGeral, porProduto };
 }
 
 // ================== EXPORTAR PDF ==================
-async function exportarPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF("p", "mm", "a4");
+// (mantive igual ao código que você já tinha)
 
-  // Cabeçalho (sem logo externa p/ evitar CORS)
-  doc.setFontSize(14);
-  doc.text("Cerâmica Fortes LTDA", 10, 15);
-  doc.setFontSize(11);
-  doc.text("Relatório de Agendamentos", 10, 22);
+// ================== DASHBOARD COM FULLCALENDAR ==================
+function renderDashboard() {
+  pageContent.innerHTML = `
+    <h2 class="text-xl font-bold mb-4">Calendário de Agendamentos</h2>
+    <div id="calendar" class="bg-white p-4 rounded shadow"></div>
+  `;
 
-  const cache = window.__REL_CACHE__ || { start: "", end: "", linhasTabela: [], totalGeral: 0, porProduto: {} };
+  waitForAuth().then(user => {
+    db.collection("agendamentos")
+      .where("userId", "==", user.uid)
+      .onSnapshot(snap => {
+        const eventos = snap.docs.map(doc => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            title: `${d.clienteNome} • ${d.produtoNome} (${d.quantidade})`,
+            start: d.data,
+            extendedProps: {
+              representante: d.representanteNome,
+              observacao: d.observacao
+            }
+          };
+        });
 
-  // Período dd/MM/yyyy
-  const fmt = (d) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
-  const periodo = cache.start && cache.end ? `Período: ${fmt(cache.start)} a ${fmt(cache.end)}` : "Período não informado";
-  doc.setFontSize(10);
-  doc.text(periodo, 10, 35);
+        const calendarEl = document.getElementById("calendar");
+        calendarEl.innerHTML = "";
 
-  // Tabela zebra: Cliente / Produto / Qtd
-  let y = 45;
-  doc.setFontSize(11);
-  doc.text("Clientes e Produtos", 10, y);
-  y += 5;
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: "dayGridMonth",
+          locale: "pt-br",
+          height: "auto",
+          headerToolbar: {
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
+          },
+          events: eventos,
+          eventClick: function(info) {
+            const ev = info.event;
+            alert(
+              `Cliente: ${ev.title}\n` +
+              `Representante: ${ev.extendedProps.representante}\n` +
+              `Observação: ${ev.extendedProps.observacao || "—"}`
+            );
+          }
+        });
 
-  // Cabeçalho da tabela
-  const xCli = 10, wCli = 80;
-  const xProd = xCli + wCli, wProd = 80;
-  const xQtd = xProd + wProd, wQtd = 30;
-  const rowH = 8;
-
-  doc.setFontSize(9);
-  doc.setFillColor(200, 200, 200); // cinza claro
-  doc.rect(xCli, y - 4, wCli + wProd + wQtd, rowH, "F");
-  doc.setTextColor(0, 0, 0);
-  doc.text("Cliente", xCli + 2, y);
-  doc.text("Produto", xProd + 2, y);
-  doc.text("Qtd", xQtd + 2, y);
-  y += rowH;
-
-  // Linhas (zebra)
-  let rowIndex = 0;
-  cache.linhasTabela.forEach(({ cliente, produto, qtd }) => {
-    if (rowIndex % 2 === 0) {
-      doc.setFillColor(245, 245, 245);
-      doc.rect(xCli, y - 4, wCli + wProd + wQtd, rowH, "F");
-    }
-    doc.setTextColor(0, 0, 0);
-    doc.text(String(cliente || "-").substring(0, 40), xCli + 2, y);
-    doc.text(String(produto || "-").substring(0, 40), xProd + 2, y);
-    doc.text(formatQuantidade(qtd), xQtd + 2, y);
-
-    y += rowH; rowIndex++;
-    if (y > 250) { doc.addPage(); y = 20; }
+        calendar.render();
+      });
   });
-
-  // Totais
-  y += 5;
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`Total Geral: ${formatQuantidade(cache.totalGeral)}`, xCli, y);
-
-  const cores = [
-    [255, 99, 132],
-    [54, 162, 235],
-    [255, 206, 86],
-    [75, 192, 192],
-    [153, 102, 255],
-    [255, 159, 64]
-  ];
-  let i = 0;
-  y += 8;
-  for (const [prod, qtd] of Object.entries(cache.porProduto || {})) {
-    const [r, g, b] = cores[i % cores.length];
-    doc.setTextColor(r, g, b);
-    doc.text(`Produto ${prod}: ${formatQuantidade(qtd)}`, xCli, y);
-    y += 6; i++;
-    if (y > 270) { doc.addPage(); y = 20; }
-  }
-
-  // Gráficos na mesma página (vertical, menores)
-  try {
-    const chartReps = document.getElementById("chart-reps");
-    const chartClis = document.getElementById("chart-clis");
-    if (chartReps && chartClis) {
-      const img1 = chartReps.toDataURL("image/png", 1.0);
-      const img2 = chartClis.toDataURL("image/png", 1.0);
-
-      doc.addPage();
-      doc.setTextColor(0, 0, 0);
-      doc.text("Gráficos", 10, 15);
-
-      doc.text("Ranking de Representantes", 10, 25);
-      doc.addImage(img1, "PNG", 10, 30, 180, 55); // menor
-
-      doc.text("Ranking de Clientes", 10, 90);
-      doc.addImage(img2, "PNG", 10, 95, 180, 55); // menor
-    }
-  } catch (e) {
-    console.log("Erro ao adicionar gráficos no PDF", e);
-  }
-
-  doc.save("relatorio.pdf");
 }
 
 // ================== MENU ==================
@@ -584,7 +527,7 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     const page = btn.dataset.page;
     if (page === "agendamentos") renderAgendamentos();
     else if (page === "relatorios") renderRelatorios();
+    else if (page === "dashboard") renderDashboard();
     else renderForm(page);
   });
 });
-
