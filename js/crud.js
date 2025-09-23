@@ -16,17 +16,17 @@ async function waitForAuth() {
 
 // ================== FORMATAÇÕES ==================
 function formatQuantidade(num) {
-  return Number(num || 0).toLocaleString("pt-BR");
+  return Number(num || 0).toLocaleString("pt-BR"); // 15.000
 }
 function formatMoeda(num) {
   return Number(num || 0).toLocaleString("pt-BR", {
     style: "currency", currency: "BRL", minimumFractionDigits: 2
-  });
+  }); // R$ 788,00
 }
 function formatPrecoProduto(num) {
   return Number(num || 0).toLocaleString("pt-BR", {
     minimumFractionDigits: 4, maximumFractionDigits: 4
-  });
+  }); // 4 casas decimais
 }
 
 // ================== FORMULÁRIOS ==================
@@ -106,7 +106,6 @@ function bindBasicActions(container) {
         if (!confirm("Excluir este registro?")) return;
         await db.collection(type).doc(id).delete();
       }
-      // edição simples via prompt
       if (a === "e") {
         const snap = await db.collection(type).doc(id).get();
         const d = snap.data() || {};
@@ -182,7 +181,7 @@ function renderForm(type) {
       });
   });
 
-  // Importação de planilha
+  // Importação de planilha (clientes)
   if (type === "clientes") {
     document.getElementById("import-clientes")?.addEventListener("change", async (e) => {
       const file = e.target.files[0];
@@ -326,6 +325,9 @@ function renderAgendamentos() {
 }
 
 // ================== RELATÓRIOS ==================
+let chartRepsInst = null;
+let chartClisInst = null;
+
 function renderRelatorios() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Relatórios</h2>
@@ -338,6 +340,20 @@ function renderRelatorios() {
         <div>
           <label class="text-sm text-gray-600">Data Fim</label>
           <input type="date" id="rel-end" class="border p-2 rounded w-full">
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div>
+          <label class="text-sm text-gray-600">Cliente</label>
+          <select id="rel-cliente" class="border p-2 rounded w-full">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-gray-600">Representante</label>
+          <select id="rel-rep" class="border p-2 rounded w-full">
+            <option value="">Todos</option>
+          </select>
         </div>
       </div>
       <button id="rel-filtrar" class="bg-blue-600 text-white p-2 rounded w-full">Filtrar</button>
@@ -357,8 +373,36 @@ function renderRelatorios() {
     </div>
   `;
 
+  carregarFiltrosRelatorio();
   document.getElementById("rel-filtrar").addEventListener("click", gerarRelatorio);
   document.getElementById("rel-pdf").addEventListener("click", exportarPDF);
+}
+
+async function carregarFiltrosRelatorio() {
+  const user = await waitForAuth();
+  const uid = user.uid;
+
+  // Clientes
+  const cliSnap = await db.collection("clientes").where("userId", "==", uid).get();
+  const selCli = document.getElementById("rel-cliente");
+  cliSnap.forEach(doc => {
+    const d = doc.data();
+    const opt = document.createElement("option");
+    opt.value = d.nome;
+    opt.textContent = d.nome;
+    selCli.appendChild(opt);
+  });
+
+  // Representantes
+  const repSnap = await db.collection("representantes").where("userId", "==", uid).get();
+  const selRep = document.getElementById("rel-rep");
+  repSnap.forEach(doc => {
+    const d = doc.data();
+    const opt = document.createElement("option");
+    opt.value = d.nome;
+    opt.textContent = d.nome;
+    selRep.appendChild(opt);
+  });
 }
 
 async function gerarRelatorio() {
@@ -367,10 +411,14 @@ async function gerarRelatorio() {
 
   const start = document.getElementById("rel-start").value;
   const end   = document.getElementById("rel-end").value;
+  const clienteSel = document.getElementById("rel-cliente").value;
+  const repSel     = document.getElementById("rel-rep").value;
 
   let query = db.collection("agendamentos").where("userId", "==", uid);
   if (start) query = query.where("data", ">=", start);
   if (end)   query = query.where("data", "<=", end);
+  if (clienteSel) query = query.where("clienteNome", "==", clienteSel);
+  if (repSel)     query = query.where("representanteNome", "==", repSel);
 
   const snap = await query.get();
 
@@ -379,6 +427,9 @@ async function gerarRelatorio() {
   const porRep = {};
   const porCli = {};
 
+  // para tabela do PDF
+  const linhasTabela = [];
+
   snap.forEach(doc => {
     const d = doc.data();
     const qtd = d.quantidade || 0;
@@ -386,8 +437,11 @@ async function gerarRelatorio() {
     porProduto[d.produtoNome] = (porProduto[d.produtoNome]||0) + qtd;
     porRep[d.representanteNome] = (porRep[d.representanteNome]||0) + qtd;
     porCli[d.clienteNome] = (porCli[d.clienteNome]||0) + qtd;
+
+    linhasTabela.push({ cliente: d.clienteNome || "-", produto: d.produtoNome || "-", qtd });
   });
 
+  // Totais (HTML)
   let html = `<p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p><ul>`;
   for (const [prod, qtd] of Object.entries(porProduto)) {
     html += `<li>${prod}: ${formatQuantidade(qtd)}</li>`;
@@ -395,95 +449,96 @@ async function gerarRelatorio() {
   html += "</ul>";
   document.getElementById("rel-totais").innerHTML = html;
 
-  new Chart(document.getElementById("chart-reps"), {
+  // Atualizar gráficos (garantir que não dupliquem)
+  if (chartRepsInst) chartRepsInst.destroy();
+  if (chartClisInst) chartClisInst.destroy();
+
+  chartRepsInst = new Chart(document.getElementById("chart-reps"), {
     type: "bar",
-    data: { labels: Object.keys(porRep), datasets: [{ label: "Qtd", data: Object.values(porRep), backgroundColor: "orange" }] }
+    data: {
+      labels: Object.keys(porRep),
+      datasets: [{ label: "Qtd", data: Object.values(porRep), backgroundColor: "orange" }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }} }
   });
 
-  new Chart(document.getElementById("chart-clis"), {
+  chartClisInst = new Chart(document.getElementById("chart-clis"), {
     type: "bar",
-    data: { labels: Object.keys(porCli), datasets: [{ label: "Qtd", data: Object.values(porCli), backgroundColor: "blue" }] }
+    data: {
+      labels: Object.keys(porCli),
+      datasets: [{ label: "Qtd", data: Object.values(porCli), backgroundColor: "blue" }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }} }
   });
+
+  // Guardar linhas para exportação
+  window.__REL_CACHE__ = {
+    start, end, linhasTabela, totalGeral, porProduto
+  };
 }
 
+// ================== EXPORTAR PDF ==================
 async function exportarPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("p", "mm", "a4");
 
-  // Cabeçalho
-
+  // Cabeçalho (sem logo externa para evitar CORS)
   doc.setFontSize(14);
-  doc.text("Cerâmica Fortes LTDA", 60, 15);
+  doc.text("Cerâmica Fortes LTDA", 10, 15);
   doc.setFontSize(11);
-  doc.text("Relatório de Agendamentos", 60, 22);
+  doc.text("Relatório de Agendamentos", 10, 22);
 
-  // Período
-  const start = document.getElementById("rel-start").value;
-  const end   = document.getElementById("rel-end").value;
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
-  const periodo = start && end ? 
-      `Período: ${formatDate(start)} a ${formatDate(end)}` : 
-      "Período não informado";
+  const cache = window.__REL_CACHE__ || { start: "", end: "", linhasTabela: [], totalGeral: 0, porProduto: {} };
+
+  // Período dd/MM/yyyy
+  const fmt = (d) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
+  const periodo = cache.start && cache.end ? `Período: ${fmt(cache.start)} a ${fmt(cache.end)}` : "Período não informado";
   doc.setFontSize(10);
   doc.text(periodo, 10, 35);
 
-  // Buscar dados
-  const user = await waitForAuth();
-  let query = db.collection("agendamentos").where("userId", "==", user.uid);
-  if (start) query = query.where("data", ">=", start);
-  if (end)   query = query.where("data", "<=", end);
-  const snap = await query.get();
-
+  // Tabela zebra: Cliente / Produto / Qtd
   let y = 45;
   doc.setFontSize(11);
-  doc.text("Clientes e Produtos", 10, y); 
+  doc.text("Clientes e Produtos", 10, y);
   y += 5;
 
   // Cabeçalho da tabela
+  const xCli = 10, wCli = 80;
+  const xProd = xCli + wCli, wProd = 80;
+  const xQtd = xProd + wProd, wQtd = 30;
+  const rowH = 8;
+
   doc.setFontSize(9);
   doc.setFillColor(200, 200, 200); // cinza claro
-  doc.rect(10, y - 4, 190, 8, "F");
+  doc.rect(xCli, y - 4, wCli + wProd + wQtd, rowH, "F");
   doc.setTextColor(0, 0, 0);
-  doc.text("Cliente", 12, y);
-  doc.text("Produto", 72, y);
-  doc.text("Qtd", 132, y);
+  doc.text("Cliente", xCli + 2, y);
+  doc.text("Produto", xProd + 2, y);
+  doc.text("Qtd", xQtd + 2, y);
+  y += rowH;
 
-  y += 6;
-
-  let totalGeral = 0;
-  const porProduto = {};
+  // Linhas
   let rowIndex = 0;
-
-  snap.forEach(docSnap => {
-    const d = docSnap.data();
-    const cli = d.clienteNome || "-";
-    const prod = d.produtoNome || "-";
-    const qtd = d.quantidade || 0;
-    totalGeral += qtd;
-    porProduto[prod] = (porProduto[prod] || 0) + qtd;
-
-    // Fundo alternado
+  cache.linhasTabela.forEach(({ cliente, produto, qtd }) => {
     if (rowIndex % 2 === 0) {
-      doc.setFillColor(245, 245, 245); // cinza bem claro
-      doc.rect(10, y - 4, 190, 8, "F");
+      doc.setFillColor(245, 245, 245);
+      doc.rect(xCli, y - 4, wCli + wProd + wQtd, rowH, "F");
     }
-
-    // Conteúdo
     doc.setTextColor(0, 0, 0);
-    doc.text(cli, 12, y);
-    doc.text(prod, 72, y);
-    doc.text(formatQuantidade(qtd), 132, y);
+    doc.text(String(cliente || "-").substring(0, 40), xCli + 2, y);
+    doc.text(String(produto || "-").substring(0, 40), xProd + 2, y);
+    doc.text(formatQuantidade(qtd), xQtd + 2, y);
 
-    y += 8; rowIndex++;
+    y += rowH; rowIndex++;
     if (y > 250) { doc.addPage(); y = 20; }
   });
 
+  // Totais
   y += 5;
   doc.setFontSize(11);
   doc.setTextColor(0, 0, 0);
-  doc.text(`Total Geral: ${formatQuantidade(totalGeral)}`, 10, y);
+  doc.text(`Total Geral: ${formatQuantidade(cache.totalGeral)}`, xCli, y);
 
-  // Totais por produto com cores diferentes
   const cores = [
     [255, 99, 132],
     [54, 162, 235],
@@ -494,15 +549,15 @@ async function exportarPDF() {
   ];
   let i = 0;
   y += 8;
-  for (const [prod, qtd] of Object.entries(porProduto)) {
+  for (const [prod, qtd] of Object.entries(cache.porProduto || {})) {
     const [r, g, b] = cores[i % cores.length];
     doc.setTextColor(r, g, b);
-    doc.text(`Produto ${prod}: ${formatQuantidade(qtd)}`, 10, y);
-    y += 6;
-    i++;
+    doc.text(`Produto ${prod}: ${formatQuantidade(qtd)}`, xCli, y);
+    y += 6; i++;
+    if (y > 270) { doc.addPage(); y = 20; }
   }
 
-  // Gráficos na mesma página, organizados na vertical
+  // Gráficos na mesma página (vertical)
   try {
     const chartReps = document.getElementById("chart-reps");
     const chartClis = document.getElementById("chart-clis");
@@ -511,22 +566,21 @@ async function exportarPDF() {
       const img2 = chartClis.toDataURL("image/png", 1.0);
 
       doc.addPage();
+      doc.setTextColor(0, 0, 0);
       doc.text("Gráficos", 10, 15);
 
-      // Representantes (em cima)
       doc.text("Ranking de Representantes", 10, 25);
       doc.addImage(img1, "PNG", 10, 30, 180, 60);
 
-      // Clientes (logo abaixo)
-      doc.text("Ranking de Clientes", 10, 100);
-      doc.addImage(img2, "PNG", 10, 105, 180, 60);
+      doc.text("Ranking de Clientes", 10, 95);
+      doc.addImage(img2, "PNG", 10, 100, 180, 60);
     }
   } catch (e) {
     console.log("Erro ao adicionar gráficos no PDF", e);
   }
 
   doc.save("relatorio.pdf");
-} 
+}
 
 // ================== MENU ==================
 document.querySelectorAll(".menu-item").forEach(btn => {
@@ -537,6 +591,3 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else renderForm(page);
   });
 });
-
-
-  
