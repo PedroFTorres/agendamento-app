@@ -231,6 +231,29 @@ async function carregarSelect(collection, selectId, uid) {
   }
 }
 
+// Função auxiliar para formatar a data no formato BR com dia da semana
+function formatarDataBR(dateStr) {
+  const data = new Date(dateStr);
+  return data.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
+
+// ================== AGENDAMENTOS ==================
+// Função auxiliar para formatar a data no formato BR com dia da semana
+function formatarDataBR(dateStr) {
+  const data = new Date(dateStr);
+  return data.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
+
 // ================== AGENDAMENTOS ==================
 function renderAgendamentos() {
   pageContent.innerHTML = `
@@ -251,7 +274,6 @@ function renderAgendamentos() {
   const btnSalvar = document.getElementById("ag-salvar");
 
   waitForAuth().then(user => {
-    // ✅ agora só chama a função global
     carregarSelect("clientes", "ag-cliente", user.uid);
     carregarSelect("representantes", "ag-rep", user.uid);
     carregarSelect("produtos", "ag-prod", user.uid);
@@ -288,6 +310,7 @@ function renderAgendamentos() {
       .orderBy("data", "desc")
       .onSnapshot(snap => {
         const lista = document.getElementById("lista-agendamentos");
+        if (!lista) return; // segurança
         lista.innerHTML = "";
 
         // agrupar por data
@@ -303,10 +326,25 @@ function renderAgendamentos() {
           const bloco = document.createElement("div");
           bloco.className = "bg-white rounded shadow p-3";
 
+          // cabeçalho com data formatada
           const header = document.createElement("h3");
           header.className = "font-semibold text-lg mb-2";
-          header.textContent = dataStr;
+          header.textContent = formatarDataBR(dataStr);
           bloco.appendChild(header);
+
+          // calcular totais do dia por produto
+          const produtosDia = {};
+          grupos[dataStr].forEach(item => {
+            produtosDia[item.produtoNome] = (produtosDia[item.produtoNome] || 0) + (item.quantidade || 0);
+          });
+
+          // exibir totais do dia
+          const totais = document.createElement("p");
+          totais.className = "text-sm text-gray-600 mb-2";
+          totais.textContent = "Totais do dia: " + Object.entries(produtosDia)
+            .map(([prod, qtd]) => `${prod}: ${formatQuantidade(qtd)}`)
+            .join(" • ");
+          bloco.appendChild(totais);
 
           const ul = document.createElement("ul");
           ul.className = "space-y-2";
@@ -363,9 +401,6 @@ function renderAgendamentos() {
       });
   });
 }
-
-
-        
 
 // ================== RELATÓRIOS ==================
 let chartRepsInst = null;
