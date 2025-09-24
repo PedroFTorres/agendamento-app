@@ -441,7 +441,6 @@ bloco.appendChild(totais);
         });
       });
   });
-}
 
 // ================== RELATÓRIOS ==================
 let chartRepsInst = null;
