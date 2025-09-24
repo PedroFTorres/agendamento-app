@@ -467,34 +467,38 @@ async function gerarRelatorio() {
 }
 
 // ================== EXPORTAR PDF ==================
-// ================== EXPORTAR PDF ==================
-function exportarPDF() {
+function exportarPDF(orientacao = "portrait") {
   if (!window.__REL_CACHE__) {
     alert("Gere o relatório antes de exportar.");
     return;
   }
 
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF("p", "mm", "a4");
+  const orient = orientacao === "landscape" ? "l" : "p"; // l = landscape, p = portrait
+  const doc = new jsPDF(orient, "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
   const hoje = new Date();
   const dataFormatada = hoje.toLocaleDateString("pt-BR");
 
-  // ===== Cabeçalho com logo =====
+  // ===== Cabeçalho =====
   const logoImg = new Image();
-  logoImg.src = "img/logo.png"; // coloque a logo nessa pasta do projeto
+  logoImg.src = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPO/main/img/logo.png"; // ajuste com sua URL
 
   logoImg.onload = function () {
     // Logo no canto esquerdo
-    doc.addImage(logoImg, "PNG", 10, 5, 30, 30);
+    doc.addImage(logoImg, "PNG", 10, 5, 25, 25);
 
     // Texto ao lado da logo
     doc.setFontSize(14);
-    doc.text("Cerâmica Fortes LTDA - Juntos somos mais Fortes", 45, 20);
+    doc.text("Cerâmica Fortes LTDA", 40, 15);
+    doc.setFontSize(12);
+    doc.text("Juntos somos mais Fortes", 40, 22);
 
+    // Data no canto direito
     doc.setFontSize(10);
-    doc.text(`Relatório gerado em: ${dataFormatada}`, 45, 27);
+    doc.text(`Relatório gerado em: ${dataFormatada}`, pageWidth - 60, 15);
 
     let y = 40;
 
@@ -514,15 +518,14 @@ function exportarPDF() {
       body: linhas,
       startY: y,
       theme: "grid",
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [255, 165, 0] }, // Laranja
-      alternateRowStyles: { fillColor: [255, 235, 205] } // Laranja claro
+      styles: { fontSize: 10, cellPadding: 2, lineWidth: 0.1 },
+      headStyles: { fillColor: [255, 165, 0], halign: "center" },
+      alternateRowStyles: { fillColor: [255, 235, 205] }
     });
 
     y = doc.lastAutoTable.finalY + 10;
 
     // ===== Totais por Produto =====
-    doc.setFontSize(12);
     doc.text("Totais por Produto", 10, y);
     y += 6;
 
@@ -535,15 +538,14 @@ function exportarPDF() {
       body: linhasProd,
       startY: y,
       theme: "grid",
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [255, 165, 0] },
+      styles: { fontSize: 10, cellPadding: 2, lineWidth: 0.1 },
+      headStyles: { fillColor: [255, 165, 0], halign: "center" },
       alternateRowStyles: { fillColor: [255, 235, 205] }
     });
 
     y = doc.lastAutoTable.finalY + 10;
 
     // ===== Totais por Representante =====
-    doc.setFontSize(12);
     doc.text("Totais por Representante", 10, y);
     y += 6;
 
@@ -556,8 +558,8 @@ function exportarPDF() {
       body: linhasRep,
       startY: y,
       theme: "grid",
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [255, 165, 0] },
+      styles: { fontSize: 10, cellPadding: 2, lineWidth: 0.1 },
+      headStyles: { fillColor: [255, 165, 0], halign: "center" },
       alternateRowStyles: { fillColor: [255, 235, 205] }
     });
 
@@ -567,8 +569,6 @@ function exportarPDF() {
     doc.setFontSize(12);
     doc.text(`TOTAL GERAL: ${formatQuantidade(window.__REL_CACHE__.totalGeral)}`, 10, y);
 
-    y += 20;
-
     // ===== Gráficos =====
     const chartReps = document.getElementById("chart-reps");
     const chartClis = document.getElementById("chart-clis");
@@ -577,24 +577,25 @@ function exportarPDF() {
       const imgReps = chartReps.toDataURL("image/png", 1.0);
       const imgClis = chartClis.toDataURL("image/png", 1.0);
 
-      doc.addPage();
+      doc.addPage(orient, "mm", "a4");
       doc.setFontSize(12);
       doc.text("Gráficos", 10, 15);
 
-      doc.addImage(imgReps, "PNG", 10, 25, pageWidth - 20, 70);
-      doc.addImage(imgClis, "PNG", 10, 110, pageWidth - 20, 70);
+      doc.addImage(imgReps, "PNG", 10, 25, pageWidth - 20, 80);
+      doc.addImage(imgClis, "PNG", 10, 120, pageWidth - 20, 80);
     }
 
-    // ===== Rodapé com paginação =====
+    // ===== Rodapé =====
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
-      doc.text(`Página ${i} de ${pageCount}`, pageWidth - 30, 290);
+      doc.text(`Página ${i} de ${pageCount}`, pageWidth - 30, pageHeight - 10);
     }
 
     // Salvar PDF
-    doc.save("relatorio.pdf");
+    const fileName = orientacao === "landscape" ? "relatorio-landscape.pdf" : "relatorio-portrait.pdf";
+    doc.save(fileName);
   };
 }
 
