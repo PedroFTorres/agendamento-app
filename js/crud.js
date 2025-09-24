@@ -31,16 +31,14 @@ function formatPrecoProduto(num) {
 
 // ================== FORMATAR DATA BR COM DIA DA SEMANA ==================
 function formatarDataBR(dateStr) {
-  // dateStr vem em "YYYY-MM-DD"
+  // dateStr vem como "YYYY-MM-DD"
   const [ano, mes, dia] = dateStr.split("-");
-  
-  // força criação no fuso local sem UTC
-  const data = new Date(Number(ano), Number(mes) - 1, Number(dia));
-  
-  // monta string com dia/mes/ano + dia da semana
-  const dataFormatada = `${dia.padStart(2, "0")}/${mes.padStart(2, "0")}/${ano}`;
+  const dataFormatada = `${dia}/${mes}/${ano}`;
+
+  // criar Date só para pegar o dia da semana
+  const data = new Date(`${ano}-${mes}-${dia}T00:00:00`); // força meia-noite local
   const diaSemana = data.toLocaleDateString("pt-BR", { weekday: "long" });
-  
+
   return `${dataFormatada} - ${diaSemana}`;
 }
 
