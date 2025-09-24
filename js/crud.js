@@ -467,6 +467,7 @@ async function gerarRelatorio() {
 }
 
 // ================== EXPORTAR PDF ==================
+// ================== EXPORTAR PDF ==================
 function exportarPDF() {
   if (!window.__REL_CACHE__) {
     alert("Gere o relatório antes de exportar.");
@@ -480,102 +481,121 @@ function exportarPDF() {
   const hoje = new Date();
   const dataFormatada = hoje.toLocaleDateString("pt-BR");
 
-  // ===== Cabeçalho =====
-  doc.setFontSize(14);
-  doc.text("Cerâmica Fortes LTDA - Juntos somos mais Fortes", 10, 15);
-  doc.setFontSize(10);
-  doc.text(`Relatório gerado em: ${dataFormatada}`, 10, 22);
+  // ===== Cabeçalho com logo =====
+  const logoImg = new Image();
+  logoImg.src = "img/logo.png"; // coloque a logo nessa pasta do projeto
 
-  let y = 35;
+  logoImg.onload = function () {
+    // Logo no canto esquerdo
+    doc.addImage(logoImg, "PNG", 10, 5, 30, 30);
 
-  // ===== Tabela Detalhada =====
-  doc.setFontSize(12);
-  doc.text("Agendamentos Detalhados", 10, y);
-  y += 6;
+    // Texto ao lado da logo
+    doc.setFontSize(14);
+    doc.text("Cerâmica Fortes LTDA - Juntos somos mais Fortes", 45, 20);
 
-  const linhas = window.__REL_CACHE__.linhasTabela.map(l => ([
-    l.cliente,
-    l.produto,
-    formatQuantidade(l.qtd)
-  ]));
+    doc.setFontSize(10);
+    doc.text(`Relatório gerado em: ${dataFormatada}`, 45, 27);
 
-  doc.autoTable({
-    head: [["Cliente", "Produto", "Quantidade"]],
-    body: linhas,
-    startY: y,
-    theme: "grid",
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [255, 165, 0] }, // Laranja
-    alternateRowStyles: { fillColor: [255, 235, 205] } // Laranja claro
-  });
+    let y = 40;
 
-  y = doc.lastAutoTable.finalY + 10;
-
-  // ===== Quantidade por Produto =====
-  doc.setFontSize(12);
-  doc.text("Totais por Produto", 10, y);
-  y += 6;
-
-  const linhasProd = Object.entries(window.__REL_CACHE__.porProduto).map(([prod, qtd]) => ([
-    prod, formatQuantidade(qtd)
-  ]));
-
-  doc.autoTable({
-    head: [["Produto", "Quantidade"]],
-    body: linhasProd,
-    startY: y,
-    theme: "grid",
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [255, 165, 0] },
-    alternateRowStyles: { fillColor: [255, 235, 205] }
-  });
-
-  y = doc.lastAutoTable.finalY + 10;
-
-  // ===== Quantidade por Representante =====
-  doc.setFontSize(12);
-  doc.text("Totais por Representante", 10, y);
-  y += 6;
-
-const linhasRep = Object.entries(window.__REL_CACHE__.porRep || {}).map(([rep, qtd]) => ([
-  rep, formatQuantidade(qtd)
-]));
-
-  doc.autoTable({
-    head: [["Representante", "Quantidade"]],
-    body: linhasRep,
-    startY: y,
-    theme: "grid",
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [255, 165, 0] },
-    alternateRowStyles: { fillColor: [255, 235, 205] }
-  });
-
-  y = doc.lastAutoTable.finalY + 10;
-
-  // ===== Total Geral =====
-  doc.setFontSize(12);
-  doc.text(`TOTAL GERAL: ${formatQuantidade(window.__REL_CACHE__.totalGeral)}`, 10, y);
-
-  y += 20;
-
-  // ===== Gráficos =====
-  const chartReps = document.getElementById("chart-reps");
-  const chartClis = document.getElementById("chart-clis");
-
-  if (chartReps && chartClis) {
-    const imgReps = chartReps.toDataURL("image/png", 1.0);
-    const imgClis = chartClis.toDataURL("image/png", 1.0);
-
-    doc.addPage();
+    // ===== Agendamentos Detalhados =====
     doc.setFontSize(12);
-    doc.text("Gráficos", 10, 15);
+    doc.text("Agendamentos Detalhados", 10, y);
+    y += 6;
 
-    doc.addImage(imgReps, "PNG", 10, 25, pageWidth - 20, 70);
-    doc.addImage(imgClis, "PNG", 10, 110, pageWidth - 20, 70);
-  }
+    const linhas = window.__REL_CACHE__.linhasTabela.map(l => ([
+      l.cliente,
+      l.produto,
+      formatQuantidade(l.qtd)
+    ]));
 
-  doc.save("relatorio.pdf");
+    doc.autoTable({
+      head: [["Cliente", "Produto", "Quantidade"]],
+      body: linhas,
+      startY: y,
+      theme: "grid",
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [255, 165, 0] }, // Laranja
+      alternateRowStyles: { fillColor: [255, 235, 205] } // Laranja claro
+    });
+
+    y = doc.lastAutoTable.finalY + 10;
+
+    // ===== Totais por Produto =====
+    doc.setFontSize(12);
+    doc.text("Totais por Produto", 10, y);
+    y += 6;
+
+    const linhasProd = Object.entries(window.__REL_CACHE__.porProduto).map(([prod, qtd]) => ([
+      prod, formatQuantidade(qtd)
+    ]));
+
+    doc.autoTable({
+      head: [["Produto", "Quantidade"]],
+      body: linhasProd,
+      startY: y,
+      theme: "grid",
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [255, 165, 0] },
+      alternateRowStyles: { fillColor: [255, 235, 205] }
+    });
+
+    y = doc.lastAutoTable.finalY + 10;
+
+    // ===== Totais por Representante =====
+    doc.setFontSize(12);
+    doc.text("Totais por Representante", 10, y);
+    y += 6;
+
+    const linhasRep = Object.entries(window.__REL_CACHE__.porRep || {}).map(([rep, qtd]) => ([
+      rep, formatQuantidade(qtd)
+    ]));
+
+    doc.autoTable({
+      head: [["Representante", "Quantidade"]],
+      body: linhasRep,
+      startY: y,
+      theme: "grid",
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [255, 165, 0] },
+      alternateRowStyles: { fillColor: [255, 235, 205] }
+    });
+
+    y = doc.lastAutoTable.finalY + 10;
+
+    // ===== Total Geral =====
+    doc.setFontSize(12);
+    doc.text(`TOTAL GERAL: ${formatQuantidade(window.__REL_CACHE__.totalGeral)}`, 10, y);
+
+    y += 20;
+
+    // ===== Gráficos =====
+    const chartReps = document.getElementById("chart-reps");
+    const chartClis = document.getElementById("chart-clis");
+
+    if (chartReps && chartClis) {
+      const imgReps = chartReps.toDataURL("image/png", 1.0);
+      const imgClis = chartClis.toDataURL("image/png", 1.0);
+
+      doc.addPage();
+      doc.setFontSize(12);
+      doc.text("Gráficos", 10, 15);
+
+      doc.addImage(imgReps, "PNG", 10, 25, pageWidth - 20, 70);
+      doc.addImage(imgClis, "PNG", 10, 110, pageWidth - 20, 70);
+    }
+
+    // ===== Rodapé com paginação =====
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.text(`Página ${i} de ${pageCount}`, pageWidth - 30, 290);
+    }
+
+    // Salvar PDF
+    doc.save("relatorio.pdf");
+  };
 }
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
