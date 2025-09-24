@@ -787,4 +787,3 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else renderForm(page);
   });
 });
-}
