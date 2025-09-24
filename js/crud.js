@@ -466,6 +466,7 @@ async function gerarRelatorio() {
   window.__REL_CACHE__ = { start, end, linhasTabela, totalGeral, porProduto };
 }
 
+// ================== EXPORTAR PDF ==================
 function exportarPDF() {
   if (!window.__REL_CACHE__) {
     alert("Gere o relatório antes de exportar.");
@@ -473,24 +474,106 @@ function exportarPDF() {
   }
 
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  const doc = new jsPDF("p", "mm", "a4");
+  const pageWidth = doc.internal.pageSize.getWidth();
 
+  const hoje = new Date();
+  const dataFormatada = hoje.toLocaleDateString("pt-BR");
+
+  // ===== Cabeçalho =====
   doc.setFontSize(14);
-  doc.text("Relatório de Agendamentos", 10, 15);
-
+  doc.text("Cerâmica Fortes LTDA - Juntos somos mais Fortes", 10, 15);
   doc.setFontSize(10);
-  doc.text(`Período: ${window.__REL_CACHE__.start || "—"} até ${window.__REL_CACHE__.end || "—"}`, 10, 25);
-  doc.text(`Total Geral: ${window.__REL_CACHE__.totalGeral}`, 10, 32);
+  doc.text(`Relatório gerado em: ${dataFormatada}`, 10, 22);
 
-  let y = 45;
-  window.__REL_CACHE__.linhasTabela.forEach(linha => {
-    doc.text(`${linha.cliente} - ${linha.produto} - ${linha.qtd}`, 10, y);
-    y += 7;
-    if (y > 280) {
-      doc.addPage();
-      y = 20;
-    }
+  let y = 35;
+
+  // ===== Tabela Detalhada =====
+  doc.setFontSize(12);
+  doc.text("Agendamentos Detalhados", 10, y);
+  y += 6;
+
+  const linhas = window.__REL_CACHE__.linhasTabela.map(l => ([
+    l.cliente,
+    l.produto,
+    formatQuantidade(l.qtd)
+  ]));
+
+  doc.autoTable({
+    head: [["Cliente", "Produto", "Quantidade"]],
+    body: linhas,
+    startY: y,
+    theme: "grid",
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [255, 165, 0] }, // Laranja
+    alternateRowStyles: { fillColor: [255, 235, 205] } // Laranja claro
   });
+
+  y = doc.lastAutoTable.finalY + 10;
+
+  // ===== Quantidade por Produto =====
+  doc.setFontSize(12);
+  doc.text("Totais por Produto", 10, y);
+  y += 6;
+
+  const linhasProd = Object.entries(window.__REL_CACHE__.porProduto).map(([prod, qtd]) => ([
+    prod, formatQuantidade(qtd)
+  ]));
+
+  doc.autoTable({
+    head: [["Produto", "Quantidade"]],
+    body: linhasProd,
+    startY: y,
+    theme: "grid",
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [255, 165, 0] },
+    alternateRowStyles: { fillColor: [255, 235, 205] }
+  });
+
+  y = doc.lastAutoTable.finalY + 10;
+
+  // ===== Quantidade por Representante =====
+  doc.setFontSize(12);
+  doc.text("Totais por Representante", 10, y);
+  y += 6;
+
+  const linhasRep = Object.entries(window.__REL_CACHE__.porRep || {}).map(([rep, qtd]) => ([
+    rep, formatQuantidade(qtd)
+  ]));
+
+  doc.autoTable({
+    head: [["Representante", "Quantidade"]],
+    body: linhasRep,
+    startY: y,
+    theme: "grid",
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [255, 165, 0] },
+    alternateRowStyles: { fillColor: [255, 235, 205] }
+  });
+
+  y = doc.lastAutoTable.finalY + 10;
+
+  // ===== Total Geral =====
+  doc.setFontSize(12);
+  doc.text(`TOTAL GERAL: ${formatQuantidade(window.__REL_CACHE__.totalGeral)}`, 10, y);
+
+  y += 20;
+
+  // ===== Gráficos =====
+  const chartReps = document.getElementById("chart-reps");
+  const chartClis = document.getElementById("chart-clis");
+
+  if (chartReps && chartClis) {
+    const imgReps = chartReps.toDataURL("image/png", 1.0);
+    const imgClis = chartClis.toDataURL("image/png", 1.0);
+
+    doc.addPage();
+    doc.setFontSize(12);
+    doc.text("Gráficos", 10, 15);
+
+    doc.addImage(imgReps, "PNG", 10, 25, pageWidth - 20, 70);
+    doc.addImage(imgClis, "PNG", 10, 110, pageWidth - 20, 70);
+  }
 
   doc.save("relatorio.pdf");
 }
