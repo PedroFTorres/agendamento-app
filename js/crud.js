@@ -212,6 +212,25 @@ function renderForm(type) {
   }
 }
 
+// ================== CARREGAR SELECTS ==================
+async function carregarSelect(collection, selectId, uid) {
+  try {
+    const snap = await db.collection(collection).where("userId", "==", uid).get();
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    sel.innerHTML = `<option value="">Selecione ${collection}</option>`;
+    snap.forEach(doc => {
+      const d = doc.data() || {};
+      const opt = document.createElement("option");
+      opt.value = d.nome || "";
+      opt.textContent = d.nome || "(sem nome)";
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    console.error("Erro ao carregar select:", collection, e);
+  }
+}
+
 // ================== AGENDAMENTOS ==================
 function renderAgendamentos() {
   pageContent.innerHTML = `
@@ -228,15 +247,14 @@ function renderAgendamentos() {
     <div id="lista-agendamentos" class="space-y-4"></div>
   `;
 
-  let editId = null; // armazena id se for edição
+  let editId = null;
+  const btnSalvar = document.getElementById("ag-salvar");
 
   waitForAuth().then(user => {
-    // carregar selects
+    // ✅ agora só chama a função global
     carregarSelect("clientes", "ag-cliente", user.uid);
     carregarSelect("representantes", "ag-rep", user.uid);
     carregarSelect("produtos", "ag-prod", user.uid);
-
-    const btnSalvar = document.getElementById("ag-salvar");
 
     // salvar ou atualizar
     document.getElementById("form-agendamento").addEventListener("submit", async e => {
@@ -317,7 +335,7 @@ function renderAgendamentos() {
           lista.appendChild(bloco);
         });
 
-        // ações editar/excluir
+        // excluir
         document.querySelectorAll(".btn-excluir").forEach(btn => {
           btn.addEventListener("click", async () => {
             if (confirm("Excluir este agendamento?")) {
@@ -326,6 +344,7 @@ function renderAgendamentos() {
           });
         });
 
+        // editar
         document.querySelectorAll(".btn-editar").forEach(btn => {
           btn.addEventListener("click", async () => {
             const docSnap = await db.collection("agendamentos").doc(btn.dataset.id).get();
@@ -344,6 +363,9 @@ function renderAgendamentos() {
       });
   });
 }
+
+
+        
 
 // ================== RELATÓRIOS ==================
 let chartRepsInst = null;
