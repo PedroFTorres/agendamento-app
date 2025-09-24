@@ -29,6 +29,19 @@ function formatPrecoProduto(num) {
   });
 }
 
+// ================== FORMATAR DATA BR COM DIA DA SEMANA ==================
+function formatarDataBR(dateStr) {
+  // garante que sempre será interpretada no fuso local
+  const [ano, mes, dia] = dateStr.split("-");
+  const data = new Date(ano, mes - 1, dia); // local, não UTC
+  return data.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
+
 // ================== FORMULÁRIOS ==================
 function formHTML(type) {
   if (type === "clientes") {
