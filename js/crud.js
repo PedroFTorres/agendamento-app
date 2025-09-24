@@ -466,8 +466,34 @@ async function gerarRelatorio() {
   window.__REL_CACHE__ = { start, end, linhasTabela, totalGeral, porProduto };
 }
 
-// ================== EXPORTAR PDF ==================
-// (mantive igual ao código que você já tinha)
+function exportarPDF() {
+  if (!window.__REL_CACHE__) {
+    alert("Gere o relatório antes de exportar.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(14);
+  doc.text("Relatório de Agendamentos", 10, 15);
+
+  doc.setFontSize(10);
+  doc.text(`Período: ${window.__REL_CACHE__.start || "—"} até ${window.__REL_CACHE__.end || "—"}`, 10, 25);
+  doc.text(`Total Geral: ${window.__REL_CACHE__.totalGeral}`, 10, 32);
+
+  let y = 45;
+  window.__REL_CACHE__.linhasTabela.forEach(linha => {
+    doc.text(`${linha.cliente} - ${linha.produto} - ${linha.qtd}`, 10, y);
+    y += 7;
+    if (y > 280) {
+      doc.addPage();
+      y = 20;
+    }
+  });
+
+  doc.save("relatorio.pdf");
+}
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
 function renderDashboard() {
