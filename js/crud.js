@@ -537,9 +537,9 @@ function exportarPDF() {
   doc.text("Totais por Representante", 10, y);
   y += 6;
 
-  const linhasRep = Object.entries(window.__REL_CACHE__.porRep || {}).map(([rep, qtd]) => ([
-    rep, formatQuantidade(qtd)
-  ]));
+const linhasRep = Object.entries(window.__REL_CACHE__.porRep || {}).map(([rep, qtd]) => ([
+  rep, formatQuantidade(qtd)
+]));
 
   doc.autoTable({
     head: [["Representante", "Quantidade"]],
