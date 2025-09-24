@@ -355,8 +355,15 @@ function renderRelatorios() {
         </div>
       </div>
       <button id="rel-filtrar" class="bg-blue-600 text-white p-2 rounded w-full">Filtrar</button>
-      <button id="rel-pdf" class="bg-green-600 text-white p-2 rounded w-full">Exportar PDF</button>
-    </div>
+
+<div class="grid grid-cols-2 gap-2 mt-2">
+  <button id="rel-pdf-portrait" class="bg-green-600 text-white p-2 rounded w-full">
+    Exportar PDF (Retrato)
+  </button>
+  <button id="rel-pdf-landscape" class="bg-green-600 text-white p-2 rounded w-full">
+    Exportar PDF (Paisagem)
+  </button>
+</div>
     <div class="bg-white p-4 rounded shadow mb-4">
       <h3 class="text-lg font-semibold mb-2">Totais</h3>
       <div id="rel-totais">Selecione um período.</div>
@@ -373,7 +380,11 @@ function renderRelatorios() {
 
   carregarFiltrosRelatorio();
   document.getElementById("rel-filtrar").addEventListener("click", gerarRelatorio);
-  document.getElementById("rel-pdf").addEventListener("click", exportarPDF);
+ document.getElementById("rel-pdf-portrait")
+  .addEventListener("click", () => exportarPDF("portrait"));
+
+document.getElementById("rel-pdf-landscape")
+  .addEventListener("click", () => exportarPDF("landscape"));
 }
 
 async function carregarFiltrosRelatorio() {
