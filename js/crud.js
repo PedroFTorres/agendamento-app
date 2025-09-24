@@ -463,7 +463,7 @@ async function gerarRelatorio() {
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }} }
   });
 
-  window.__REL_CACHE__ = { start, end, linhasTabela, totalGeral, porProduto };
+  window.__REL_CACHE__ = { start, end, linhasTabela, totalGeral, porProduto, porRep, porCli };
 }
 
 // ================== EXPORTAR PDF ==================
