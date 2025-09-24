@@ -494,122 +494,115 @@ function exportarPDF(orientacao = "portrait") {
   const dataFormatada = hoje.toLocaleDateString("pt-BR");
 
   const logoImg = new Image();
-  logoImg.src = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPO/main/img/logo.png"; // troque pela sua URL
+  logoImg.src = "img/logo.png"; // caminho relativo à raiz do projeto
 
-  // Gera PDF tanto se logo carregar quanto se falhar
-  logoImg.onload = () => gerarPDF(doc, logoImg, pageWidth, pageHeight, dataFormatada, orientacao);
-  logoImg.onerror = () => gerarPDF(doc, null, pageWidth, pageHeight, dataFormatada, orientacao);
-}
-
-function gerarPDF(doc, logoImg, pageWidth, pageHeight, dataFormatada, orientacao) {
-  // ===== Cabeçalho =====
-  if (logoImg) {
+  logoImg.onload = function () {
+    // ===== Cabeçalho =====
     doc.addImage(logoImg, "PNG", 10, 5, 25, 25);
-  }
-
-  doc.setFontSize(14);
-  doc.text("Cerâmica Fortes LTDA", 40, 15);
-  doc.setFontSize(12);
-  doc.text("Juntos somos mais Fortes", 40, 22);
-  doc.setFontSize(10);
-  doc.text(`Relatório gerado em: ${dataFormatada}`, pageWidth - 60, 15);
-
-  let y = 40;
-
-  // ===== Agendamentos Detalhados =====
-  doc.setFontSize(12);
-  doc.text("Agendamentos Detalhados", 10, y);
-  y += 6;
-
-  const linhas = window.__REL_CACHE__.linhasTabela.map(l => ([
-    l.cliente,
-    l.produto,
-    formatQuantidade(l.qtd)
-  ]));
-
-  doc.autoTable({
-    head: [["Cliente", "Produto", "Quantidade"]],
-    body: linhas,
-    startY: y,
-    theme: "grid",
-    styles: { fontSize: 10, cellPadding: 2, lineWidth: 0.1 },
-    headStyles: { fillColor: [255, 165, 0], halign: "center" },
-    alternateRowStyles: { fillColor: [255, 235, 205] }
-  });
-
-  y = doc.lastAutoTable.finalY + 10;
-
-  // ===== Totais por Produto =====
-  doc.text("Totais por Produto", 10, y);
-  y += 6;
-
-  const linhasProd = Object.entries(window.__REL_CACHE__.porProduto).map(([prod, qtd]) => ([
-    prod, formatQuantidade(qtd)
-  ]));
-
-  doc.autoTable({
-    head: [["Produto", "Quantidade"]],
-    body: linhasProd,
-    startY: y,
-    theme: "grid",
-    styles: { fontSize: 10, cellPadding: 2, lineWidth: 0.1 },
-    headStyles: { fillColor: [255, 165, 0], halign: "center" },
-    alternateRowStyles: { fillColor: [255, 235, 205] }
-  });
-
-  y = doc.lastAutoTable.finalY + 10;
-
-  // ===== Totais por Representante =====
-  doc.text("Totais por Representante", 10, y);
-  y += 6;
-
-  const linhasRep = Object.entries(window.__REL_CACHE__.porRep || {}).map(([rep, qtd]) => ([
-    rep, formatQuantidade(qtd)
-  ]));
-
-  doc.autoTable({
-    head: [["Representante", "Quantidade"]],
-    body: linhasRep,
-    startY: y,
-    theme: "grid",
-    styles: { fontSize: 10, cellPadding: 2, lineWidth: 0.1 },
-    headStyles: { fillColor: [255, 165, 0], halign: "center" },
-    alternateRowStyles: { fillColor: [255, 235, 205] }
-  });
-
-  y = doc.lastAutoTable.finalY + 10;
-
-  // ===== Total Geral =====
-  doc.setFontSize(12);
-  doc.text(`TOTAL GERAL: ${formatQuantidade(window.__REL_CACHE__.totalGeral)}`, 10, y);
-
-  // ===== Gráficos =====
-  const chartReps = document.getElementById("chart-reps");
-  const chartClis = document.getElementById("chart-clis");
-
-  if (chartReps && chartClis) {
-    const imgReps = chartReps.toDataURL("image/png", 1.0);
-    const imgClis = chartClis.toDataURL("image/png", 1.0);
-
-    doc.addPage(orientacao === "landscape" ? "l" : "p", "mm", "a4");
+    doc.setFontSize(14);
+    doc.text("Cerâmica Fortes LTDA", 40, 15);
     doc.setFontSize(12);
-    doc.text("Gráficos", 10, 15);
+    doc.text("Juntos somos mais Fortes", 40, 22);
+    doc.setFontSize(10);
+    doc.text(`Relatório gerado em: ${dataFormatada}`, pageWidth - 60, 15);
 
-    doc.addImage(imgReps, "PNG", 10, 25, pageWidth - 20, 80);
-    doc.addImage(imgClis, "PNG", 10, 120, pageWidth - 20, 80);
-  }
+    let y = 40;
 
-  // ===== Rodapé =====
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.text(`Página ${i} de ${pageCount}`, pageWidth - 30, pageHeight - 10);
-  }
+    // ===== Agendamentos Detalhados =====
+    doc.setFontSize(12);
+    doc.text("Agendamentos Detalhados", 10, y);
+    y += 6;
 
-  // Salvar PDF
-  const fileName = orientacao === "landscape" ? "relatorio-landscape.pdf" : "relatorio-portrait.pdf";
-  doc.save(fileName);
+    const linhas = window.__REL_CACHE__.linhasTabela.map(l => ([
+      l.cliente,
+      l.produto,
+      formatQuantidade(l.qtd)
+    ]));
+
+    doc.autoTable({
+      head: [["Cliente", "Produto", "Quantidade"]],
+      body: linhas,
+      startY: y,
+      theme: "grid",
+      styles: { fontSize: 10, cellPadding: 2, lineWidth: 0.1 },
+      headStyles: { fillColor: [255, 165, 0], halign: "center" },
+      alternateRowStyles: { fillColor: [255, 235, 205] }
+    });
+
+    y = doc.lastAutoTable.finalY + 10;
+
+    // ===== Totais por Produto =====
+    doc.text("Totais por Produto", 10, y);
+    y += 6;
+
+    const linhasProd = Object.entries(window.__REL_CACHE__.porProduto).map(([prod, qtd]) => ([
+      prod, formatQuantidade(qtd)
+    ]));
+
+    doc.autoTable({
+      head: [["Produto", "Quantidade"]],
+      body: linhasProd,
+      startY: y,
+      theme: "grid",
+      styles: { fontSize: 10, cellPadding: 2, lineWidth: 0.1 },
+      headStyles: { fillColor: [255, 165, 0], halign: "center" },
+      alternateRowStyles: { fillColor: [255, 235, 205] }
+    });
+
+    y = doc.lastAutoTable.finalY + 10;
+
+    // ===== Totais por Representante =====
+    doc.text("Totais por Representante", 10, y);
+    y += 6;
+
+    const linhasRep = Object.entries(window.__REL_CACHE__.porRep || {}).map(([rep, qtd]) => ([
+      rep, formatQuantidade(qtd)
+    ]));
+
+    doc.autoTable({
+      head: [["Representante", "Quantidade"]],
+      body: linhasRep,
+      startY: y,
+      theme: "grid",
+      styles: { fontSize: 10, cellPadding: 2, lineWidth: 0.1 },
+      headStyles: { fillColor: [255, 165, 0], halign: "center" },
+      alternateRowStyles: { fillColor: [255, 235, 205] }
+    });
+
+    y = doc.lastAutoTable.finalY + 10;
+
+    // ===== Total Geral =====
+    doc.setFontSize(12);
+    doc.text(`TOTAL GERAL: ${formatQuantidade(window.__REL_CACHE__.totalGeral)}`, 10, y);
+
+    // ===== Gráficos =====
+    const chartReps = document.getElementById("chart-reps");
+    const chartClis = document.getElementById("chart-clis");
+
+    if (chartReps && chartClis) {
+      const imgReps = chartReps.toDataURL("image/png", 1.0);
+      const imgClis = chartClis.toDataURL("image/png", 1.0);
+
+      doc.addPage(orient, "mm", "a4");
+      doc.setFontSize(12);
+      doc.text("Gráficos", 10, 15);
+
+      doc.addImage(imgReps, "PNG", 10, 25, pageWidth - 20, 80);
+      doc.addImage(imgClis, "PNG", 10, 120, pageWidth - 20, 80);
+    }
+
+    // ===== Rodapé =====
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.text(`Página ${i} de ${pageCount}`, pageWidth - 30, pageHeight - 10);
+    }
+
+    // Salvar PDF
+    const fileName = orientacao === "landscape" ? "relatorio-landscape.pdf" : "relatorio-portrait.pdf";
+    doc.save(fileName);
+  };
 }
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
