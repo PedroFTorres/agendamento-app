@@ -342,8 +342,8 @@ function renderAgendamentos() {
 const coresProdutos = {
   "Telha Canal": "bg-blue-100 text-blue-800",
   "Telha Colonial": "bg-green-100 text-green-800",
-  "Tijolo": "bg-purple-100 text-purple-800",
-  "Bloco": "bg-pink-100 text-pink-800"
+  "Tijolo 6 furos": "bg-purple-100 text-purple-800",
+  "Tijolo 8 furos": "bg-pink-100 text-pink-800"
 };
 
 // exibir totais do dia com cores diferentes
