@@ -31,15 +31,28 @@ function formatPrecoProduto(num) {
 
 // ================== FORMATAR DATA BR COM DIA DA SEMANA ==================
 function formatarDataBR(dateStr) {
-  // dateStr vem como "YYYY-MM-DD"
+  if (!dateStr) return "";
   const [ano, mes, dia] = dateStr.split("-");
-  const dataFormatada = `${dia}/${mes}/${ano}`;
-
-  // criar Date só para pegar o dia da semana
-  const data = new Date(`${ano}-${mes}-${dia}T00:00:00`); // força meia-noite local
+  const data = new Date(Number(ano), Number(mes) - 1, Number(dia));
+  const dataNum = `${dia}/${mes}/${ano}`;
   const diaSemana = data.toLocaleDateString("pt-BR", { weekday: "long" });
+  return `${dataNum} - ${diaSemana}`;
+}
 
-  return `${dataFormatada} - ${diaSemana}`;
+// ================== NORMALIZAR DATA ==================
+function normalizarYMD(val) {
+  if (!val) return "";
+  if (typeof val === "string") {
+    return val.split("T")[0]; // pega só o YYYY-MM-DD
+  }
+  if (val.toDate) { // Firestore Timestamp
+    const d = val.toDate();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dia}`;
+  }
+  return "";
 }
 
 // ================== FORMULÁRIOS ==================
@@ -330,9 +343,10 @@ function renderAgendamentos() {
         const grupos = {};
         snap.forEach(doc => {
           const d = doc.data();
-          if (!grupos[d.data]) grupos[d.data] = [];
-          grupos[d.data].push({ id: doc.id, ...d });
-        });
+          const ymd = normalizarYMD(d.data);  
+          if (!grupos[ymd]) grupos[ymd] = [];
+          grupos[ymd].push({ id: doc.id, ...d, _ymd: ymd });
+
 
         // renderizar grupos
         Object.keys(grupos).sort((a, b) => b.localeCompare(a)).forEach(dataStr => {
@@ -342,7 +356,7 @@ function renderAgendamentos() {
           // cabeçalho com data formatada
           const header = document.createElement("h3");
           header.className = "text-blue-700 font-bold text-xl mb-2";
-          header.textContent = formatarDataBR(dataStr);
+          header.textContent = formatarDataBR(ymd);
           bloco.appendChild(header);
 
           // calcular totais do dia por produto
