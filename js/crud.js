@@ -338,12 +338,26 @@ function renderAgendamentos() {
   produtosDia[item.produtoNome] = (produtosDia[item.produtoNome] || 0) + (item.quantidade || 0);
 });
 
-          // exibir totais do dia
-         const totais = document.createElement("p");
-          totais.className = "bg-orange-100 text-orange-700 font-semibold p-2 rounded mb-3";
-          totais.textContent = "Totais do dia: " + Object.entries(produtosDia)
-  .map(([prod, qtd]) => `${prod}: ${formatQuantidade(qtd)}`)
-  .join(" • ");
+         // mapa de cores por produto
+const coresProdutos = {
+  "Telha Canal": "bg-blue-100 text-blue-800",
+  "Telha Colonial": "bg-green-100 text-green-800",
+  "Tijolo": "bg-purple-100 text-purple-800",
+  "Bloco": "bg-pink-100 text-pink-800"
+};
+
+// exibir totais do dia com cores diferentes
+const totais = document.createElement("div");
+totais.className = "flex flex-wrap gap-2 mb-3";
+
+Object.entries(produtosDia).forEach(([prod, qtd]) => {
+  const span = document.createElement("span");
+  const cor = coresProdutos[prod] || "bg-gray-100 text-gray-800"; // cor padrão se não tiver mapeado
+  span.className = `${cor} font-semibold px-2 py-1 rounded`;
+  span.textContent = `${prod}: ${formatQuantidade(qtd)}`;
+  totais.appendChild(span);
+});
+
 bloco.appendChild(totais);
           
           const ul = document.createElement("ul");
