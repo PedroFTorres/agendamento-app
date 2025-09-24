@@ -236,6 +236,8 @@ function renderAgendamentos() {
     carregarSelect("representantes", "ag-rep", user.uid);
     carregarSelect("produtos", "ag-prod", user.uid);
 
+    const btnSalvar = document.getElementById("ag-salvar");
+
     // salvar ou atualizar
     document.getElementById("form-agendamento").addEventListener("submit", async e => {
       e.preventDefault();
@@ -253,8 +255,11 @@ function renderAgendamentos() {
       if (editId) {
         await db.collection("agendamentos").doc(editId).update(data);
         editId = null;
+        btnSalvar.textContent = "Salvar";
+        toast("Agendamento atualizado!");
       } else {
         await db.collection("agendamentos").add(data);
+        toast("Agendamento salvo!");
       }
       e.target.reset();
     });
@@ -332,6 +337,8 @@ function renderAgendamentos() {
             document.getElementById("ag-qtd").value = d.quantidade;
             document.getElementById("ag-obs").value = d.observacao || "";
             editId = btn.dataset.id;
+            btnSalvar.textContent = "Atualizar";
+            window.scrollTo({ top: 0, behavior: "smooth" });
           });
         });
       });
