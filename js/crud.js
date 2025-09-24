@@ -346,7 +346,7 @@ function renderAgendamentos() {
           const ymd = normalizarYMD(d.data);  
           if (!grupos[ymd]) grupos[ymd] = [];
           grupos[ymd].push({ id: doc.id, ...d, _ymd: ymd });
-
+          });   
 
         // renderizar grupos
         Object.keys(grupos).sort((a, b) => b.localeCompare(a)).forEach(dataStr => {
