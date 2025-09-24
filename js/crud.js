@@ -328,24 +328,24 @@ function renderAgendamentos() {
 
           // cabeçalho com data formatada
           const header = document.createElement("h3");
-          header.className = "font-semibold text-lg mb-2";
+          header.className = "text-blue-700 font-bold text-xl mb-2";
           header.textContent = formatarDataBR(dataStr);
           bloco.appendChild(header);
 
           // calcular totais do dia por produto
           const produtosDia = {};
           grupos[dataStr].forEach(item => {
-            produtosDia[item.produtoNome] = (produtosDia[item.produtoNome] || 0) + (item.quantidade || 0);
-          });
+  produtosDia[item.produtoNome] = (produtosDia[item.produtoNome] || 0) + (item.quantidade || 0);
+});
 
           // exibir totais do dia
-          const totais = document.createElement("p");
-          totais.className = "text-sm text-gray-600 mb-2";
+         const totais = document.createElement("p");
+          totais.className = "bg-orange-100 text-orange-700 font-semibold p-2 rounded mb-3";
           totais.textContent = "Totais do dia: " + Object.entries(produtosDia)
-            .map(([prod, qtd]) => `${prod}: ${formatQuantidade(qtd)}`)
-            .join(" • ");
-          bloco.appendChild(totais);
-
+  .map(([prod, qtd]) => `${prod}: ${formatQuantidade(qtd)}`)
+  .join(" • ");
+bloco.appendChild(totais);
+          
           const ul = document.createElement("ul");
           ul.className = "space-y-2";
 
