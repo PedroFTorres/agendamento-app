@@ -281,46 +281,79 @@ function renderAgendamentos() {
     $form.reset();
   });
 
-  waitForAuth().then(user => {
-    db.collection("agendamentos")
-      .where("userId", "==", user.uid)
-      .orderBy("createdAt", "desc")
-      .onSnapshot(snap => {
-        $list.innerHTML = "";
-        if (snap.empty) {
-          $list.innerHTML = `<li class="text-gray-500">Nenhum agendamento.</li>`;
-          return;
-        }
-        const resumo = {};
-        snap.forEach(doc => {
-          const d = doc.data();
+ waitForAuth().then(user => {
+  db.collection("agendamentos")
+    .where("userId", "==", user.uid)
+    .orderBy("data", "asc") // agora ordena pela data do agendamento
+    .onSnapshot(snap => {
+      $list.innerHTML = "";
+      if (snap.empty) {
+        $list.innerHTML = `<li class="text-gray-500">Nenhum agendamento.</li>`;
+        return;
+      }
+
+      const porDia = {};
+
+      // Agrupa os agendamentos por data
+      snap.forEach(doc => {
+        const d = doc.data();
+        if (!porDia[d.data]) porDia[d.data] = [];
+        porDia[d.data].push({ id: doc.id, ...d });
+      });
+
+      // Monta blocos de cada dia
+      Object.keys(porDia).sort().forEach(dataStr => {
+        const ags = porDia[dataStr];
+        const totalDia = ags.reduce((acc, a) => acc + (a.quantidade || 0), 0);
+
+        const dt = new Date(dataStr + "T00:00:00");
+        const diaSemana = dt.toLocaleDateString("pt-BR", { weekday: "long" });
+        const dataFormatada = dt.toLocaleDateString("pt-BR");
+
+        const bloco = document.createElement("div");
+        bloco.className = "mb-4 p-3 bg-gray-100 rounded shadow";
+
+        // Cabeçalho do dia + total
+        bloco.innerHTML = `
+          <h3 class="text-lg font-bold text-indigo-700 mb-2">
+            ${dataFormatada} - ${diaSemana}
+          </h3>
+          <ul class="space-y-2"></ul>
+          <div class="mt-2 font-semibold text-blue-700">
+            Total no dia: ${formatQuantidade(totalDia)}
+          </div>
+        `;
+
+        const ul = bloco.querySelector("ul");
+
+        // Lista de agendamentos
+        ags.forEach(d => {
           const li = document.createElement("li");
           li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
           li.innerHTML = `
             <div>
-              <div class="font-semibold">${d.data} • ${d.clienteNome}</div>
-              <div class="text-sm text-gray-500">Rep: ${d.representanteNome} • Prod: ${d.produtoNome} • Qtd: ${formatQuantidade(d.quantidade)}</div>
+              <div class="font-semibold">${d.clienteNome}</div>
+              <div class="text-sm text-gray-600">
+                Rep: ${d.representanteNome} • 
+                <span class="text-green-700 font-semibold">Prod: ${d.produtoNome}</span> • 
+                Qtd: ${formatQuantidade(d.quantidade)}
+              </div>
             </div>
-            <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
+            <button data-id="${d.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
           `;
-          $list.appendChild(li);
+          ul.appendChild(li);
+
           li.querySelector("button").addEventListener("click", async () => {
             if (confirm("Excluir este agendamento?")) {
-              await db.collection("agendamentos").doc(doc.id).delete();
+              await db.collection("agendamentos").doc(d.id).delete();
             }
           });
-          const key = `${d.data} - ${d.produtoNome}`;
-          resumo[key] = (resumo[key] || 0) + (d.quantidade || 0);
         });
-        let htmlResumo = "<h4 class='font-semibold mb-2'>Totais por dia/produto</h4><ul>";
-        for (const [k, v] of Object.entries(resumo)) {
-          htmlResumo += `<li>${k}: ${formatQuantidade(v)}</li>`;
-        }
-        htmlResumo += "</ul>";
-        document.getElementById("ag-resumo").innerHTML = htmlResumo;
+
+        $list.appendChild(bloco);
       });
-  });
-}
+    });
+});
 
 // ================== RELATÓRIOS ==================
 let chartRepsInst = null;
