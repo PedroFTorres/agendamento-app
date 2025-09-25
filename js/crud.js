@@ -376,18 +376,6 @@ function renderAgendamentos() {
   });
 }
 
-
-        // Resumo (totais por dia/produto)
-        let htmlResumo = "<h4 class='font-semibold mb-2'>Totais por dia / produto</h4><ul class='list-disc ml-5 space-y-1'>";
-        Object.entries(resumo).sort().forEach(([k, v]) => {
-          htmlResumo += `<li>${k}: ${formatQuantidade(v)}</li>`;
-        });
-        htmlResumo += "</ul>";
-        $resumoBox.innerHTML = htmlResumo;
-      });
-  });
-}
-
 // ================== RELATÓRIOS ==================
 let chartRepsInst = null;
 let chartClisInst = null;
