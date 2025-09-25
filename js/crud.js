@@ -581,71 +581,119 @@ async function exportarPDF() {
 
   let y = 40;
 
-  // ===== Totais por Produto =====
+  // ================== Tabela 1: Agendamentos Detalhados ==================
   doc.setFontSize(12);
-  doc.text("Totais por Produto:", 14, y);
-  y += 6;
-  doc.setFontSize(10);
-  Object.entries(porProduto).forEach(([prod, qtd]) => {
-    doc.text(`${prod}: ${formatQuantidade(qtd)}`, 20, y);
-    y += 6;
-  });
-
-  y += 4;
-
-  // ===== Detalhes em tabela =====
-  doc.setFontSize(12);
-  doc.text("Detalhes dos Agendamentos", 14, y);
-  y += 6;
+  doc.setFont("helvetica", "bold");
+  doc.text("Tabela 1 - Agendamentos", 14, y);
+  y += 8;
 
   doc.setFontSize(10);
   doc.setFont("courier", "normal");
 
+  // Cabeçalho da tabela
+  doc.setFillColor(200, 200, 200);
+  doc.rect(14, y - 5, 180, 8, "F");
+  doc.text("Cliente", 16, y);
+  doc.text("Produto", 80, y);
+  doc.text("Qtd", 160, y);
+  y += 6;
+
   let rowIndex = 0;
   linhasTabela.forEach(row => {
-    if (y > 270) { // quebra de página
-      doc.addPage();
-      y = 20;
-    }
+    if (y > 270) { doc.addPage(); y = 20; }
 
-    // Alterna cor de fundo
     if (rowIndex % 2 === 0) {
       doc.setFillColor(255, 229, 204); // laranja claro
-      doc.rect(14, y - 4, 180, 6, "F"); 
+      doc.rect(14, y - 4, 180, 6, "F");
     }
 
-    doc.text(
-      `Cliente: ${row.cliente} | Produto: ${row.produto} | Qtd: ${formatQuantidade(row.qtd)}`,
-      16, y
-    );
+    doc.text(row.cliente, 16, y);
+    doc.text(row.produto, 80, y);
+    doc.text(formatQuantidade(row.qtd), 160, y, { align: "right" });
 
     y += 6;
     rowIndex++;
   });
 
-  // ===== Total Geral =====
-  y += 8;
+  y += 10;
+
+  // ================== Tabela 2: Totais por Produto ==================
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL GERAL: ${formatQuantidade(totalGeral)}`, 14, y);
+  doc.text("Tabela 2 - Totais por Produto", 14, y);
+  y += 8;
 
-  // ===== Totais por Representante =====
-  y += 12;
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "normal");
-  doc.text("Totais por Representante:", 14, y);
+  doc.setFontSize(10);
+  doc.setFont("courier", "normal");
+
+  doc.setFillColor(200, 200, 200);
+  doc.rect(14, y - 5, 180, 8, "F");
+  doc.text("Produto", 16, y);
+  doc.text("Quantidade", 160, y);
   y += 6;
 
+  rowIndex = 0;
+  Object.entries(porProduto).forEach(([prod, qtd]) => {
+    if (y > 270) { doc.addPage(); y = 20; }
+
+    if (rowIndex % 2 === 0) {
+      doc.setFillColor(255, 229, 204);
+      doc.rect(14, y - 4, 180, 6, "F");
+    }
+
+    doc.text(prod, 16, y);
+    doc.text(formatQuantidade(qtd), 160, y, { align: "right" });
+
+    y += 6;
+    rowIndex++;
+  });
+
+  y += 10;
+
+  // ================== Tabela 3: Totais por Representante ==================
   // Monta totais por representante a partir das linhas
   const porRep = {};
   linhasTabela.forEach(r => {
+    if (!r.representante) return;
     porRep[r.representante] = (porRep[r.representante] || 0) + r.qtd;
   });
 
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text("Tabela 3 - Totais por Representante", 14, y);
+  y += 8;
+
+  doc.setFontSize(10);
+  doc.setFont("courier", "normal");
+
+  doc.setFillColor(200, 200, 200);
+  doc.rect(14, y - 5, 180, 8, "F");
+  doc.text("Representante", 16, y);
+  doc.text("Quantidade", 160, y);
+  y += 6;
+
+  rowIndex = 0;
   Object.entries(porRep).forEach(([rep, qtd]) => {
-    doc.text(`${rep}: ${formatQuantidade(qtd)}`, 20, y);
+    if (y > 270) { doc.addPage(); y = 20; }
+
+    if (rowIndex % 2 === 0) {
+      doc.setFillColor(255, 229, 204);
+      doc.rect(14, y - 4, 180, 6, "F");
+    }
+
+    doc.text(rep, 16, y);
+    doc.text(formatQuantidade(qtd), 160, y, { align: "right" });
+
     y += 6;
+    rowIndex++;
   });
+
+  y += 12;
+
+  // ================== Total Geral ==================
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text(`TOTAL GERAL: ${formatQuantidade(totalGeral)}`, 14, y);
 
   // ===== Download =====
   doc.save("relatorio-agendamentos.pdf");
