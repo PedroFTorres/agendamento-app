@@ -584,7 +584,7 @@ async function exportarPDF() {
   doc.setFontSize(11);
   doc.text(filtroTexto, 14, 34);
 
-  let y = 50;
+  y = 50;
 
   // ================== Tabela 1: Agendamentos Detalhados ==================
   doc.setFontSize(12);
