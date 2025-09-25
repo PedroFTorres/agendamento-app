@@ -569,6 +569,22 @@ async function exportarPDF() {
   doc.text(`Data: ${dataBR}`, 160, 18);
 
   let y = 40;
+    // Observação de período filtrado
+  let filtroTexto = "";
+  if (start && end) {
+    filtroTexto = `Agendamentos dos dias ${new Date(start).toLocaleDateString("pt-BR")} até ${new Date(end).toLocaleDateString("pt-BR")}`;
+  } else if (start) {
+    filtroTexto = `Agendamentos a partir de ${new Date(start).toLocaleDateString("pt-BR")}`;
+  } else if (end) {
+    filtroTexto = `Agendamentos até ${new Date(end).toLocaleDateString("pt-BR")}`;
+  } else {
+    filtroTexto = "Agendamentos (todos os dias)";
+  }
+
+  doc.setFontSize(11);
+  doc.text(filtroTexto, 14, 34);
+
+  let y = 50;
 
   // ================== Tabela 1: Agendamentos Detalhados ==================
   doc.setFontSize(12);
