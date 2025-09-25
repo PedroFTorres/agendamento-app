@@ -483,21 +483,22 @@ async function gerarRelatorio() {
     const qtd = d.quantidade || 0;
     totalGeral += qtd;
 
-    // acumula totais
+    // Totais
     porProduto[d.produtoNome] = (porProduto[d.produtoNome] || 0) + qtd;
     porRep[d.representanteNome] = (porRep[d.representanteNome] || 0) + qtd;
     porCli[d.clienteNome] = (porCli[d.clienteNome] || 0) + qtd;
 
-    // salva linha detalhada
+    // Linha detalhada (agora inclui a data do carregamento)
     linhasTabela.push({
       cliente: d.clienteNome || "-",
       produto: d.produtoNome || "-",
       representante: d.representanteNome || "-",
-      qtd: qtd
+      qtd: qtd,
+      data: d.data || "-"
     });
   });
 
-  // renderiza totais na tela
+  // Renderiza os totais na tela
   let html = `<p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p><ul>`;
   for (const [prod, qtd] of Object.entries(porProduto)) {
     html += `<li>${prod}: ${formatQuantidade(qtd)}</li>`;
@@ -505,7 +506,7 @@ async function gerarRelatorio() {
   html += "</ul>";
   document.getElementById("rel-totais").innerHTML = html;
 
-  // gráficos
+  // Gráficos
   if (chartRepsInst) chartRepsInst.destroy();
   if (chartClisInst) chartClisInst.destroy();
 
@@ -527,7 +528,7 @@ async function gerarRelatorio() {
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }} }
   });
 
-  // salva dados para exportação
+  // Cache para exportar PDF
   window.__REL_CACHE__ = { start, end, linhasTabela, totalGeral, porProduto, porRep };
 }
 
