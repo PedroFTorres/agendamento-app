@@ -106,44 +106,103 @@ function bindBasicActions(container) {
         if (!confirm("Excluir este registro?")) return;
         await db.collection(type).doc(id).delete();
       }
+if (a === "e") {
+  const snap = await db.collection(type).doc(id).get();
+  const d = snap.data() || {};
 
-      if (a === "e") {
-        const snap = await db.collection(type).doc(id).get();
-        const d = snap.data() || {};
+  // ================== CLIENTES ==================
+  if (type === "clientes") {
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
+        <h3 class="text-lg font-bold mb-2">Editar Cliente</h3>
+        <div class="grid grid-cols-1 gap-3">
+          <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome">
+          <input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp">
+          <input id="edit-rep" class="border p-2 rounded" value="${d.representante || ""}" placeholder="Representante">
+        </div>
+        <div class="flex justify-end space-x-3 mt-4">
+          <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+          <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
 
-        if (type === "clientes") {
-          const modal = document.createElement("div");
-          modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
-          modal.innerHTML = `
-            <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
-              <h3 class="text-lg font-bold mb-2">Editar Cliente</h3>
-              <div class="grid grid-cols-1 gap-3">
-                <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome">
-                <input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp">
-                <input id="edit-rep" class="border p-2 rounded" value="${d.representante || ""}" placeholder="Representante">
-              </div>
-              <div class="flex justify-end space-x-3 mt-4">
-                <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
-                <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
-              </div>
-            </div>
-          `;
-          document.body.appendChild(modal);
+    modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
 
-          modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+    modal.querySelector("#btn-save").addEventListener("click", async () => {
+      const nome = modal.querySelector("#edit-nome").value.trim();
+      const whatsapp = modal.querySelector("#edit-whats").value.trim();
+      const representante = modal.querySelector("#edit-rep").value.trim();
 
-          modal.querySelector("#btn-save").addEventListener("click", async () => {
-            const nome = modal.querySelector("#edit-nome").value.trim();
-            const whatsapp = modal.querySelector("#edit-whats").value.trim();
-            const representante = modal.querySelector("#edit-rep").value.trim();
-
-            await db.collection(type).doc(id).update({ nome, whatsapp, representante });
-            modal.remove(); // fecha modal depois de salvar
-          });
-        }
-      }
+      await db.collection(type).doc(id).update({ nome, whatsapp, representante });
+      modal.remove();
     });
-  });
+  }
+
+  // ================== REPRESENTANTES ==================
+  if (type === "representantes") {
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 space-y-4">
+        <h3 class="text-lg font-bold mb-2">Editar Representante</h3>
+        <div class="grid grid-cols-1 gap-3">
+          <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome do Representante">
+          <input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp (opcional)">
+        </div>
+        <div class="flex justify-end space-x-3 mt-4">
+          <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+          <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+
+    modal.querySelector("#btn-save").addEventListener("click", async () => {
+      const nome = modal.querySelector("#edit-nome").value.trim();
+      const whatsapp = modal.querySelector("#edit-whats").value.trim();
+
+      await db.collection(type).doc(id).update({ nome, whatsapp });
+      modal.remove();
+    });
+  }
+
+  // ================== PRODUTOS ==================
+  if (type === "produtos") {
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
+        <h3 class="text-lg font-bold mb-2">Editar Produto</h3>
+        <div class="grid grid-cols-1 gap-3">
+          <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome do Produto">
+          <input id="edit-categoria" class="border p-2 rounded" value="${d.categoria || ""}" placeholder="Categoria">
+          <input id="edit-preco" type="number" step="0.01" class="border p-2 rounded" value="${d.preco || 0}" placeholder="Preço">
+        </div>
+        <div class="flex justify-end space-x-3 mt-4">
+          <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+          <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+
+    modal.querySelector("#btn-save").addEventListener("click", async () => {
+      const nome = modal.querySelector("#edit-nome").value.trim();
+      const categoria = modal.querySelector("#edit-categoria").value.trim();
+      const preco = parseFloat(modal.querySelector("#edit-preco").value) || 0;
+
+      await db.collection(type).doc(id).update({ nome, categoria, preco });
+      modal.remove();
+    });
+  }
 }
 
 // ================== RENDER FORM ==================
