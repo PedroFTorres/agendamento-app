@@ -533,7 +533,6 @@ async function gerarRelatorio() {
 }
 
 // ================== EXPORTAR PDF ==================
-
 async function exportarPDF() {
   if (!window.__REL_CACHE__) {
     alert("Nenhum relatório carregado para exportar.");
@@ -573,7 +572,7 @@ async function exportarPDF() {
       doc.text(line.trim(), x, currentY);
     }
 
-    return currentY; // retorna a última linha usada
+    return currentY; // última linha usada
   }
 
   // ===== Cabeçalho =====
@@ -647,14 +646,14 @@ async function exportarPDF() {
     // Cliente com quebra automática
     let endY = wrapText(doc, row.cliente, 16, y, 50);
 
-    // Produto (não precisa quebrar tanto)
+    // Produto
     doc.text(row.produto, 70, y, { maxWidth: 40 });
 
-    // Quantidade e Data (sempre na mesma linha inicial)
+    // Quantidade e Data
     doc.text(formatQuantidade(row.qtd), 120, y, { align: "right" });
     doc.text(formatDateBR(row.data), 140, y);
 
-    // Ajusta Y para próxima linha (pega a última linha usada pelo cliente)
+    // Ajusta Y para próxima linha
     y = Math.max(endY, y) + 6;
     rowIndex++;
   });
@@ -727,33 +726,33 @@ async function exportarPDF() {
 
   y += 12;
 
-// ================== Total Geral ==================
-doc.setFontSize(12);
-doc.setFont("helvetica", "bold");
-doc.text(`TOTAL GERAL: ${formatQuantidade(totalGeral)}`, 14, y);
+  // ================== Total Geral ==================
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text(`TOTAL GERAL: ${formatQuantidade(totalGeral)}`, 14, y);
 
-y += 12; // espaço antes da observação
+  y += 12;
 
-// ================== Observação final ==================
-doc.setFontSize(11);
-doc.setFont("helvetica", "bold");
-doc.setTextColor(255, 0, 0); // vermelho
-doc.text(
-  "Seu agendamento está sujeito a alterações, pois a disponibilidade pode variar devido a",
-  14, y
-);
-y += 6;
-doc.text(
-  "cronogramas de fabricação ou possíveis imprevistos na produção.",
-  14, y
-);
+  // ================== Observação final ==================
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 0, 0); // vermelho
+  doc.text(
+    "Seu agendamento está sujeito a alterações, pois a disponibilidade pode variar devido a",
+    14, y
+  );
+  y += 6;
+  doc.text(
+    "cronogramas de fabricação ou possíveis imprevistos na produção.",
+    14, y
+  );
 
-// Resetar cor para preto (caso use mais coisas depois)
-doc.setTextColor(0, 0, 0);
+  // Resetar cor para preto
+  doc.setTextColor(0, 0, 0);
 
-// ===== Download =====
-doc.save("relatorio-agendamentos.pdf");
-
+  // ===== Download =====
+  doc.save("relatorio-agendamentos.pdf");
+}
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
 function renderDashboard() {
