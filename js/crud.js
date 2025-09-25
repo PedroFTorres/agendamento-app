@@ -201,9 +201,12 @@ if (type === "produtos") {
 
     await db.collection(type).doc(id).update({ nome, categoria, preco });
     modal.remove();
-  });
-}
-
+          });
+        }
+      } // fecha if (a === "e")
+    }); // fecha addEventListener
+  });   // fecha forEach
+}       // fecha bindBasicActions
 // ================== RENDER FORM ==================
 function renderForm(type) {
   pageContent.innerHTML = `
