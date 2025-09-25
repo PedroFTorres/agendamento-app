@@ -533,15 +533,23 @@ async function gerarRelatorio() {
 
 // ================== EXPORTAR PDF ==================
 
+// ================== EXPORTAR PDF ==================
 async function exportarPDF() {
   if (!window.__REL_CACHE__) {
     alert("Nenhum relatório carregado para exportar.");
     return;
   }
 
-  const { start, end, linhasTabela, totalGeral, porProduto } = window.__REL_CACHE__;
+  const { start, end, linhasTabela, totalGeral, porProduto, porRep } = window.__REL_CACHE__;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
+
+  // Função auxiliar para formatar datas YYYY-MM-DD → DD/MM/YYYY
+  function formatDateBR(dateStr) {
+    if (!dateStr) return "";
+    const [y, m, d] = dateStr.split("-");
+    return `${d}/${m}/${y}`;
+  }
 
   // ===== Cabeçalho =====
   try {
@@ -562,21 +570,19 @@ async function exportarPDF() {
   doc.setFontSize(10);
   doc.text("Juntos Somos Mais Fortes", 40, 24);
 
-  // Data atual no formato brasileiro
-  const hoje = new Date();
-  const dataBR = hoje.toLocaleDateString("pt-BR");
+  // Data de emissão (hoje)
+  const hoje = new Date().toLocaleDateString("pt-BR");
   doc.setFontSize(10);
-  doc.text(`Data: ${dataBR}`, 160, 18);
+  doc.text(`Data: ${hoje}`, 160, 18);
 
-  let y = 40;
-    // Observação de período filtrado
+  // Observação do filtro
   let filtroTexto = "";
   if (start && end) {
-    filtroTexto = `Agendamentos dos dias ${new Date(start).toLocaleDateString("pt-BR")} até ${new Date(end).toLocaleDateString("pt-BR")}`;
+    filtroTexto = `Agendamentos dos dias ${formatDateBR(start)} até ${formatDateBR(end)}`;
   } else if (start) {
-    filtroTexto = `Agendamentos a partir de ${new Date(start).toLocaleDateString("pt-BR")}`;
+    filtroTexto = `Agendamentos a partir de ${formatDateBR(start)}`;
   } else if (end) {
-    filtroTexto = `Agendamentos até ${new Date(end).toLocaleDateString("pt-BR")}`;
+    filtroTexto = `Agendamentos até ${formatDateBR(end)}`;
   } else {
     filtroTexto = "Agendamentos (todos os dias)";
   }
@@ -584,7 +590,7 @@ async function exportarPDF() {
   doc.setFontSize(11);
   doc.text(filtroTexto, 14, 34);
 
-  y = 50;
+  let y = 50;
 
   // ================== Tabela 1: Agendamentos Detalhados ==================
   doc.setFontSize(12);
@@ -656,13 +662,6 @@ async function exportarPDF() {
   y += 10;
 
   // ================== Tabela 3: Totais por Representante ==================
-  // Monta totais por representante a partir das linhas
-  const porRep = {};
-  linhasTabela.forEach(r => {
-    if (!r.representante) return;
-    porRep[r.representante] = (porRep[r.representante] || 0) + r.qtd;
-  });
-
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.text("Tabela 3 - Totais por Representante", 14, y);
