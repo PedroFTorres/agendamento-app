@@ -507,8 +507,12 @@ async function gerarRelatorio() {
     porRep[d.representanteNome] = (porRep[d.representanteNome]||0) + qtd;
     porCli[d.clienteNome] = (porCli[d.clienteNome]||0) + qtd;
 
-    linhasTabela.push({ cliente: d.clienteNome || "-", produto: d.produtoNome || "-", qtd });
-  });
+   linhasTabela.push({
+  cliente: d.clienteNome || "-",
+  produto: d.produtoNome || "-",
+  representante: d.representanteNome || "-",
+  qtd
+});
 
   let html = `<p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p><ul>`;
   for (const [prod, qtd] of Object.entries(porProduto)) {
@@ -543,7 +547,6 @@ async function gerarRelatorio() {
 
 // ================== EXPORTAR PDF ==================
 
-// ================== EXPORTAR PDF ==================
 async function exportarPDF() {
   if (!window.__REL_CACHE__) {
     alert("Nenhum relatório carregado para exportar.");
