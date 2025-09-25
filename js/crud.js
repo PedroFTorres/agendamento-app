@@ -532,8 +532,6 @@ async function gerarRelatorio() {
 }
 
 // ================== EXPORTAR PDF ==================
-
-// ================== EXPORTAR PDF ==================
 async function exportarPDF() {
   if (!window.__REL_CACHE__) {
     alert("Nenhum relatório carregado para exportar.");
@@ -544,7 +542,7 @@ async function exportarPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  // Função auxiliar para formatar datas YYYY-MM-DD → DD/MM/YYYY
+  // Auxiliar para formatar datas YYYY-MM-DD → DD/MM/YYYY
   function formatDateBR(dateStr) {
     if (!dateStr) return "";
     const [y, m, d] = dateStr.split("-");
@@ -570,7 +568,7 @@ async function exportarPDF() {
   doc.setFontSize(10);
   doc.text("Juntos Somos Mais Fortes", 40, 24);
 
-  // Data de emissão (hoje)
+  // Data de emissão
   const hoje = new Date().toLocaleDateString("pt-BR");
   doc.setFontSize(10);
   doc.text(`Data: ${hoje}`, 160, 18);
@@ -592,10 +590,10 @@ async function exportarPDF() {
 
   let y = 50;
 
-  // ================== Tabela 1: Agendamentos Detalhados ==================
+  // ================== Agendamentos ==================
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("Tabela 1 - Agendamentos", 14, y);
+  doc.text("Agendamentos", 14, y);
   y += 8;
 
   doc.setFontSize(10);
@@ -605,8 +603,9 @@ async function exportarPDF() {
   doc.setFillColor(200, 200, 200);
   doc.rect(14, y - 5, 180, 8, "F");
   doc.text("Cliente", 16, y);
-  doc.text("Produto", 80, y);
-  doc.text("Qtd", 160, y);
+  doc.text("Produto", 70, y);
+  doc.text("Qtd", 120, y);
+  doc.text("Data do Carregamento", 140, y);
   y += 6;
 
   let rowIndex = 0;
@@ -619,8 +618,9 @@ async function exportarPDF() {
     }
 
     doc.text(row.cliente, 16, y);
-    doc.text(row.produto, 80, y);
-    doc.text(formatQuantidade(row.qtd), 160, y, { align: "right" });
+    doc.text(row.produto, 70, y);
+    doc.text(formatQuantidade(row.qtd), 120, y, { align: "right" });
+    doc.text(formatDateBR(row.data), 140, y);
 
     y += 6;
     rowIndex++;
@@ -628,10 +628,10 @@ async function exportarPDF() {
 
   y += 10;
 
-  // ================== Tabela 2: Totais por Produto ==================
+  // ================== Totais por Produto ==================
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("Tabela 2 - Totais por Produto", 14, y);
+  doc.text("Totais por Produto", 14, y);
   y += 8;
 
   doc.setFontSize(10);
@@ -661,10 +661,10 @@ async function exportarPDF() {
 
   y += 10;
 
-  // ================== Tabela 3: Totais por Representante ==================
+  // ================== Totais por Representante ==================
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("Tabela 3 - Totais por Representante", 14, y);
+  doc.text("Totais por Representante", 14, y);
   y += 8;
 
   doc.setFontSize(10);
