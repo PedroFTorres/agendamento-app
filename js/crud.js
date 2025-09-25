@@ -201,9 +201,10 @@ if (a === "e") {
 
       await db.collection(type).doc(id).update({ nome, categoria, preco });
       modal.remove();
-    });
-  }
-}
+          } 
+    }); 
+  });   
+}       
 
 // ================== RENDER FORM ==================
 function renderForm(type) {
