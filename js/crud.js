@@ -331,27 +331,36 @@ function renderAgendamentos() {
   $list.appendChild(header);
 
   // ====== Resumo por produto do dia ======
-  const totaisPorProd = {};
-  agPorDia[dia].forEach(item => {
-    totaisPorProd[item.produtoNome] = (totaisPorProd[item.produtoNome] || 0) + (item.quantidade || 0);
-  });
+ // ====== Resumo por produto do dia ======
+const totaisPorProd = {};
+agPorDia[dia].forEach(item => {
+  totaisPorProd[item.produtoNome] = (totaisPorProd[item.produtoNome] || 0) + (item.quantidade || 0);
+});
 
-  const resumoDia = document.createElement("div");
-  resumoDia.className = "ml-4 mb-2 flex flex-wrap gap-3";
-  
-  // Paleta de cores para produtos
-  const cores = ["text-red-600 font-mono", "text-green-600 font-serif", "text-purple-600 font-bold", "text-pink-600 italic", "text-yellow-600 font-extrabold"];
-  let corIndex = 0;
+const resumoDia = document.createElement("div");
+resumoDia.className = "ml-4 mb-2 flex flex-wrap gap-3";
 
-  Object.entries(totaisPorProd).forEach(([prod, qtd]) => {
-    const span = document.createElement("span");
-    span.className = `${cores[corIndex % cores.length]} px-2 py-1 bg-gray-100 rounded`;
-    span.textContent = `${prod}: ${formatQuantidade(qtd)}`;
-    resumoDia.appendChild(span);
-    corIndex++;
-  });
+// Paleta de "marca-texto"
+const coresBg = [
+  "bg-yellow-300 text-black",
+  "bg-green-300 text-black",
+  "bg-pink-300 text-black",
+  "bg-blue-300 text-black",
+  "bg-orange-300 text-black"
+];
+let corIndex = 0;
 
-  $list.appendChild(resumoDia);
+Object.entries(totaisPorProd).forEach(([prod, qtd]) => {
+  const span = document.createElement("span");
+  span.className = `${coresBg[corIndex % coresBg.length]} px-2 py-1 rounded`;
+  span.style.fontFamily = '"Courier New", monospace';
+  span.textContent = `${prod}: ${formatQuantidade(qtd)}`;
+  resumoDia.appendChild(span);
+  corIndex++;
+});
+
+$list.appendChild(resumoDia);
+
 
   // ====== Itens do dia ======
   agPorDia[dia].forEach(item => {
