@@ -533,6 +533,7 @@ async function gerarRelatorio() {
 }
 
 // ================== EXPORTAR PDF ==================
+// ================== EXPORTAR PDF ==================
 async function exportarPDF() {
   if (!window.__REL_CACHE__) {
     alert("Nenhum relatório carregado para exportar.");
@@ -548,6 +549,31 @@ async function exportarPDF() {
     if (!dateStr) return "";
     const [y, m, d] = dateStr.split("-");
     return `${d}/${m}/${y}`;
+  }
+
+  // Função para quebrar texto em várias linhas
+  function wrapText(doc, text, x, y, maxWidth) {
+    const words = (text || "").split(" ");
+    let line = "";
+    let currentY = y;
+
+    words.forEach(word => {
+      const testLine = line + word + " ";
+      const testWidth = doc.getTextWidth(testLine);
+      if (testWidth > maxWidth) {
+        doc.text(line.trim(), x, currentY);
+        currentY += 5; // espaço entre linhas
+        line = word + " ";
+      } else {
+        line = testLine;
+      }
+    });
+
+    if (line) {
+      doc.text(line.trim(), x, currentY);
+    }
+
+    return currentY; // retorna a última linha usada
   }
 
   // ===== Cabeçalho =====
@@ -618,12 +644,18 @@ async function exportarPDF() {
       doc.rect(14, y - 4, 180, 6, "F");
     }
 
-    doc.text(row.cliente, 16, y);
-    doc.text(row.produto, 70, y);
+    // Cliente com quebra automática
+    let endY = wrapText(doc, row.cliente, 16, y, 50);
+
+    // Produto (não precisa quebrar tanto)
+    doc.text(row.produto, 70, y, { maxWidth: 40 });
+
+    // Quantidade e Data (sempre na mesma linha inicial)
     doc.text(formatQuantidade(row.qtd), 120, y, { align: "right" });
     doc.text(formatDateBR(row.data), 140, y);
 
-    y += 6;
+    // Ajusta Y para próxima linha (pega a última linha usada pelo cliente)
+    y = Math.max(endY, y) + 6;
     rowIndex++;
   });
 
@@ -653,7 +685,7 @@ async function exportarPDF() {
       doc.rect(14, y - 4, 180, 6, "F");
     }
 
-    doc.text(prod, 16, y);
+    doc.text(prod, 16, y, { maxWidth: 60 });
     doc.text(formatQuantidade(qtd), 160, y, { align: "right" });
 
     y += 6;
@@ -686,7 +718,7 @@ async function exportarPDF() {
       doc.rect(14, y - 4, 180, 6, "F");
     }
 
-    doc.text(rep, 16, y);
+    doc.text(rep, 16, y, { maxWidth: 80 });
     doc.text(formatQuantidade(qtd), 160, y, { align: "right" });
 
     y += 6;
