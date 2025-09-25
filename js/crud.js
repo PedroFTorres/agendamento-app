@@ -324,8 +324,8 @@ function renderAgendamentos() {
         }).forEach(dia => {
           // Cabeçalho colapsável
           const header = document.createElement("div");
-          header.className = "px-3 py-2 rounded border-l-4 border-blue-600 bg-blue-50 text-blue-700 font-bold cursor-pointer";
-          header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
+         header.className = "px-3 py-2 rounded border-l-4 border-orange-500 bg-orange-50 text-orange-700 font-bold cursor-pointer";
+         header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
 
           const container = document.createElement("div");
           container.className = "ml-4 mt-2 hidden space-y-2";
@@ -386,27 +386,54 @@ function renderAgendamentos() {
             });
           });
 
-          container.querySelectorAll(".btn-edit").forEach(btn => {
-            btn.addEventListener("click", async e => {
-              const id = e.target.dataset.id;
-              const snap = await db.collection("agendamentos").doc(id).get();
-              const d = snap.data();
-              const novo = prompt(
-                "Edite: cliente, representante, produto, quantidade, data, observação\n" +
-                `Atual: ${d.clienteNome}, ${d.representanteNome}, ${d.produtoNome}, ${d.quantidade}, ${d.data}, ${d.observacao || ""}`
-              );
-              if (!novo) return;
-              const [clienteNome, representanteNome, produtoNome, qtdStr, data, observacao] = novo.split(",").map(s => s.trim());
-              const quantidade = parseInt(qtdStr) || 0;
-              await db.collection("agendamentos").doc(id).update({ clienteNome, representanteNome, produtoNome, quantidade, data, observacao });
-            });
-          });
-        });
+         container.querySelectorAll(".btn-edit").forEach(btn => {
+  btn.addEventListener("click", async e => {
+    const id = e.target.dataset.id;
+    const snap = await db.collection("agendamentos").doc(id).get();
+    const d = snap.data();
+
+    // Cria modal
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
+        <h3 class="text-lg font-bold mb-2">Editar Agendamento</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input id="edit-cliente" class="border p-2 rounded" value="${d.clienteNome || ""}" placeholder="Cliente">
+          <input id="edit-rep" class="border p-2 rounded" value="${d.representanteNome || ""}" placeholder="Representante">
+          <input id="edit-prod" class="border p-2 rounded" value="${d.produtoNome || ""}" placeholder="Produto">
+          <input id="edit-qtd" type="number" class="border p-2 rounded" value="${d.quantidade || 0}" placeholder="Quantidade">
+          <input id="edit-data" type="date" class="border p-2 rounded" value="${d.data || ""}">
+          <input id="edit-obs" class="border p-2 rounded col-span-2" value="${d.observacao || ""}" placeholder="Observação">
+        </div>
+        <div class="flex justify-end space-x-3 mt-4">
+          <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+          <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Cancelar
+    modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+
+    // Salvar
+    modal.querySelector("#btn-save").addEventListener("click", async () => {
+      const clienteNome = modal.querySelector("#edit-cliente").value.trim();
+      const representanteNome = modal.querySelector("#edit-rep").value.trim();
+      const produtoNome = modal.querySelector("#edit-prod").value.trim();
+      const quantidade = parseInt(modal.querySelector("#edit-qtd").value) || 0;
+      const data = modal.querySelector("#edit-data").value;
+      const observacao = modal.querySelector("#edit-obs").value.trim();
+
+      await db.collection("agendamentos").doc(id).update({ 
+        clienteNome, representanteNome, produtoNome, quantidade, data, observacao 
       });
+
+      modal.remove();
+    });
   });
-}
-
-
+});
 
 // ================== RELATÓRIOS ==================
 let chartRepsInst = null;
