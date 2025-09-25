@@ -136,11 +136,11 @@ function bindBasicActions(container) {
     const whatsapp = modal.querySelector("#edit-whats").value.trim();
     const representante = modal.querySelector("#edit-rep").value.trim();
 
-   await db.collection(type).doc(id).update({ nome, whatsapp, representante });
-modal.remove(); // <- fecha modal depois de salvar
-
-  });
-}
+      await db.collection(type).doc(id).update({ nome, whatsapp, representante });
+      modal.remove(); // <- fecha modal depois de salvar
+    });
+  } 
+}  
 
 // ================== RENDER FORM ==================
 function renderForm(type) {
