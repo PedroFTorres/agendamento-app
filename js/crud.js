@@ -230,7 +230,6 @@ function renderAgendamentos() {
       <button class="bg-blue-600 text-white p-2 rounded w-full mt-2">Salvar</button>
     </form>
     <ul id="ag-list" class="space-y-2"></ul>
-    <div id="ag-resumo" class="mt-4 p-3 bg-gray-50 rounded"></div>
   `;
 
   const $selCliente = document.getElementById("ag-cliente");
@@ -265,7 +264,7 @@ function renderAgendamentos() {
     const clienteNome = $selCliente.selectedOptions[0]?.textContent || "";
     const repNome     = $selRep.selectedOptions[0]?.textContent || "";
     const prodNome    = $selProd.selectedOptions[0]?.textContent || "";
-    const data        = document.getElementById("ag-data").value;      // YYYY-MM-DD
+    const data        = document.getElementById("ag-data").value;
     const quantidade  = parseInt(document.getElementById("ag-qtd").value);
     const observacao  = document.getElementById("ag-obs").value;
 
@@ -282,109 +281,101 @@ function renderAgendamentos() {
     $form.reset();
   });
 
-  // ===== Helpers de data =====
+  // Helpers
   function diaSemanaPT(dateStr) {
-    const nomes = ["domingo","segunda feira","terça feira","quarta feira","quinta feira","sexta feira","sábado"];
+    const nomes = ["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
     const dt = new Date(dateStr + "T00:00:00");
     return nomes[dt.getDay()];
   }
   function dataCurtaBR(dateStr) {
-    // de "YYYY-MM-DD" para "DD/MM"
     const [y,m,d] = dateStr.split("-");
     return `${d}/${m}`;
   }
 
-  // ===== Listagem agrupada por dia =====
+  // Listagem agrupada
   waitForAuth().then(user => {
     db.collection("agendamentos")
       .where("userId", "==", user.uid)
       .orderBy("data", "asc")
       .onSnapshot(snap => {
         $list.innerHTML = "";
-        const $resumoBox = document.getElementById("ag-resumo");
 
         if (snap.empty) {
           $list.innerHTML = `<li class="text-gray-500">Nenhum agendamento.</li>`;
-          $resumoBox.innerHTML = "";
           return;
         }
 
         const agPorDia = {};
-        const resumo = {}; // chave: "data - produto"
-
         snap.forEach(doc => {
           const d = doc.data();
           const dia = d.data || "";
           if (!agPorDia[dia]) agPorDia[dia] = [];
           agPorDia[dia].push({ id: doc.id, ...d });
-
-          const key = `${dia} - ${d.produtoNome || "-"}`;
-          resumo[key] = (resumo[key] || 0) + (d.quantidade || 0);
         });
 
-        // Render: para cada dia, um cabeçalho e seus itens
-       Object.keys(agPorDia).sort().forEach(dia => {
-  // Cabeçalho do dia (em destaque)
-  const header = document.createElement("li");
-  header.className = "px-3 py-2 rounded border-l-4 border-blue-600 bg-blue-50 text-blue-700 font-bold";
-  header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
-  $list.appendChild(header);
+        Object.keys(agPorDia).sort().forEach(dia => {
+          // Cabeçalho
+          const header = document.createElement("li");
+          header.className = "px-3 py-2 rounded border-l-4 border-blue-600 bg-blue-50 text-blue-700 font-bold";
+          header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
+          $list.appendChild(header);
 
-  // ====== Resumo por produto do dia ======
- // ====== Resumo por produto do dia ======
-const totaisPorProd = {};
-agPorDia[dia].forEach(item => {
-  totaisPorProd[item.produtoNome] = (totaisPorProd[item.produtoNome] || 0) + (item.quantidade || 0);
-});
+          // Resumo por produto
+          const totaisPorProd = {};
+          agPorDia[dia].forEach(item => {
+            totaisPorProd[item.produtoNome] = (totaisPorProd[item.produtoNome] || 0) + (item.quantidade || 0);
+          });
 
-const resumoDia = document.createElement("div");
-resumoDia.className = "ml-4 mb-2 flex flex-wrap gap-3";
+          const resumoDia = document.createElement("div");
+          resumoDia.className = "ml-4 mb-2 flex flex-wrap gap-3";
 
-// Paleta de "marca-texto"
-const coresBg = [
-  "bg-yellow-300 text-black",
-  "bg-green-300 text-black",
-  "bg-pink-300 text-black",
-  "bg-blue-300 text-black",
-  "bg-orange-300 text-black"
-];
-let corIndex = 0;
+          const coresBg = [
+            "bg-yellow-300 text-black",
+            "bg-green-300 text-black",
+            "bg-pink-300 text-black",
+            "bg-blue-300 text-black",
+            "bg-orange-300 text-black"
+          ];
+          let corIndex = 0;
 
-Object.entries(totaisPorProd).forEach(([prod, qtd]) => {
-  const span = document.createElement("span");
-  span.className = `${coresBg[corIndex % coresBg.length]} px-2 py-1 rounded`;
-  span.style.fontFamily = '"Courier New", monospace';
-  span.textContent = `${prod}: ${formatQuantidade(qtd)}`;
-  resumoDia.appendChild(span);
-  corIndex++;
-});
+          Object.entries(totaisPorProd).forEach(([prod, qtd]) => {
+            const span = document.createElement("span");
+            span.className = `${coresBg[corIndex % coresBg.length]} px-2 py-1 rounded`;
+            span.style.fontFamily = '"Courier New", monospace';
+            span.textContent = `${prod}: ${formatQuantidade(qtd)}`;
+            resumoDia.appendChild(span);
+            corIndex++;
+          });
 
-$list.appendChild(resumoDia);
+          $list.appendChild(resumoDia);
 
+          // Itens do dia
+          agPorDia[dia].forEach(item => {
+            const li = document.createElement("li");
+            li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
+            li.innerHTML = `
+              <div>
+                <div class="font-semibold">${item.clienteNome}</div>
+                <div class="text-sm text-gray-500">
+                  Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
+                </div>
+                ${item.observacao ? `<div class="text-xs text-gray-400 mt-1">Obs: ${item.observacao}</div>` : ""}
+              </div>
+              <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
+            `;
+            $list.appendChild(li);
 
-  // ====== Itens do dia ======
-  agPorDia[dia].forEach(item => {
-    const li = document.createElement("li");
-    li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
-    li.innerHTML = `
-      <div>
-        <div class="font-semibold">${item.clienteNome}</div>
-        <div class="text-sm text-gray-500">
-          Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
-        </div>
-        ${item.observacao ? `<div class="text-xs text-gray-400 mt-1">Obs: ${item.observacao}</div>` : ""}
-      </div>
-      <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
-    `;
-    $list.appendChild(li);
-
-    li.querySelector("button").addEventListener("click", async () => {
-      if (confirm("Excluir este agendamento?")) {
-        await db.collection("agendamentos").doc(item.id).delete();
-      }
-    });
+            li.querySelector("button").addEventListener("click", async () => {
+              if (confirm("Excluir este agendamento?")) {
+                await db.collection("agendamentos").doc(item.id).delete();
+              }
+            });
+          });
+        });
+      });
   });
-});
+}
+
 
         // Resumo (totais por dia/produto)
         let htmlResumo = "<h4 class='font-semibold mb-2'>Totais por dia / produto</h4><ul class='list-disc ml-5 space-y-1'>";
