@@ -511,7 +511,7 @@ async function gerarRelatorio() {
   cliente: d.clienteNome || "-",
   produto: d.produtoNome || "-",
   representante: d.representanteNome || "-",
-  qtd
+  qtd: qtd
 });
 
   let html = `<p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p><ul>`;
