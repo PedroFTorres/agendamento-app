@@ -543,7 +543,8 @@ async function gerarRelatorio() {
 
 // ================== EXPORTAR PDF ==================
 
-function exportarPDF() {
+// ================== EXPORTAR PDF ==================
+async function exportarPDF() {
   if (!window.__REL_CACHE__) {
     alert("Nenhum relatório carregado para exportar.");
     return;
@@ -553,47 +554,100 @@ function exportarPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  // Cabeçalho
-  doc.setFontSize(14);
-  doc.text("Relatório de Agendamentos", 14, 20);
-
-  let filtro = "Período completo";
-  if (start || end) {
-    filtro = `De ${start || "?"} até ${end || "?"}`;
+  // ===== Cabeçalho =====
+  try {
+    const logo = await fetch("img/logo.png").then(r => r.blob()).then(b => {
+      return new Promise(res => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.readAsDataURL(b);
+      });
+    });
+    doc.addImage(logo, "PNG", 14, 10, 20, 20);
+  } catch (err) {
+    console.warn("Logo não encontrada em img/logo.png");
   }
-  doc.setFontSize(10);
-  doc.text(filtro, 14, 28);
 
-  // Totais
+  doc.setFontSize(16);
+  doc.text("Cerâmica Fortes", 40, 18);
+  doc.setFontSize(10);
+  doc.text("Juntos Somos Mais Fortes", 40, 24);
+
+  // Data atual no formato brasileiro
+  const hoje = new Date();
+  const dataBR = hoje.toLocaleDateString("pt-BR");
+  doc.setFontSize(10);
+  doc.text(`Data: ${dataBR}`, 160, 18);
+
+  let y = 40;
+
+  // ===== Totais por Produto =====
   doc.setFontSize(12);
-  doc.text(`Total Geral: ${formatQuantidade(totalGeral)}`, 14, 38);
-
-  let y = 48;
-  doc.setFontSize(10);
   doc.text("Totais por Produto:", 14, y);
   y += 6;
+  doc.setFontSize(10);
   Object.entries(porProduto).forEach(([prod, qtd]) => {
     doc.text(`${prod}: ${formatQuantidade(qtd)}`, 20, y);
     y += 6;
   });
 
-  // Linhas
   y += 4;
-  doc.setFontSize(11);
-  doc.text("Detalhes:", 14, y);
-  y += 6;
-  doc.setFontSize(9);
 
+  // ===== Detalhes em tabela =====
+  doc.setFontSize(12);
+  doc.text("Detalhes dos Agendamentos", 14, y);
+  y += 6;
+
+  doc.setFontSize(10);
+  doc.setFont("courier", "normal");
+
+  let rowIndex = 0;
   linhasTabela.forEach(row => {
-    doc.text(`Cliente: ${row.cliente} | Produto: ${row.produto} | Qtd: ${formatQuantidade(row.qtd)}`, 14, y);
-    y += 6;
     if (y > 270) { // quebra de página
       doc.addPage();
       y = 20;
     }
+
+    // Alterna cor de fundo
+    if (rowIndex % 2 === 0) {
+      doc.setFillColor(255, 229, 204); // laranja claro
+      doc.rect(14, y - 4, 180, 6, "F"); 
+    }
+
+    doc.text(
+      `Cliente: ${row.cliente} | Produto: ${row.produto} | Qtd: ${formatQuantidade(row.qtd)}`,
+      16, y
+    );
+
+    y += 6;
+    rowIndex++;
   });
 
-  // Download
+  // ===== Total Geral =====
+  y += 8;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text(`TOTAL GERAL: ${formatQuantidade(totalGeral)}`, 14, y);
+
+  // ===== Totais por Representante =====
+  y += 12;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "normal");
+  doc.text("Totais por Representante:", 14, y);
+  y += 6;
+
+  // Monta totais por representante a partir das linhas
+  const porRep = {};
+  linhasTabela.forEach(r => {
+    porRep[r.representante] = (porRep[r.representante] || 0) + r.qtd;
+  });
+
+  Object.entries(porRep).forEach(([rep, qtd]) => {
+    doc.text(`${rep}: ${formatQuantidade(qtd)}`, 20, y);
+    y += 6;
+  });
+
+  // ===== Download =====
   doc.save("relatorio-agendamentos.pdf");
 }
 
