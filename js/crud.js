@@ -234,10 +234,10 @@ function renderAgendamentos() {
   `;
 
   const $selCliente = document.getElementById("ag-cliente");
-  const $selRep = document.getElementById("ag-representante");
-  const $selProd = document.getElementById("ag-produto");
-  const $form = document.getElementById("agendamento-form");
-  const $list = document.getElementById("ag-list");
+  const $selRep     = document.getElementById("ag-representante");
+  const $selProd    = document.getElementById("ag-produto");
+  const $form       = document.getElementById("agendamento-form");
+  const $list       = document.getElementById("ag-list");
 
   async function loadOptions(coll, select, labelField = "nome") {
     const user = await waitForAuth();
@@ -263,11 +263,12 @@ function renderAgendamentos() {
     e.preventDefault();
     const user = await waitForAuth();
     const clienteNome = $selCliente.selectedOptions[0]?.textContent || "";
-    const repNome = $selRep.selectedOptions[0]?.textContent || "";
-    const prodNome = $selProd.selectedOptions[0]?.textContent || "";
-    const data = document.getElementById("ag-data").value;
-    const quantidade = parseInt(document.getElementById("ag-qtd").value);
-    const observacao = document.getElementById("ag-obs").value;
+    const repNome     = $selRep.selectedOptions[0]?.textContent || "";
+    const prodNome    = $selProd.selectedOptions[0]?.textContent || "";
+    const data        = document.getElementById("ag-data").value;      // YYYY-MM-DD
+    const quantidade  = parseInt(document.getElementById("ag-qtd").value);
+    const observacao  = document.getElementById("ag-obs").value;
+
     await db.collection("agendamentos").add({
       userId: user.uid,
       clienteNome,
@@ -281,63 +282,88 @@ function renderAgendamentos() {
     $form.reset();
   });
 
-waitForAuth().then(user => {
-  db.collection("agendamentos")
-    .where("userId", "==", user.uid)
-    .orderBy("data", "asc")
-    .onSnapshot(snap => {
-      $list.innerHTML = "";
-      if (snap.empty) {
-        $list.innerHTML = `<li class="text-gray-500">Nenhum agendamento.</li>`;
-        return;
-      }
+  // ===== Helpers de data =====
+  function diaSemanaPT(dateStr) {
+    const nomes = ["domingo","segunda feira","terça feira","quarta feira","quinta feira","sexta feira","sábado"];
+    const dt = new Date(dateStr + "T00:00:00");
+    return nomes[dt.getDay()];
+  }
+  function dataCurtaBR(dateStr) {
+    // de "YYYY-MM-DD" para "DD/MM"
+    const [y,m,d] = dateStr.split("-");
+    return `${d}/${m}`;
+  }
 
-      const agPorDia = {};
-      snap.forEach(doc => {
-        const d = doc.data();
-        if (!agPorDia[d.data]) agPorDia[d.data] = [];
-        agPorDia[d.data].push({ id: doc.id, ...d });
-      });
+  // ===== Listagem agrupada por dia =====
+  waitForAuth().then(user => {
+    db.collection("agendamentos")
+      .where("userId", "==", user.uid)
+      .orderBy("data", "asc")
+      .onSnapshot(snap => {
+        $list.innerHTML = "";
+        const $resumoBox = document.getElementById("ag-resumo");
 
-      // Função para pegar dia da semana
-      function diaSemana(dateStr) {
-        const dias = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
-        const dt = new Date(dateStr + "T00:00:00");
-        return dias[dt.getDay()];
-      }
+        if (snap.empty) {
+          $list.innerHTML = `<li class="text-gray-500">Nenhum agendamento.</li>`;
+          $resumoBox.innerHTML = "";
+          return;
+        }
 
-      Object.keys(agPorDia).sort().forEach(data => {
-        // Cabeçalho do dia
-        const h = document.createElement("h3");
-        h.className = "font-bold text-lg text-blue-700 mt-4";
-        h.textContent = `${data} - ${diaSemana(data)}`;
-        $list.appendChild(h);
+        const agPorDia = {};
+        const resumo = {}; // chave: "data - produto"
 
-        // Lista do dia
-        agPorDia[data].forEach(d => {
-          const li = document.createElement("li");
-          li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
-          li.innerHTML = `
-            <div>
-              <div class="font-semibold">${d.clienteNome}</div>
-              <div class="text-sm text-gray-500">
-                Rep: ${d.representanteNome} • Prod: ${d.produtoNome} • Qtd: ${formatQuantidade(d.quantidade)}
+        snap.forEach(doc => {
+          const d = doc.data();
+          const dia = d.data || "";
+          if (!agPorDia[dia]) agPorDia[dia] = [];
+          agPorDia[dia].push({ id: doc.id, ...d });
+
+          const key = `${dia} - ${d.produtoNome || "-"}`;
+          resumo[key] = (resumo[key] || 0) + (d.quantidade || 0);
+        });
+
+        // Render: para cada dia, um cabeçalho e seus itens
+        Object.keys(agPorDia).sort().forEach(dia => {
+          // Cabeçalho do dia (em destaque)
+          const header = document.createElement("li");
+          header.className = "px-3 py-2 rounded border-l-4 border-blue-600 bg-blue-50 text-blue-700 font-bold";
+          header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
+          $list.appendChild(header);
+
+          // Itens do dia
+          agPorDia[dia].forEach(item => {
+            const li = document.createElement("li");
+            li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
+            li.innerHTML = `
+              <div>
+                <div class="font-semibold">${item.clienteNome}</div>
+                <div class="text-sm text-gray-500">
+                  Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
+                </div>
+                ${item.observacao ? `<div class="text-xs text-gray-400 mt-1">Obs: ${item.observacao}</div>` : ""}
               </div>
-            </div>
-            <button data-id="${d.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
-          `;
-          $list.appendChild(li);
+              <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
+            `;
+            $list.appendChild(li);
 
-          li.querySelector("button").addEventListener("click", async () => {
-            if (confirm("Excluir este agendamento?")) {
-              await db.collection("agendamentos").doc(d.id).delete();
-            }
+            li.querySelector("button").addEventListener("click", async () => {
+              if (confirm("Excluir este agendamento?")) {
+                await db.collection("agendamentos").doc(item.id).delete();
+              }
+            });
           });
         });
-      });
-    });
-});
 
+        // Resumo (totais por dia/produto)
+        let htmlResumo = "<h4 class='font-semibold mb-2'>Totais por dia / produto</h4><ul class='list-disc ml-5 space-y-1'>";
+        Object.entries(resumo).sort().forEach(([k, v]) => {
+          htmlResumo += `<li>${k}: ${formatQuantidade(v)}</li>`;
+        });
+        htmlResumo += "</ul>";
+        $resumoBox.innerHTML = htmlResumo;
+      });
+  });
+}
 
 // ================== RELATÓRIOS ==================
 let chartRepsInst = null;
