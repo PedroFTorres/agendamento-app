@@ -542,7 +542,7 @@ async function gerarRelatorio() {
 }
 
 // ================== EXPORTAR PDF ==================
-// ================== EXPORTAR PDF ==================
+
 function exportarPDF() {
   if (!window.__REL_CACHE__) {
     alert("Nenhum relatório carregado para exportar.");
