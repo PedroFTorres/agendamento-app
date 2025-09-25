@@ -173,38 +173,36 @@ if (a === "e") {
   }
 
   // ================== PRODUTOS ==================
-  if (type === "produtos") {
-    const modal = document.createElement("div");
-    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
-        <h3 class="text-lg font-bold mb-2">Editar Produto</h3>
-        <div class="grid grid-cols-1 gap-3">
-          <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome do Produto">
-          <input id="edit-categoria" class="border p-2 rounded" value="${d.categoria || ""}" placeholder="Categoria">
-          <input id="edit-preco" type="number" step="0.01" class="border p-2 rounded" value="${d.preco || 0}" placeholder="Preço">
-        </div>
-        <div class="flex justify-end space-x-3 mt-4">
-          <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
-          <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
-        </div>
+if (type === "produtos") {
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+  modal.innerHTML = `
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
+      <h3 class="text-lg font-bold mb-2">Editar Produto</h3>
+      <div class="grid grid-cols-1 gap-3">
+        <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome do Produto">
+        <input id="edit-categoria" class="border p-2 rounded" value="${d.categoria || ""}" placeholder="Categoria">
+        <input id="edit-preco" type="number" step="0.01" class="border p-2 rounded" value="${d.preco || 0}" placeholder="Preço">
       </div>
-    `;
-    document.body.appendChild(modal);
+      <div class="flex justify-end space-x-3 mt-4">
+        <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+        <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
 
-    modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+  modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
 
-    modal.querySelector("#btn-save").addEventListener("click", async () => {
-      const nome = modal.querySelector("#edit-nome").value.trim();
-      const categoria = modal.querySelector("#edit-categoria").value.trim();
-      const preco = parseFloat(modal.querySelector("#edit-preco").value) || 0;
-  await db.collection(type).doc(id).update({ nome, categoria, preco });
-  modal.remove();
-}); 
-          } 
-    }); 
-  });   
-}       
+  modal.querySelector("#btn-save").addEventListener("click", async () => {
+    const nome = modal.querySelector("#edit-nome").value.trim();
+    const categoria = modal.querySelector("#edit-categoria").value.trim();
+    const preco = parseFloat(modal.querySelector("#edit-preco").value) || 0;
+
+    await db.collection(type).doc(id).update({ nome, categoria, preco });
+    modal.remove();
+  });
+}
 
 // ================== RENDER FORM ==================
 function renderForm(type) {
