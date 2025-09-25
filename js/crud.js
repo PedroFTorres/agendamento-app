@@ -533,7 +533,7 @@ async function gerarRelatorio() {
 }
 
 // ================== EXPORTAR PDF ==================
-// ================== EXPORTAR PDF ==================
+
 async function exportarPDF() {
   if (!window.__REL_CACHE__) {
     alert("Nenhum relatório carregado para exportar.");
@@ -727,14 +727,33 @@ async function exportarPDF() {
 
   y += 12;
 
-  // ================== Total Geral ==================
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL GERAL: ${formatQuantidade(totalGeral)}`, 14, y);
+// ================== Total Geral ==================
+doc.setFontSize(12);
+doc.setFont("helvetica", "bold");
+doc.text(`TOTAL GERAL: ${formatQuantidade(totalGeral)}`, 14, y);
 
-  // ===== Download =====
-  doc.save("relatorio-agendamentos.pdf");
-}
+y += 12; // espaço antes da observação
+
+// ================== Observação final ==================
+doc.setFontSize(11);
+doc.setFont("helvetica", "bold");
+doc.setTextColor(255, 0, 0); // vermelho
+doc.text(
+  "Seu agendamento está sujeito a alterações, pois a disponibilidade pode variar devido a",
+  14, y
+);
+y += 6;
+doc.text(
+  "cronogramas de fabricação ou possíveis imprevistos na produção.",
+  14, y
+);
+
+// Resetar cor para preto (caso use mais coisas depois)
+doc.setTextColor(0, 0, 0);
+
+// ===== Download =====
+doc.save("relatorio-agendamentos.pdf");
+
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
 function renderDashboard() {
