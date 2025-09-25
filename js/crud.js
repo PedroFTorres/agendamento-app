@@ -542,7 +542,60 @@ async function gerarRelatorio() {
 }
 
 // ================== EXPORTAR PDF ==================
-// (mantive igual ao código que você já tinha)
+// ================== EXPORTAR PDF ==================
+function exportarPDF() {
+  if (!window.__REL_CACHE__) {
+    alert("Nenhum relatório carregado para exportar.");
+    return;
+  }
+
+  const { start, end, linhasTabela, totalGeral, porProduto } = window.__REL_CACHE__;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Cabeçalho
+  doc.setFontSize(14);
+  doc.text("Relatório de Agendamentos", 14, 20);
+
+  let filtro = "Período completo";
+  if (start || end) {
+    filtro = `De ${start || "?"} até ${end || "?"}`;
+  }
+  doc.setFontSize(10);
+  doc.text(filtro, 14, 28);
+
+  // Totais
+  doc.setFontSize(12);
+  doc.text(`Total Geral: ${formatQuantidade(totalGeral)}`, 14, 38);
+
+  let y = 48;
+  doc.setFontSize(10);
+  doc.text("Totais por Produto:", 14, y);
+  y += 6;
+  Object.entries(porProduto).forEach(([prod, qtd]) => {
+    doc.text(`${prod}: ${formatQuantidade(qtd)}`, 20, y);
+    y += 6;
+  });
+
+  // Linhas
+  y += 4;
+  doc.setFontSize(11);
+  doc.text("Detalhes:", 14, y);
+  y += 6;
+  doc.setFontSize(9);
+
+  linhasTabela.forEach(row => {
+    doc.text(`Cliente: ${row.cliente} | Produto: ${row.produto} | Qtd: ${formatQuantidade(row.qtd)}`, 14, y);
+    y += 6;
+    if (y > 270) { // quebra de página
+      doc.addPage();
+      y = 20;
+    }
+  });
+
+  // Download
+  doc.save("relatorio-agendamentos.pdf");
+}
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
 function renderDashboard() {
