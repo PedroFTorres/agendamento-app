@@ -198,9 +198,9 @@ if (a === "e") {
       const nome = modal.querySelector("#edit-nome").value.trim();
       const categoria = modal.querySelector("#edit-categoria").value.trim();
       const preco = parseFloat(modal.querySelector("#edit-preco").value) || 0;
-
-      await db.collection(type).doc(id).update({ nome, categoria, preco });
-      modal.remove();
+  await db.collection(type).doc(id).update({ nome, categoria, preco });
+  modal.remove();
+}); 
           } 
     }); 
   });   
