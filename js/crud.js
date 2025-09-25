@@ -313,68 +313,95 @@ function renderAgendamentos() {
           agPorDia[dia].push({ id: doc.id, ...d });
         });
 
-        Object.keys(agPorDia).sort().forEach(dia => {
-          // Cabeçalho
-          const header = document.createElement("li");
-          header.className = "px-3 py-2 rounded border-l-4 border-blue-600 bg-blue-50 text-blue-700 font-bold";
-          header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
-          $list.appendChild(header);
+        Object.keys(agPorDia).sort((a, b) => {
+  const hoje = new Date().toISOString().split("T")[0];
+  // Ordena: primeiro hoje e futuros, depois passados
+  if (a < hoje && b >= hoje) return 1;
+  if (a >= hoje && b < hoje) return -1;
+  return a.localeCompare(b);
+}).forEach(dia => {
+  // Cabeçalho colapsável
+  const header = document.createElement("div");
+  header.className = "px-3 py-2 rounded border-l-4 border-blue-600 bg-blue-50 text-blue-700 font-bold cursor-pointer";
+  header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
 
-          // Resumo por produto
-          const totaisPorProd = {};
-          agPorDia[dia].forEach(item => {
-            totaisPorProd[item.produtoNome] = (totaisPorProd[item.produtoNome] || 0) + (item.quantidade || 0);
-          });
+  // Container de agendamentos (inicia escondido)
+  const container = document.createElement("div");
+  container.className = "ml-4 mt-2 hidden space-y-2";
 
-          const resumoDia = document.createElement("div");
-          resumoDia.className = "ml-4 mb-2 flex flex-wrap gap-3";
-
-          const coresBg = [
-            "bg-yellow-300 text-black",
-            "bg-green-300 text-black",
-            "bg-pink-300 text-black",
-            "bg-blue-300 text-black",
-            "bg-orange-300 text-black"
-          ];
-          let corIndex = 0;
-
-          Object.entries(totaisPorProd).forEach(([prod, qtd]) => {
-            const span = document.createElement("span");
-            span.className = `${coresBg[corIndex % coresBg.length]} px-2 py-1 rounded`;
-            span.style.fontFamily = '"Courier New", monospace';
-            span.textContent = `${prod}: ${formatQuantidade(qtd)}`;
-            resumoDia.appendChild(span);
-            corIndex++;
-          });
-
-          $list.appendChild(resumoDia);
-
-          // Itens do dia
-          agPorDia[dia].forEach(item => {
-            const li = document.createElement("li");
-            li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
-            li.innerHTML = `
-              <div>
-                <div class="font-semibold">${item.clienteNome}</div>
-                <div class="text-sm text-gray-500">
-                  Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
-                </div>
-                ${item.observacao ? `<div class="text-xs text-gray-400 mt-1">Obs: ${item.observacao}</div>` : ""}
-              </div>
-              <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
-            `;
-            $list.appendChild(li);
-
-            li.querySelector("button").addEventListener("click", async () => {
-              if (confirm("Excluir este agendamento?")) {
-                await db.collection("agendamentos").doc(item.id).delete();
-              }
-            });
-          });
-        });
-      });
+  // Resumo por produto
+  const totaisPorProd = {};
+  agPorDia[dia].forEach(item => {
+    totaisPorProd[item.produtoNome] = (totaisPorProd[item.produtoNome] || 0) + (item.quantidade || 0);
   });
-}
+
+  const resumoDia = document.createElement("div");
+  resumoDia.className = "flex flex-wrap gap-3";
+  const coresBg = ["bg-yellow-300","bg-green-300","bg-pink-300","bg-blue-300","bg-orange-300"];
+  let corIndex = 0;
+  Object.entries(totaisPorProd).forEach(([prod, qtd]) => {
+    const span = document.createElement("span");
+    span.className = `${coresBg[corIndex % coresBg.length]} px-2 py-1 rounded font-mono`;
+    span.textContent = `${prod}: ${formatQuantidade(qtd)}`;
+    resumoDia.appendChild(span);
+    corIndex++;
+  });
+  container.appendChild(resumoDia);
+
+  // Agendamentos do dia
+  agPorDia[dia].forEach(item => {
+    const li = document.createElement("div");
+    li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
+    li.innerHTML = `
+      <div>
+        <div class="font-semibold">${item.clienteNome}</div>
+        <div class="text-sm text-gray-500">
+          Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
+        </div>
+        ${item.observacao ? `<div class="text-xs text-gray-400 mt-1">Obs: ${item.observacao}</div>` : ""}
+      </div>
+      <div class="space-x-2">
+        <button data-id="${item.id}" class="bg-yellow-500 text-white px-2 py-1 rounded btn-edit">Editar</button>
+        <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">Excluir</button>
+      </div>
+    `;
+    container.appendChild(li);
+  });
+
+  // Toggle de abrir/fechar
+  header.addEventListener("click", () => {
+    container.classList.toggle("hidden");
+  });
+
+  $list.appendChild(header);
+  $list.appendChild(container);
+
+  // Botões de ação
+  container.querySelectorAll(".btn-del").forEach(btn => {
+    btn.addEventListener("click", async e => {
+      if (confirm("Excluir este agendamento?")) {
+        await db.collection("agendamentos").doc(e.target.dataset.id).delete();
+      }
+    });
+  });
+
+  container.querySelectorAll(".btn-edit").forEach(btn => {
+    btn.addEventListener("click", async e => {
+      const id = e.target.dataset.id;
+      const snap = await db.collection("agendamentos").doc(id).get();
+      const d = snap.data();
+      const novo = prompt(
+        "Edite: cliente, representante, produto, quantidade, data, observação\n" +
+        `Atual: ${d.clienteNome}, ${d.representanteNome}, ${d.produtoNome}, ${d.quantidade}, ${d.data}, ${d.observacao || ""}`
+      );
+      if (!novo) return;
+      const [clienteNome, representanteNome, produtoNome, qtdStr, data, observacao] = novo.split(",").map(s => s.trim());
+      const quantidade = parseInt(qtdStr) || 0;
+      await db.collection("agendamentos").doc(id).update({ clienteNome, representanteNome, produtoNome, quantidade, data, observacao });
+    });
+  });
+});
+
 
 // ================== RELATÓRIOS ==================
 let chartRepsInst = null;
