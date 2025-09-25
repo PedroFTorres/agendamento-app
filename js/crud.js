@@ -323,36 +323,59 @@ function renderAgendamentos() {
         });
 
         // Render: para cada dia, um cabeçalho e seus itens
-        Object.keys(agPorDia).sort().forEach(dia => {
-          // Cabeçalho do dia (em destaque)
-          const header = document.createElement("li");
-          header.className = "px-3 py-2 rounded border-l-4 border-blue-600 bg-blue-50 text-blue-700 font-bold";
-          header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
-          $list.appendChild(header);
+       Object.keys(agPorDia).sort().forEach(dia => {
+  // Cabeçalho do dia (em destaque)
+  const header = document.createElement("li");
+  header.className = "px-3 py-2 rounded border-l-4 border-blue-600 bg-blue-50 text-blue-700 font-bold";
+  header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
+  $list.appendChild(header);
 
-          // Itens do dia
-          agPorDia[dia].forEach(item => {
-            const li = document.createElement("li");
-            li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
-            li.innerHTML = `
-              <div>
-                <div class="font-semibold">${item.clienteNome}</div>
-                <div class="text-sm text-gray-500">
-                  Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
-                </div>
-                ${item.observacao ? `<div class="text-xs text-gray-400 mt-1">Obs: ${item.observacao}</div>` : ""}
-              </div>
-              <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
-            `;
-            $list.appendChild(li);
+  // ====== Resumo por produto do dia ======
+  const totaisPorProd = {};
+  agPorDia[dia].forEach(item => {
+    totaisPorProd[item.produtoNome] = (totaisPorProd[item.produtoNome] || 0) + (item.quantidade || 0);
+  });
 
-            li.querySelector("button").addEventListener("click", async () => {
-              if (confirm("Excluir este agendamento?")) {
-                await db.collection("agendamentos").doc(item.id).delete();
-              }
-            });
-          });
-        });
+  const resumoDia = document.createElement("div");
+  resumoDia.className = "ml-4 mb-2 flex flex-wrap gap-3";
+  
+  // Paleta de cores para produtos
+  const cores = ["text-red-600 font-mono", "text-green-600 font-serif", "text-purple-600 font-bold", "text-pink-600 italic", "text-yellow-600 font-extrabold"];
+  let corIndex = 0;
+
+  Object.entries(totaisPorProd).forEach(([prod, qtd]) => {
+    const span = document.createElement("span");
+    span.className = `${cores[corIndex % cores.length]} px-2 py-1 bg-gray-100 rounded`;
+    span.textContent = `${prod}: ${formatQuantidade(qtd)}`;
+    resumoDia.appendChild(span);
+    corIndex++;
+  });
+
+  $list.appendChild(resumoDia);
+
+  // ====== Itens do dia ======
+  agPorDia[dia].forEach(item => {
+    const li = document.createElement("li");
+    li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
+    li.innerHTML = `
+      <div>
+        <div class="font-semibold">${item.clienteNome}</div>
+        <div class="text-sm text-gray-500">
+          Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
+        </div>
+        ${item.observacao ? `<div class="text-xs text-gray-400 mt-1">Obs: ${item.observacao}</div>` : ""}
+      </div>
+      <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded">Excluir</button>
+    `;
+    $list.appendChild(li);
+
+    li.querySelector("button").addEventListener("click", async () => {
+      if (confirm("Excluir este agendamento?")) {
+        await db.collection("agendamentos").doc(item.id).delete();
+      }
+    });
+  });
+});
 
         // Resumo (totais por dia/produto)
         let htmlResumo = "<h4 class='font-semibold mb-2'>Totais por dia / produto</h4><ul class='list-disc ml-5 space-y-1'>";
