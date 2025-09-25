@@ -110,36 +110,62 @@ function bindBasicActions(container) {
         const snap = await db.collection(type).doc(id).get();
         const d = snap.data() || {};
         let resp;
-        if (type === "clientes") {
-          resp = prompt(`Edite: nome, whatsapp, representante\nAtual: ${d.nome||""}, ${d.whatsapp||""}, ${d.representante||""}`);
-          if (!resp) return;
-          const [nome, whatsappRaw, rep] = resp.split(",").map(s => (s||"").trim());
-          await db.collection(type).doc(id).update({ nome, whatsapp: whatsappRaw, representante: rep });
-        } else if (type === "representantes") {
-          resp = prompt(`Edite: nome\nAtual: ${d.nome||""}`);
-          if (!resp) return;
-          await db.collection(type).doc(id).update({ nome: resp.trim() });
-        } else if (type === "produtos") {
-          resp = prompt(`Edite: nome, preco, categoria\nAtual: ${d.nome||""}, ${d.preco||0}, ${d.categoria||""}`);
-          if (!resp) return;
-          const [nome, precoStr, cat] = resp.split(",").map(s => (s||"").trim());
-          const preco = parseFloat(precoStr)||0;
-          await db.collection(type).doc(id).update({ nome, preco, categoria: cat });
-        }
-      }
-    });
+       if (type === "clientes") {
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+  modal.innerHTML = `
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
+      <h3 class="text-lg font-bold mb-2">Editar Cliente</h3>
+      <div class="grid grid-cols-1 gap-3">
+        <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome">
+        <input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp">
+        <input id="edit-rep" class="border p-2 rounded" value="${d.representante || ""}" placeholder="Representante">
+      </div>
+      <div class="flex justify-end space-x-3 mt-4">
+        <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+        <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+
+  modal.querySelector("#btn-save").addEventListener("click", async () => {
+    const nome = modal.querySelector("#edit-nome").value.trim();
+    const whatsapp = modal.querySelector("#edit-whats").value.trim();
+    const representante = modal.querySelector("#edit-rep").value.trim();
+
+   await db.collection(type).doc(id).update({ nome, whatsapp, representante });
+modal.remove(); // <- fecha modal depois de salvar
+
   });
 }
 
 // ================== RENDER FORM ==================
 function renderForm(type) {
   pageContent.innerHTML = `
-    <h2 class="text-xl font-bold mb-4">${type.charAt(0).toUpperCase() + type.slice(1)}</h2>
+    <h2 class="text-xl font-bold mb-4 capitalize">${type}</h2>
     <form id="${type}-form" class="bg-white p-4 rounded shadow mb-4">
       ${formHTML(type)}
     </form>
+    ${type === "clientes" ? `
+      <input type="text" id="clientes-search" placeholder="Pesquisar cliente..." 
+             class="border p-2 rounded w-full mb-4">
+    ` : ""}
     <ul id="${type}-list" class="space-y-2"></ul>
   `;
+  if (type === "clientes") {
+  const searchInput = document.getElementById("clientes-search");
+  searchInput.addEventListener("input", () => {
+    const termo = searchInput.value.toLowerCase();
+    const items = list.querySelectorAll("li");
+    items.forEach(li => {
+      const txt = li.textContent.toLowerCase();
+      li.style.display = txt.includes(termo) ? "" : "none";
+    });
+  });
+}
 
   const form = document.getElementById(`${type}-form`);
   const list = document.getElementById(`${type}-list`);
