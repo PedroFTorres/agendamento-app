@@ -503,17 +503,22 @@ async function gerarRelatorio() {
     const d = doc.data();
     const qtd = d.quantidade || 0;
     totalGeral += qtd;
-    porProduto[d.produtoNome] = (porProduto[d.produtoNome]||0) + qtd;
-    porRep[d.representanteNome] = (porRep[d.representanteNome]||0) + qtd;
-    porCli[d.clienteNome] = (porCli[d.clienteNome]||0) + qtd;
 
-   linhasTabela.push({
-  cliente: d.clienteNome || "-",
-  produto: d.produtoNome || "-",
-  representante: d.representanteNome || "-",
-  qtd: qtd
-});
+    // acumula totais
+    porProduto[d.produtoNome] = (porProduto[d.produtoNome] || 0) + qtd;
+    porRep[d.representanteNome] = (porRep[d.representanteNome] || 0) + qtd;
+    porCli[d.clienteNome] = (porCli[d.clienteNome] || 0) + qtd;
 
+    // salva linha detalhada
+    linhasTabela.push({
+      cliente: d.clienteNome || "-",
+      produto: d.produtoNome || "-",
+      representante: d.representanteNome || "-",
+      qtd: qtd
+    });
+  });
+
+  // renderiza totais na tela
   let html = `<p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p><ul>`;
   for (const [prod, qtd] of Object.entries(porProduto)) {
     html += `<li>${prod}: ${formatQuantidade(qtd)}</li>`;
@@ -521,6 +526,7 @@ async function gerarRelatorio() {
   html += "</ul>";
   document.getElementById("rel-totais").innerHTML = html;
 
+  // gráficos
   if (chartRepsInst) chartRepsInst.destroy();
   if (chartClisInst) chartClisInst.destroy();
 
@@ -542,6 +548,7 @@ async function gerarRelatorio() {
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }} }
   });
 
+  // salva dados para exportação
   window.__REL_CACHE__ = { start, end, linhasTabela, totalGeral, porProduto, porRep };
 }
 
