@@ -449,18 +449,19 @@ function renderAgendamentos() {
             const li = document.createElement("div");
             li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
             li.innerHTML = `
-              <div>
-                <div class="font-semibold">${item.clienteNome}</div>
-                <div class="text-sm text-gray-500">
-                  Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
-                </div>
-                ${item.observacao ? `<div class="text-xs text-gray-400 mt-1">Obs: ${item.observacao}</div>` : ""}
-              </div>
-              <div class="space-x-2">
-                <button data-id="${item.id}" class="bg-yellow-500 text-white px-2 py-1 rounded btn-edit">Editar</button>
-                <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">Excluir</button>
-              </div>
-            `;
+  <div>
+    <div class="font-semibold">${item.clienteNome}</div>
+    <div class="text-sm text-gray-500">
+      Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
+    </div>
+    ${item.observacao ? `<div class="text-sm font-bold text-red-600">Obs: ${item.observacao}</div>` : ""}
+  </div>
+  <div class="space-x-2">
+    <button data-id="${item.id}" class="bg-yellow-500 text-white px-2 py-1 rounded btn-edit">Editar</button>
+    <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">Excluir</button>
+  </div>
+`;
+
             container.appendChild(li);
           });
 
