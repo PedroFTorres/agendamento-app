@@ -10,7 +10,7 @@ function renderProducao() {
       </div>
       <button class="bg-blue-600 text-white p-2 rounded w-full mt-2">Salvar</button>
     </form>
-    <ul id="prod-list" class="space-y-2"></ul>
+    <div id="prod-list" class="space-y-4"></div>
   `;
 
   const $selProd = document.getElementById("prod-produto");
@@ -50,48 +50,69 @@ function renderProducao() {
     $form.reset();
   });
 
-  // listar produções
+  // listar produções agrupadas por data
   waitForAuth().then(user=>{
     db.collection("producao").where("userId","==",user.uid).orderBy("data","desc")
       .onSnapshot(async snap=>{
         $list.innerHTML = "";
         if(snap.empty){
-          $list.innerHTML = `<li class="text-gray-500">Nenhuma produção lançada.</li>`;
+          $list.innerHTML = `<p class="text-gray-500">Nenhuma produção lançada.</p>`;
           return;
         }
 
+        // agrupa por data
+        const prodPorDia = {};
         for(const doc of snap.docs){
-          const p = doc.data();
-
-          // total agendado para o dia/produto
-          const agSnap = await db.collection("agendamentos")
-            .where("userId","==",user.uid)
-            .where("data","==",p.data)
-            .where("produtoNome","==",p.produto)
-            .get();
-
-          let totalAg = 0;
-          agSnap.forEach(a=> totalAg += a.data().quantidade||0);
-
-          const disponivel = (p.quantidade||0) - totalAg;
-
-          const li = document.createElement("li");
-          li.className = "p-4 bg-white rounded shadow flex justify-between items-center";
-          li.innerHTML = `
-            <div>
-              <div class="font-semibold">Data: ${p.data}</div>
-              <div class="text-sm text-gray-600">Produto: ${p.produto}</div>
-              <div class="text-sm">Produzido: ${formatQuantidade(p.quantidade)}</div>
-              <div class="text-sm">Agendado: ${formatQuantidade(totalAg)}</div>
-              <div class="text-sm font-bold text-green-600">Disponível: ${formatQuantidade(disponivel)}</div>
-            </div>
-            <div class="space-x-2">
-              <button data-id="${doc.id}" class="bg-yellow-500 text-white px-2 py-1 rounded btn-edit">Editar</button>
-              <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">Excluir</button>
-            </div>
-          `;
-          $list.appendChild(li);
+          const p = { id: doc.id, ...doc.data() };
+          if(!prodPorDia[p.data]) prodPorDia[p.data] = [];
+          prodPorDia[p.data].push(p);
         }
+
+        Object.keys(prodPorDia).sort((a,b)=>b.localeCompare(a)).forEach(dia=>{
+          // header colapsável
+          const header = document.createElement("div");
+          header.className = "px-3 py-2 rounded border-l-4 border-blue-500 bg-blue-50 text-blue-700 font-bold cursor-pointer";
+          header.textContent = `Data: ${dia}`;
+
+          const container = document.createElement("div");
+          container.className = "ml-4 mt-2 hidden space-y-2";
+
+          // lista de produções do dia
+          prodPorDia[dia].forEach(async item=>{
+            // total agendado para o dia/produto
+            const agSnap = await db.collection("agendamentos")
+              .where("userId","==",user.uid)
+              .where("data","==",item.data)
+              .where("produtoNome","==",item.produto)
+              .get();
+
+            let totalAg = 0;
+            agSnap.forEach(a=> totalAg += a.data().quantidade||0);
+            const disponivel = (item.quantidade||0) - totalAg;
+
+            const card = document.createElement("div");
+            card.className = "p-3 bg-white rounded shadow flex justify-between items-center";
+            card.innerHTML = `
+              <div>
+                <div class="font-semibold">${item.produto}</div>
+                <div class="text-sm">Produzido: ${formatQuantidade(item.quantidade)}</div>
+                <div class="text-sm">Agendado: ${formatQuantidade(totalAg)}</div>
+                <div class="text-sm font-bold text-green-600">Disponível: ${formatQuantidade(disponivel)}</div>
+              </div>
+              <div class="space-x-2">
+                <button data-id="${item.id}" class="bg-yellow-500 text-white px-2 py-1 rounded btn-edit">Editar</button>
+                <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">Excluir</button>
+              </div>
+            `;
+            container.appendChild(card);
+          });
+
+          // toggle abrir/fechar
+          header.addEventListener("click", ()=>container.classList.toggle("hidden"));
+
+          $list.appendChild(header);
+          $list.appendChild(container);
+        });
 
         // excluir
         $list.querySelectorAll(".btn-del").forEach(btn=>{
