@@ -308,7 +308,6 @@ function renderForm(type) {
 }
 
 // ================== AGENDAMENTOS ==================
-
 function renderAgendamentos() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Agendamentos</h2>
@@ -388,175 +387,186 @@ function renderAgendamentos() {
     return `${d}/${m}`;
   }
 
-  // Listagem agrupada
+  // Listagem agrupada (com disponibilidade por produto/dia)
   waitForAuth().then(user => {
     db.collection("agendamentos")
       .where("userId", "==", user.uid)
       .orderBy("data", "asc")
       .onSnapshot(snap => {
-        $list.innerHTML = "";
+        (async () => {
+          $list.innerHTML = "";
 
-        if (snap.empty) {
-          $list.innerHTML = `<p class="text-gray-500">Nenhum agendamento.</p>`;
-          return;
-        }
+          if (snap.empty) {
+            $list.innerHTML = `<p class="text-gray-500">Nenhum agendamento.</p>`;
+            return;
+          }
 
-        const agPorDia = {};
-        snap.forEach(doc => {
-          const d = doc.data();
-          const dia = d.data || "";
-          if (!agPorDia[dia]) agPorDia[dia] = [];
-          agPorDia[dia].push({ id: doc.id, ...d });
-        });
-
-        const hoje = new Date().toISOString().split("T")[0];
-
-        Object.keys(agPorDia).sort((a, b) => {
-          // Hoje e futuros primeiro, depois passados
-          if (a < hoje && b >= hoje) return 1;
-          if (a >= hoje && b < hoje) return -1;
-          return a.localeCompare(b);
-        }).forEach(dia => {
-          // Cabeçalho colapsável
-          const header = document.createElement("div");
-          header.className = "px-3 py-2 rounded border-l-4 border-orange-500 bg-orange-50 text-orange-700 font-bold cursor-pointer";
-          header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
-
-          const container = document.createElement("div");
-          container.className = "ml-4 mt-2 hidden space-y-2";
-
-          // Resumo por produto
-          const totaisPorProd = {};
-          agPorDia[dia].forEach(item => {
-            totaisPorProd[item.produtoNome] = (totaisPorProd[item.produtoNome] || 0) + (item.quantidade || 0);
-          });
-          // Disponibilidade por produto
-const disponibilidadeDia = document.createElement("div");
-disponibilidadeDia.className = "mt-2 p-2 bg-green-50 border border-green-200 rounded";
-
-const tituloDisp = document.createElement("div");
-tituloDisp.className = "font-bold text-green-700 mb-1";
-tituloDisp.textContent = "Disponível:";
-disponibilidadeDia.appendChild(tituloDisp);
-
-for (const [prod, qtdAgendado] of Object.entries(totaisPorProd)) {
-  // busca produção do mesmo dia/produto
-  const prodSnap = await db.collection("producao")
-    .where("userId","==",user.uid)
-    .where("data","==",dia)
-    .where("produto","==",prod)
-    .get();
-
-  let qtdProduzida = 0;
-  prodSnap.forEach(p => qtdProduzida += p.data().quantidade || 0);
-
-  const disponivel = qtdProduzida - qtdAgendado;
-
-  const linha = document.createElement("div");
-  linha.className = "text-sm";
-  linha.textContent = `${prod} → ${formatQuantidade(disponivel)}`;
-  disponibilidadeDia.appendChild(linha);
-}
-
-container.appendChild(disponibilidadeDia);
-
-          const resumoDia = document.createElement("div");
-          resumoDia.className = "flex flex-wrap gap-3";
-          const coresBg = ["bg-yellow-300","bg-green-300","bg-pink-300","bg-blue-300","bg-orange-300"];
-          let corIndex = 0;
-          Object.entries(totaisPorProd).forEach(([prod, qtd]) => {
-            const span = document.createElement("span");
-            span.className = `${coresBg[corIndex % coresBg.length]} px-2 py-1 rounded font-mono`;
-            span.textContent = `${prod}: ${formatQuantidade(qtd)}`;
-            resumoDia.appendChild(span);
-            corIndex++;
-          });
-          container.appendChild(resumoDia);
-
-          // Agendamentos do dia
-          agPorDia[dia].forEach(item => {
-            const li = document.createElement("div");
-            li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
-            li.innerHTML = `
-  <div>
-    <div class="font-semibold">${item.clienteNome}</div>
-    <div class="text-sm text-gray-500">
-      Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
-    </div>
-    ${item.observacao ? `<div class="text-sm font-bold text-red-600">Obs: ${item.observacao}</div>` : ""}
-  </div>
-  <div class="space-x-2">
-    <button data-id="${item.id}" class="bg-yellow-500 text-white px-2 py-1 rounded btn-edit">Editar</button>
-    <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">Excluir</button>
-  </div>
-`;
-
-            container.appendChild(li);
+          // Agrupa por dia
+          const agPorDia = {};
+          snap.forEach(doc => {
+            const d = doc.data();
+            const dia = d.data || "";
+            if (!agPorDia[dia]) agPorDia[dia] = [];
+            agPorDia[dia].push({ id: doc.id, ...d });
           });
 
-          // Toggle abre/fecha
-          header.addEventListener("click", () => {
-            container.classList.toggle("hidden");
+          const hoje = new Date().toISOString().split("T")[0];
+          const diasOrdenados = Object.keys(agPorDia).sort((a, b) => {
+            // Hoje e futuros primeiro, depois passados
+            if (a < hoje && b >= hoje) return 1;
+            if (a >= hoje && b < hoje) return -1;
+            return a.localeCompare(b);
           });
 
-          $list.appendChild(header);
-          $list.appendChild(container);
+          for (const dia of diasOrdenados) {
+            // Cabeçalho colapsável
+            const header = document.createElement("div");
+            header.className = "px-3 py-2 rounded border-l-4 border-orange-500 bg-orange-50 text-orange-700 font-bold cursor-pointer";
+            header.textContent = `${dataCurtaBR(dia)} - ${diaSemanaPT(dia)}`;
 
-          // Botões de ação
-          container.querySelectorAll(".btn-del").forEach(btn => {
-            btn.addEventListener("click", async e => {
-              if (confirm("Excluir este agendamento?")) {
-                await db.collection("agendamentos").doc(e.target.dataset.id).delete();
-              }
+            const container = document.createElement("div");
+            container.className = "ml-4 mt-2 hidden space-y-2";
+
+            // ---- Resumo por produto (agendado) ----
+            const totaisPorProd = {};
+            agPorDia[dia].forEach(item => {
+              totaisPorProd[item.produtoNome] = (totaisPorProd[item.produtoNome] || 0) + (item.quantidade || 0);
             });
-          });
 
-          container.querySelectorAll(".btn-edit").forEach(btn => {
-            btn.addEventListener("click", async e => {
-              const id = e.target.dataset.id;
-              const snap = await db.collection("agendamentos").doc(id).get();
-              const d = snap.data();
+            const resumoDia = document.createElement("div");
+            resumoDia.className = "flex flex-wrap gap-3";
+            const coresBg = ["bg-yellow-300","bg-green-300","bg-pink-300","bg-blue-300","bg-orange-300"];
+            let corIndex = 0;
+            Object.entries(totaisPorProd).forEach(([prod, qtd]) => {
+              const span = document.createElement("span");
+              span.className = `${coresBg[corIndex % coresBg.length]} px-2 py-1 rounded font-mono`;
+              span.textContent = `${prod}: ${formatQuantidade(qtd)}`;
+              resumoDia.appendChild(span);
+              corIndex++;
+            });
+            container.appendChild(resumoDia);
 
-              // Modal estilizado
-              const modal = document.createElement("div");
-              modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
-              modal.innerHTML = `
-                <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
-                  <h3 class="text-lg font-bold mb-2">Editar Agendamento</h3>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input id="edit-cliente" class="border p-2 rounded" value="${d.clienteNome || ""}" placeholder="Cliente">
-                    <input id="edit-rep" class="border p-2 rounded" value="${d.representanteNome || ""}" placeholder="Representante">
-                    <input id="edit-prod" class="border p-2 rounded" value="${d.produtoNome || ""}" placeholder="Produto">
-                    <input id="edit-qtd" type="number" class="border p-2 rounded" value="${d.quantidade || 0}" placeholder="Quantidade">
-                    <input id="edit-data" type="date" class="border p-2 rounded" value="${d.data || ""}">
-                    <input id="edit-obs" class="border p-2 rounded col-span-2" value="${d.observacao || ""}" placeholder="Observação">
+            // ---- Disponibilidade por produto (Produzido - Agendado) ----
+            // Busca a produção do dia inteiro uma vez só
+            const prodDiaSnap = await db.collection("producao")
+              .where("userId", "==", user.uid)
+              .where("data", "==", dia)
+              .get();
+
+            const produzidoPorProd = {};
+            prodDiaSnap.forEach(pdoc => {
+              const p = pdoc.data();
+              produzidoPorProd[p.produto] = (produzidoPorProd[p.produto] || 0) + (p.quantidade || 0);
+            });
+
+            const disponibilidadeDia = document.createElement("div");
+            disponibilidadeDia.className = "mt-2 p-2 bg-green-50 border border-green-200 rounded";
+            const tituloDisp = document.createElement("div");
+            tituloDisp.className = "font-bold text-green-700 mb-1";
+            tituloDisp.textContent = "Disponível:";
+            disponibilidadeDia.appendChild(tituloDisp);
+
+            Object.entries(totaisPorProd).forEach(([prod, qtdAgendado]) => {
+              const produzido = produzidoPorProd[prod] || 0;
+              const disponivel = produzido - (qtdAgendado || 0);
+              const cor =
+                disponivel > 0 ? "text-green-700" :
+                disponivel === 0 ? "text-gray-700" : "text-red-700";
+
+              const linha = document.createElement("div");
+              linha.className = "text-sm";
+              linha.innerHTML = `<span class="font-medium">${prod}</span> → <span class="${cor}">${formatQuantidade(disponivel)}</span>`;
+              disponibilidadeDia.appendChild(linha);
+            });
+
+            container.appendChild(disponibilidadeDia);
+
+            // ---- Lista de agendamentos do dia ----
+            agPorDia[dia].forEach(item => {
+              const li = document.createElement("div");
+              li.className = "p-2 bg-white rounded shadow flex justify-between items-center";
+              li.innerHTML = `
+                <div>
+                  <div class="font-semibold">${item.clienteNome}</div>
+                  <div class="text-sm text-gray-500">
+                    Rep: ${item.representanteNome || "-"} • Prod: ${item.produtoNome || "-"} • Qtd: ${formatQuantidade(item.quantidade)}
                   </div>
-                  <div class="flex justify-end space-x-3 mt-4">
-                    <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
-                    <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
-                  </div>
+                  ${item.observacao ? `<div class="text-sm font-bold text-red-600">Obs: ${item.observacao}</div>` : ""}
+                </div>
+                <div class="space-x-2">
+                  <button data-id="${item.id}" class="bg-yellow-500 text-white px-2 py-1 rounded btn-edit">Editar</button>
+                  <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">Excluir</button>
                 </div>
               `;
-              document.body.appendChild(modal);
+              container.appendChild(li);
+            });
 
-              modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+            // Toggle abre/fecha
+            header.addEventListener("click", () => {
+              container.classList.toggle("hidden");
+            });
 
-              modal.querySelector("#btn-save").addEventListener("click", async () => {
-                const clienteNome = modal.querySelector("#edit-cliente").value.trim();
-                const representanteNome = modal.querySelector("#edit-rep").value.trim();
-                const produtoNome = modal.querySelector("#edit-prod").value.trim();
-                const quantidade = parseInt(modal.querySelector("#edit-qtd").value) || 0;
-                const data = modal.querySelector("#edit-data").value;
-                const observacao = modal.querySelector("#edit-obs").value.trim();
+            $list.appendChild(header);
+            $list.appendChild(container);
 
-                await db.collection("agendamentos").doc(id).update({ 
-                  clienteNome, representanteNome, produtoNome, quantidade, data, observacao 
-                });
-
-                modal.remove();
+            // Botões de ação
+            container.querySelectorAll(".btn-del").forEach(btn => {
+              btn.addEventListener("click", async e => {
+                if (confirm("Excluir este agendamento?")) {
+                  await db.collection("agendamentos").doc(e.target.dataset.id).delete();
+                }
               });
             });
-          });
+
+            container.querySelectorAll(".btn-edit").forEach(btn => {
+              btn.addEventListener("click", async e => {
+                const id = e.target.dataset.id;
+                const snap = await db.collection("agendamentos").doc(id).get();
+                const d = snap.data();
+
+                // Modal estilizado
+                const modal = document.createElement("div");
+                modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+                modal.innerHTML = `
+                  <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
+                    <h3 class="text-lg font-bold mb-2">Editar Agendamento</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input id="edit-cliente" class="border p-2 rounded" value="${d.clienteNome || ""}" placeholder="Cliente">
+                      <input id="edit-rep" class="border p-2 rounded" value="${d.representanteNome || ""}" placeholder="Representante">
+                      <input id="edit-prod" class="border p-2 rounded" value="${d.produtoNome || ""}" placeholder="Produto">
+                      <input id="edit-qtd" type="number" class="border p-2 rounded" value="${d.quantidade || 0}" placeholder="Quantidade">
+                      <input id="edit-data" type="date" class="border p-2 rounded" value="${d.data || ""}">
+                      <input id="edit-obs" class="border p-2 rounded col-span-2" value="${d.observacao || ""}" placeholder="Observação">
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-4">
+                      <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+                      <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
+                    </div>
+                  </div>
+                `;
+                document.body.appendChild(modal);
+
+                modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+
+                modal.querySelector("#btn-save").addEventListener("click", async () => {
+                  const clienteNome = modal.querySelector("#edit-cliente").value.trim();
+                  const representanteNome = modal.querySelector("#edit-rep").value.trim();
+                  const produtoNome = modal.querySelector("#edit-prod").value.trim();
+                  const quantidade = parseInt(modal.querySelector("#edit-qtd").value) || 0;
+                  const data = modal.querySelector("#edit-data").value;
+                  const observacao = modal.querySelector("#edit-obs").value.trim();
+
+                  await db.collection("agendamentos").doc(id).update({ 
+                    clienteNome, representanteNome, produtoNome, quantidade, data, observacao 
+                  });
+
+                  modal.remove();
+                });
+              });
+            });
+          }
+        })().catch(err => {
+          console.error("Erro ao montar listagem de agendamentos:", err);
         });
       });
   });
