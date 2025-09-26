@@ -10,7 +10,7 @@ function renderProducao() {
       </div>
       <button class="bg-blue-600 text-white p-2 rounded w-full mt-2">Salvar</button>
     </form>
-    <div id="prod-list" class="space-y-4"></div>
+    <ul id="prod-list" class="space-y-2"></ul>
   `;
 
   const $selProd = document.getElementById("prod-produto");
@@ -50,13 +50,13 @@ function renderProducao() {
     $form.reset();
   });
 
-  // listar produções + cálculo disponibilidade
+  // listar produções
   waitForAuth().then(user=>{
     db.collection("producao").where("userId","==",user.uid).orderBy("data","desc")
       .onSnapshot(async snap=>{
         $list.innerHTML = "";
         if(snap.empty){
-          $list.innerHTML = `<p class="text-gray-500">Nenhuma produção lançada.</p>`;
+          $list.innerHTML = `<li class="text-gray-500">Nenhuma produção lançada.</li>`;
           return;
         }
 
@@ -75,17 +75,69 @@ function renderProducao() {
 
           const disponivel = (p.quantidade||0) - totalAg;
 
-          const card = document.createElement("div");
-          card.className = "p-4 bg-white rounded shadow";
-          card.innerHTML = `
-            <div><strong>Data:</strong> ${p.data}</div>
-            <div><strong>Produto:</strong> ${p.produto}</div>
-            <div><strong>Produzido:</strong> ${formatQuantidade(p.quantidade)}</div>
-            <div><strong>Agendado:</strong> ${formatQuantidade(totalAg)}</div>
-            <div><strong class="text-green-600">Disponível:</strong> ${formatQuantidade(disponivel)}</div>
+          const li = document.createElement("li");
+          li.className = "p-4 bg-white rounded shadow flex justify-between items-center";
+          li.innerHTML = `
+            <div>
+              <div class="font-semibold">Data: ${p.data}</div>
+              <div class="text-sm text-gray-600">Produto: ${p.produto}</div>
+              <div class="text-sm">Produzido: ${formatQuantidade(p.quantidade)}</div>
+              <div class="text-sm">Agendado: ${formatQuantidade(totalAg)}</div>
+              <div class="text-sm font-bold text-green-600">Disponível: ${formatQuantidade(disponivel)}</div>
+            </div>
+            <div class="space-x-2">
+              <button data-id="${doc.id}" class="bg-yellow-500 text-white px-2 py-1 rounded btn-edit">Editar</button>
+              <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">Excluir</button>
+            </div>
           `;
-          $list.appendChild(card);
+          $list.appendChild(li);
         }
+
+        // excluir
+        $list.querySelectorAll(".btn-del").forEach(btn=>{
+          btn.addEventListener("click", async e=>{
+            if(confirm("Excluir esta produção?")){
+              await db.collection("producao").doc(e.target.dataset.id).delete();
+            }
+          });
+        });
+
+        // editar
+        $list.querySelectorAll(".btn-edit").forEach(btn=>{
+          btn.addEventListener("click", async e=>{
+            const id = e.target.dataset.id;
+            const snap = await db.collection("producao").doc(id).get();
+            const d = snap.data();
+
+            const modal = document.createElement("div");
+            modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+            modal.innerHTML = `
+              <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
+                <h3 class="text-lg font-bold mb-2">Editar Produção</h3>
+                <div class="grid grid-cols-1 gap-3">
+                  <input id="edit-data" type="date" class="border p-2 rounded" value="${d.data || ""}">
+                  <input id="edit-prod" class="border p-2 rounded" value="${d.produto || ""}" placeholder="Produto">
+                  <input id="edit-qtd" type="number" class="border p-2 rounded" value="${d.quantidade || 0}" placeholder="Quantidade">
+                </div>
+                <div class="flex justify-end space-x-3 mt-4">
+                  <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+                  <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
+                </div>
+              </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.querySelector("#btn-cancel").addEventListener("click", ()=>modal.remove());
+            modal.querySelector("#btn-save").addEventListener("click", async ()=>{
+              const data = modal.querySelector("#edit-data").value;
+              const produto = modal.querySelector("#edit-prod").value.trim();
+              const quantidade = parseInt(modal.querySelector("#edit-qtd").value)||0;
+
+              await db.collection("producao").doc(id).update({ data, produto, quantidade });
+              modal.remove();
+            });
+          });
+        });
       });
   });
 }
