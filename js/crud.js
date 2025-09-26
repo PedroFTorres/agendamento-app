@@ -970,6 +970,8 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     if (page === "agendamentos") renderAgendamentos();
     else if (page === "relatorios") renderRelatorios();
     else if (page === "dashboard") renderDashboard();
+    else if (page === "producao") renderProducao();
     else renderForm(page);
   });
 });
+
