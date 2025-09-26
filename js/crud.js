@@ -430,6 +430,35 @@ function renderAgendamentos() {
           agPorDia[dia].forEach(item => {
             totaisPorProd[item.produtoNome] = (totaisPorProd[item.produtoNome] || 0) + (item.quantidade || 0);
           });
+          // Disponibilidade por produto
+const disponibilidadeDia = document.createElement("div");
+disponibilidadeDia.className = "mt-2 p-2 bg-green-50 border border-green-200 rounded";
+
+const tituloDisp = document.createElement("div");
+tituloDisp.className = "font-bold text-green-700 mb-1";
+tituloDisp.textContent = "Disponível:";
+disponibilidadeDia.appendChild(tituloDisp);
+
+for (const [prod, qtdAgendado] of Object.entries(totaisPorProd)) {
+  // busca produção do mesmo dia/produto
+  const prodSnap = await db.collection("producao")
+    .where("userId","==",user.uid)
+    .where("data","==",dia)
+    .where("produto","==",prod)
+    .get();
+
+  let qtdProduzida = 0;
+  prodSnap.forEach(p => qtdProduzida += p.data().quantidade || 0);
+
+  const disponivel = qtdProduzida - qtdAgendado;
+
+  const linha = document.createElement("div");
+  linha.className = "text-sm";
+  linha.textContent = `${prod} → ${formatQuantidade(disponivel)}`;
+  disponibilidadeDia.appendChild(linha);
+}
+
+container.appendChild(disponibilidadeDia);
 
           const resumoDia = document.createElement("div");
           resumoDia.className = "flex flex-wrap gap-3";
