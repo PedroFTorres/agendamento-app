@@ -153,24 +153,29 @@ function renderRecibo() {
     doc.text(`Recebemos de: ${cliente}`, 20, y);
     y += 20;
 
-    // Valor numérico sublinhado
-    doc.setFont("helvetica", "bold");
+    // ===== VALOR NUMÉRICO EM DESTAQUE =====
     const valorTexto = `A importância de: ${valorMoeda}`;
+    const larguraValor = doc.getTextWidth(valorTexto) + 4;
+    doc.setFillColor(255, 229, 204); // Laranja claro
+    doc.rect(18, y - 6, larguraValor, 10, "F");
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
     doc.text(valorTexto, 20, y);
-    const larguraValor = doc.getTextWidth(valorTexto);
-    doc.setDrawColor(0);
-    doc.line(20, y + 2, 20 + larguraValor, y + 2);
     y += 20;
 
-    // Valor por extenso sublinhado
-    doc.setFont("helvetica", "italic");
+    // ===== VALOR POR EXTENSO EM DESTAQUE =====
     const extensoTexto = `(${valorExtenso})`;
+    const larguraExt = doc.getTextWidth(extensoTexto) + 4;
+    doc.setFillColor(255, 239, 213); // Laranja bem clarinho
+    doc.rect(18, y - 6, larguraExt, 10, "F");
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(12);
     doc.text(extensoTexto, 20, y);
-    const larguraExt = doc.getTextWidth(extensoTexto);
-    doc.line(20, y + 2, 20 + larguraExt, y + 2);
     y += 25;
 
-    // Referência e Data
+    // ===== Referência e Data =====
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
     doc.text(`Referente a: ${ref || "_________________________________________"}`, 20, y);
