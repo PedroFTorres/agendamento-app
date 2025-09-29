@@ -101,7 +101,7 @@ function renderRecibo() {
     </form>
   `;
 
-  document.getElementById("recibo-form").addEventListener("submit", (e) => {
+  document.getElementById("recibo-form").addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const cliente = document.getElementById("recibo-cliente").value.trim();
@@ -119,32 +119,45 @@ function renderRecibo() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // ===== Caixa principal (meia folha) =====
+    // ===== DIMENSÕES =====
     const margemX = 20;
     const larguraCaixa = 170;
     const alturaCaixa = 130;
     const inicioY = 20;
     doc.rect(margemX, inicioY, larguraCaixa, alturaCaixa);
 
-    let y = inicioY + 10;
+    let y = inicioY + 15;
 
-    // ===== Cabeçalho =====
+    // ===== LOGO E CABEÇALHO =====
+    try {
+      const logo = await fetch("img/logo.png")
+        .then(r => r.blob())
+        .then(b => new Promise(res => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result);
+          reader.readAsDataURL(b);
+        }));
+      doc.addImage(logo, "PNG", margemX + 5, y - 10, 20, 20);
+    } catch {}
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text("CERÂMICA FORTES LTDA.", margemX + 85, y, { align: "center" });
+    doc.text("CERÂMICA FORTES LTDA.", margemX + 90, y, { align: "center" });
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("BR 316 KM 05 S/N – Timon(MA) – CEP 65.630-000", margemX + 85, y + 6, { align: "center" });
-    doc.text("Fone: (99) 3118-3700 | Fax: (99) 3118-3701", margemX + 85, y + 11, { align: "center" });
-    doc.text("E-mail: fortes@fortes.com.br  www.fortes.com.br", margemX + 85, y + 16, { align: "center" });
-    doc.text("CNPJ: 06.849.988/0001-44 – I.E: 12.095.413-3", margemX + 85, y + 21, { align: "center" });
+    doc.text("BR 316 KM 05 S/N – Timon(MA) – CEP 65.630-000", margemX + 90, y + 5, { align: "center" });
+    doc.text("Fone: (99) 3118-3700 | Fax: (99) 3118-3701", margemX + 90, y + 10, { align: "center" });
+    doc.text("E-mail: fortes@fortes.com.br  www.fortes.com.br", margemX + 90, y + 15, { align: "center" });
+    doc.text("CNPJ: 06.849.988/0001-44 – I.E: 12.095.413-3", margemX + 90, y + 20, { align: "center" });
 
-    y += 35;
+    y += 30;
 
-    // ===== Valor numérico =====
+    // ===== VALOR NUMÉRICO =====
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.text("Valor do Recibo (R$):", margemX + 5, y);
+
     const larguraValor = doc.getTextWidth(valorMoeda) + 8;
     doc.setFillColor(255, 204, 153);
     doc.rect(margemX + 60, y - 5, larguraValor, 10, "F");
@@ -152,16 +165,18 @@ function renderRecibo() {
 
     y += 12;
 
-    // ===== Valor por extenso =====
+    // ===== VALOR POR EXTENSO =====
     const larguraExt = doc.getTextWidth(valorExtenso) + 8;
     doc.setFillColor(255, 229, 204);
     doc.rect(margemX + 60, y - 5, larguraExt, 10, "F");
+    doc.setFontSize(9);
     doc.text(valorExtenso, margemX + 64, y);
 
     y += 18;
 
-    // ===== Referência =====
+    // ===== REFERÊNCIA =====
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
     doc.text("Referência:", margemX + 5, y);
     doc.rect(margemX + 30, y - 5, 130, 15);
     doc.setFont("helvetica", "normal");
@@ -170,9 +185,8 @@ function renderRecibo() {
 
     y += 25;
 
-    // ===== Pagador =====
+    // ===== PAGADOR =====
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
     doc.text("Recebemos de:", margemX + 5, y);
     doc.rect(margemX + 35, y - 5, 125, 10);
     doc.setFont("helvetica", "normal");
@@ -180,7 +194,7 @@ function renderRecibo() {
 
     y += 15;
 
-    // ===== Favorecido =====
+    // ===== FAVORECIDO =====
     doc.setFont("helvetica", "bold");
     doc.text("Favorecido:", margemX + 5, y);
     doc.rect(margemX + 30, y - 5, 130, 10);
@@ -189,14 +203,14 @@ function renderRecibo() {
 
     y += 15;
 
-    // ===== Data =====
+    // ===== DATA =====
     doc.setFont("helvetica", "bold");
     doc.text("Data:", margemX + 5, y);
     doc.rect(margemX + 20, y - 5, 40, 10);
     doc.setFont("helvetica", "normal");
     doc.text(hoje, margemX + 24, y);
 
-    // ===== Assinatura =====
+    // ===== ASSINATURA =====
     y += 25;
     doc.line(margemX + 50, y, margemX + 120, y);
     doc.setFontSize(8);
