@@ -153,37 +153,32 @@ function renderRecibo() {
     doc.text(`Recebemos de: ${cliente}`, 20, y);
     y += 20;
 
-    // Valor numérico sublinhado com destaque
-    const valorTexto = `A importância de: ${valorMoeda}`;
-    const larguraValor = doc.getTextWidth(valorTexto);
+    // Valor numérico sublinhado
     doc.setFont("helvetica", "bold");
+    const valorTexto = `A importância de: ${valorMoeda}`;
     doc.text(valorTexto, 20, y);
-    doc.setDrawColor(255, 153, 51); // Laranja forte
-    doc.setLineWidth(1.2);
+    const larguraValor = doc.getTextWidth(valorTexto);
+    doc.setDrawColor(0);
     doc.line(20, y + 2, 20 + larguraValor, y + 2);
     y += 20;
 
-    // Valor por extenso sublinhado com destaque
-    const extensoTexto = `(${valorExtenso})`;
-    const larguraExt = doc.getTextWidth(extensoTexto);
+    // Valor por extenso sublinhado
     doc.setFont("helvetica", "italic");
+    const extensoTexto = `(${valorExtenso})`;
     doc.text(extensoTexto, 20, y);
-    doc.setDrawColor(255, 204, 153); // Laranja mais claro
-    doc.setLineWidth(1);
+    const larguraExt = doc.getTextWidth(extensoTexto);
     doc.line(20, y + 2, 20 + larguraExt, y + 2);
     y += 25;
 
     // Referência e Data
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
     doc.text(`Referente a: ${ref || "_________________________________________"}`, 20, y);
     y += 15;
     doc.text(`Data: ${hoje}`, 20, y);
 
     // ===== ASSINATURA =====
     y += 40;
-    doc.setLineWidth(0.3);
     doc.line(70, y, 140, y);
     doc.setFontSize(10);
     doc.text("Cerâmica Fortes LTDA.", 105, y + 6, { align: "center" });
