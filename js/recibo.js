@@ -117,14 +117,14 @@ function renderRecibo() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // ===== LOGO À ESQUERDA =====
+    // ===== LOGO =====
     try {
       const logo = await fetch("img/logo.png").then(r => r.blob()).then(b => new Promise(res => {
         const reader = new FileReader();
         reader.onload = () => res(reader.result);
         reader.readAsDataURL(b);
       }));
-      doc.addImage(logo, "PNG", 20, 10, 30, 30);
+      doc.addImage(logo, "PNG", 20, 10, 30, 30); // canto esquerdo
     } catch {}
 
     // ===== CABEÇALHO =====
@@ -154,27 +154,32 @@ function renderRecibo() {
     doc.text(`Recebemos de: ${cliente}`, 20, y);
     y += 20;
 
-    // ===== VALOR NUMÉRICO COM HIGHLIGHT =====
-    const valorTexto = `R$ ${valorMoeda}`;
-    const larguraValor = doc.getTextWidth(valorTexto) + 10;
-    doc.setFillColor(255, 204, 153); // Laranja claro
-    doc.rect(60, y - 8, larguraValor, 12, "F"); // fundo
-    doc.setTextColor(0, 0, 0);
+    // ===== VALOR NUMÉRICO (profissional) =====
+    const prefixo = "A quantia de:";
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.text(prefixo, 20, y);
+
+    const valorTexto = `${valorMoeda}`;
+    const larguraValor = doc.getTextWidth(valorTexto) + 8;
+    doc.setFillColor(255, 204, 153); // laranja destaque
+    doc.rect(55, y - 7, larguraValor, 12, "F"); // fundo certinho no texto
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(valorTexto, 65, y);
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text(valorTexto, 59, y);
 
     y += 18;
 
-    // ===== VALOR POR EXTENSO COM HIGHLIGHT =====
-    const extensoTexto = `${valorExtenso}`;
-    const larguraExt = doc.getTextWidth(extensoTexto) + 10;
-    doc.setFillColor(255, 229, 204); // Laranja bem clarinho
-    doc.rect(60, y - 8, larguraExt, 12, "F");
-    doc.setTextColor(0, 0, 0);
+    // ===== VALOR POR EXTENSO =====
+    const extensoTexto = valorExtenso;
+    const larguraExt = doc.getTextWidth(extensoTexto) + 8;
+    doc.setFillColor(255, 229, 204); // laranja clarinho
+    doc.rect(20, y - 7, larguraExt, 12, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text(extensoTexto, 65, y);
+    doc.setTextColor(0, 0, 0);
+    doc.text(extensoTexto, 24, y);
 
     y += 25;
 
