@@ -1,92 +1,3 @@
-// ================== Conversor número → extenso (BRL) ==================
-function numeroParaExtensoBRL(valor) {
-  valor = Number(valor || 0);
-
-  let inteiro = Math.floor(valor);
-  let cent = Math.round((valor - inteiro) * 100);
-  if (cent === 100) { inteiro += 1; cent = 0; }
-
-  if (inteiro === 0 && cent === 0) return "zero real";
-
-  const unidades = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
-  const especiais = ["dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
-  const dezenas = ["", "", "vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
-  const centenas = ["","cento","duzentos","trezentos","quatrocentos","quinhentos","seiscentos","setecentos","oitocentos","novecentos"];
-
-  function trioParaExtenso(n) {
-    n = n % 1000;
-    if (n === 0) return "";
-
-    const c = Math.floor(n / 100);
-    const d = Math.floor((n % 100) / 10);
-    const u = n % 10;
-
-    let partes = [];
-    if (n === 100) return "cem";
-    if (c > 0) partes.push(centenas[c]);
-
-    if (d === 1) {
-      partes.push(especiais[u]);
-    } else {
-      if (d > 1) partes.push(dezenas[d]);
-      if (u > 0) partes.push(unidades[u]);
-    }
-
-    return partes.join(" e ");
-  }
-
-  const escalasSing = ["", "mil", "milhão", "bilhão", "trilhão"];
-  const escalasPlural = ["", "mil", "milhões", "bilhões", "trilhões"];
-
-  function inteiroParaExtenso(n) {
-    if (n === 0) return "";
-
-    const grupos = [];
-    while (n > 0) {
-      grupos.push(n % 1000);
-      n = Math.floor(n / 1000);
-    }
-
-    const partes = [];
-    for (let idx = grupos.length - 1; idx >= 0; idx--) {
-      const g = grupos[idx];
-      if (g === 0) continue;
-
-      let ext = trioParaExtenso(g);
-      const singular = g === 1;
-
-      if (idx > 0) {
-        if (idx === 1) {
-          ext = singular && ext === "um" ? "mil" : `${ext} mil`;
-        } else {
-          ext += ` ${singular ? escalasSing[idx] : escalasPlural[idx]}`;
-        }
-      }
-      partes.push(ext);
-    }
-
-    return partes.length > 1
-      ? partes.slice(0, -1).join(", ") + " e " + partes.slice(-1)
-      : partes[0];
-  }
-
-  const parteInteira = inteiroParaExtenso(inteiro);
-  const rotuloReal = inteiro === 1 ? "real" : "reais";
-
-  let resultado = parteInteira ? `${parteInteira} ${rotuloReal}` : "";
-
-  if (cent > 0) {
-    const centavosExt = trioParaExtenso(cent);
-    const rotuloCent = cent === 1 ? "centavo" : "centavos";
-    resultado = resultado
-      ? `${resultado} e ${centavosExt} ${rotuloCent}`
-      : `${centavosExt} ${rotuloCent}`;
-  }
-
-  return resultado;
-}
-
-// ================== RENDER RECIBO ==================
 function renderRecibo() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Recibo</h2>
@@ -138,7 +49,7 @@ function renderRecibo() {
     // ===== TÍTULO =====
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.text("RECIBO", 105, 60, { align: "center" });
+    doc.text("RECIBO (R$)", 105, 60, { align: "center" });
 
     let y = 80;
 
@@ -146,32 +57,22 @@ function renderRecibo() {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text("Valor do Recibo (R$):", 20, y);
+    doc.rect(80, y - 7, 110, 10); // Caixa para valor
+    doc.text(valorMoeda, 85, y);
 
-    y += 10;
+    y += 15;
 
-    // Valor numérico em destaque
-    const valorTexto = valorMoeda;
-    const larguraValor = doc.getTextWidth(valorTexto) + 8;
-    doc.setFillColor(255, 204, 153);
-    doc.rect(20, y - 7, larguraValor, 12, "F");
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(valorTexto, 24, y);
-
-    y += 18;
-
-    // Valor por extenso em destaque
+    // ===== VALOR POR EXTENSO =====
     const extensoTexto = valorExtenso;
-    const larguraExt = doc.getTextWidth(extensoTexto) + 8;
-    doc.setFillColor(255, 229, 204);
-    doc.rect(20, y - 7, larguraExt, 12, "F");
+    const larguraExt = doc.getTextWidth(extensoTexto) + 6;
+    doc.setFillColor(255, 229, 204); // fundo laranja claro
+    doc.rect(80, y - 7, larguraExt, 10, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
-    doc.text(extensoTexto, 24, y);
+    doc.text(extensoTexto, 83, y);
 
-    y += 25;
+    y += 20;
 
     // ===== REFERÊNCIA =====
     doc.setFont("helvetica", "bold");
