@@ -117,7 +117,7 @@ function renderRecibo() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // ===== LOGO CENTRAL =====
+    // ===== CABEÇALHO =====
     try {
       const logo = await fetch("img/logo.png").then(r => r.blob()).then(b => new Promise(res => {
         const reader = new FileReader();
@@ -127,7 +127,6 @@ function renderRecibo() {
       doc.addImage(logo, "PNG", 90, 10, 30, 30);
     } catch {}
 
-    // ===== CABEÇALHO =====
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("CERÂMICA FORTES LTDA.", 105, 50, { align: "center" });
@@ -138,15 +137,12 @@ function renderRecibo() {
     doc.text("E-mail: fortes@fortes.com.br   www.fortes.com.br", 105, 66, { align: "center" });
     doc.text("CNPJ: 06.849.988/0001-44 – I.E: 12.095.413-3", 105, 71, { align: "center" });
 
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.5);
     doc.line(20, 75, 190, 75);
 
     // ===== TÍTULO =====
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.text("RECIBO", 105, 90, { align: "center" });
-    doc.line(85, 93, 125, 93);
 
     // ===== CORPO =====
     const hoje = new Date().toLocaleDateString("pt-BR");
@@ -154,35 +150,35 @@ function renderRecibo() {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
     doc.text(`Recebemos de: ${cliente}`, 20, y);
     y += 20;
 
-    // ===== CAIXA DESTAQUE =====
-    const caixaAltura = 30;
-    doc.setFillColor(255, 229, 204); // Fundo laranja claro
-    doc.roundedRect(18, y - 15, 174, caixaAltura, 3, 3, "F");
-
-    // Valor numérico
+    // Valor numérico sublinhado com destaque
+    const valorTexto = `A importância de: ${valorMoeda}`;
+    const larguraValor = doc.getTextWidth(valorTexto);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`A importância de: ${valorMoeda}`, 105, y, { align: "center" });
+    doc.text(valorTexto, 20, y);
+    doc.setDrawColor(255, 153, 51); // Laranja forte
+    doc.setLineWidth(1.2);
+    doc.line(20, y + 2, 20 + larguraValor, y + 2);
+    y += 20;
 
-    // Valor por extenso
+    // Valor por extenso sublinhado com destaque
+    const extensoTexto = `(${valorExtenso})`;
+    const larguraExt = doc.getTextWidth(extensoTexto);
     doc.setFont("helvetica", "italic");
-    doc.setFontSize(12);
-    doc.text(`(${valorExtenso})`, 105, y + 12, { align: "center" });
+    doc.text(extensoTexto, 20, y);
+    doc.setDrawColor(255, 204, 153); // Laranja mais claro
+    doc.setLineWidth(1);
+    doc.line(20, y + 2, 20 + larguraExt, y + 2);
+    y += 25;
 
-    y += 40;
-
-    // Restante
+    // Referência e Data
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     doc.text(`Referente a: ${ref || "_________________________________________"}`, 20, y);
     y += 15;
-
     doc.text(`Data: ${hoje}`, 20, y);
 
     // ===== ASSINATURA =====
@@ -190,7 +186,6 @@ function renderRecibo() {
     doc.setLineWidth(0.3);
     doc.line(70, y, 140, y);
     doc.setFontSize(10);
-    doc.setTextColor(100);
     doc.text("Cerâmica Fortes LTDA.", 105, y + 6, { align: "center" });
 
     doc.save(`recibo-${cliente}.pdf`);
