@@ -117,17 +117,17 @@ function renderRecibo() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // ===== LOGO =====
+    // ===== LOGO (já ficou bom) =====
     try {
       const logo = await fetch("img/logo.png").then(r => r.blob()).then(b => new Promise(res => {
         const reader = new FileReader();
         reader.onload = () => res(reader.result);
         reader.readAsDataURL(b);
       }));
-      doc.addImage(logo, "PNG", 20, 10, 30, 30); // canto esquerdo
+      doc.addImage(logo, "PNG", 20, 10, 30, 30);
     } catch {}
 
-    // ===== CABEÇALHO =====
+    // ===== CABEÇALHO (mantido) =====
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("CERÂMICA FORTES LTDA.", 105, 20, { align: "center" });
@@ -137,7 +137,6 @@ function renderRecibo() {
     doc.text("Fone: (99) 3118-3700 | Fax: (99) 3118-3701", 105, 31, { align: "center" });
     doc.text("E-mail: fortes@fortes.com.br   www.fortes.com.br", 105, 36, { align: "center" });
     doc.text("CNPJ: 06.849.988/0001-44 – I.E: 12.095.413-3", 105, 41, { align: "center" });
-
     doc.line(20, 48, 190, 48);
 
     // ===== TÍTULO =====
@@ -145,48 +144,47 @@ function renderRecibo() {
     doc.setFontSize(18);
     doc.text("RECIBO", 105, 65, { align: "center" });
 
-    // ===== CORPO =====
+    // ===== CORPO PROFISSIONAL =====
     const hoje = new Date().toLocaleDateString("pt-BR");
     let y = 90;
 
+    // Cliente
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
     doc.text(`Recebemos de: ${cliente}`, 20, y);
     y += 20;
 
-    // ===== VALOR NUMÉRICO (profissional) =====
-    const prefixo = "A quantia de:";
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-    doc.text(prefixo, 20, y);
+    // Texto introdutório
+    doc.text("A quantia de:", 20, y);
+    y += 10;
 
+    // Valor em reais destacado
     const valorTexto = `${valorMoeda}`;
-    const larguraValor = doc.getTextWidth(valorTexto) + 8;
-    doc.setFillColor(255, 204, 153); // laranja destaque
-    doc.rect(55, y - 7, larguraValor, 12, "F"); // fundo certinho no texto
+    const larguraValor = doc.getTextWidth(valorTexto) + 10;
+    doc.setFillColor(255, 204, 153); // laranja forte
+    doc.rect(20, y - 7, larguraValor, 12, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text(valorTexto, 59, y);
+    doc.setFontSize(16);
+    doc.text(valorTexto, 24, y);
 
     y += 18;
 
-    // ===== VALOR POR EXTENSO =====
+    // Valor por extenso destacado
     const extensoTexto = valorExtenso;
-    const larguraExt = doc.getTextWidth(extensoTexto) + 8;
-    doc.setFillColor(255, 229, 204); // laranja clarinho
+    const larguraExt = doc.getTextWidth(extensoTexto) + 10;
+    doc.setFillColor(255, 229, 204); // laranja claro
     doc.rect(20, y - 7, larguraExt, 12, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
     doc.text(extensoTexto, 24, y);
 
     y += 25;
 
-    // ===== Referência e Data =====
+    // Referência
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
     doc.text(`Referente a: ${ref || "_________________________________________"}`, 20, y);
+
     y += 15;
     doc.text(`Data: ${hoje}`, 20, y);
 
