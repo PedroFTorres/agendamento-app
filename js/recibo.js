@@ -124,7 +124,7 @@ function renderRecibo() {
         reader.onload = () => res(reader.result);
         reader.readAsDataURL(b);
       }));
-      doc.addImage(logo, "PNG", 90, 10, 30, 30); // Centralizado
+      doc.addImage(logo, "PNG", 90, 10, 30, 30);
     } catch {}
 
     // ===== CABEÇALHO =====
@@ -156,23 +156,27 @@ function renderRecibo() {
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     doc.text(`Recebemos de: ${cliente}`, 20, y);
-    y += 15;
-
-    // Valor em negrito + cor laranja
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(255, 102, 0); // Laranja claro
-    doc.text(`A importância de: ${valorMoeda}`, 20, y);
-    y += 12;
-
-    // Valor por extenso em itálico + cor laranja
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(12);
-    doc.setTextColor(255, 102, 0); // Laranja claro
-    doc.text(`(${valorExtenso})`, 20, y);
     y += 20;
 
-    // Volta para preto
+    // ===== CAIXA DESTAQUE =====
+    const caixaAltura = 30;
+    doc.setFillColor(255, 229, 204); // Fundo laranja claro
+    doc.roundedRect(18, y - 15, 174, caixaAltura, 3, 3, "F");
+
+    // Valor numérico
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`A importância de: ${valorMoeda}`, 105, y, { align: "center" });
+
+    // Valor por extenso
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(12);
+    doc.text(`(${valorExtenso})`, 105, y + 12, { align: "center" });
+
+    y += 40;
+
+    // Restante
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
