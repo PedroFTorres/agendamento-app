@@ -117,14 +117,14 @@ function renderRecibo() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // ===== LOGO ESQUERDA =====
+    // ===== LOGO À ESQUERDA =====
     try {
       const logo = await fetch("img/logo.png").then(r => r.blob()).then(b => new Promise(res => {
         const reader = new FileReader();
         reader.onload = () => res(reader.result);
         reader.readAsDataURL(b);
       }));
-      doc.addImage(logo, "PNG", 20, 10, 30, 30); // lado esquerdo
+      doc.addImage(logo, "PNG", 20, 10, 30, 30);
     } catch {}
 
     // ===== CABEÇALHO =====
@@ -155,25 +155,27 @@ function renderRecibo() {
     y += 20;
 
     // ===== VALOR NUMÉRICO COM HIGHLIGHT =====
-    const valorTexto = `A importância de: ${valorMoeda}`;
-    const larguraValor = doc.getTextWidth(valorTexto);
-    doc.setFillColor(255, 229, 204); // laranja claro
-    doc.rect(18, y - 6, larguraValor + 6, 10, "F");
+    const valorTexto = `R$ ${valorMoeda}`;
+    const larguraValor = doc.getTextWidth(valorTexto) + 10;
+    doc.setFillColor(255, 204, 153); // Laranja claro
+    doc.rect(60, y - 8, larguraValor, 12, "F"); // fundo
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(valorTexto, 20, y);
-    y += 20;
+    doc.setFontSize(16);
+    doc.text(valorTexto, 65, y);
+
+    y += 18;
 
     // ===== VALOR POR EXTENSO COM HIGHLIGHT =====
-    const extensoTexto = `(${valorExtenso})`;
-    const larguraExt = doc.getTextWidth(extensoTexto);
-    doc.setFillColor(255, 239, 213); // laranja bem clarinho
-    doc.rect(18, y - 6, larguraExt + 6, 10, "F");
+    const extensoTexto = `${valorExtenso}`;
+    const larguraExt = doc.getTextWidth(extensoTexto) + 10;
+    doc.setFillColor(255, 229, 204); // Laranja bem clarinho
+    doc.rect(60, y - 8, larguraExt, 12, "F");
     doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "italic");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text(extensoTexto, 20, y);
+    doc.text(extensoTexto, 65, y);
+
     y += 25;
 
     // ===== Referência e Data =====
