@@ -961,18 +961,34 @@ function renderDashboard() {
     db.collection("agendamentos")
       .where("userId", "==", user.uid)
       .onSnapshot(snap => {
-        const eventos = snap.docs.map(doc => {
-          const d = doc.data();
-          return {
-            id: doc.id,
-            title: `${d.clienteNome} • ${d.produtoNome} (${d.quantidade})`,
-            start: d.data,
-            extendedProps: {
-              representante: d.representanteNome,
-              observacao: d.observacao
-            }
-          };
-        });
+        const cores = [
+  "#f87171", // vermelho
+  "#60a5fa", // azul
+  "#34d399", // verde
+  "#fbbf24", // amarelo
+  "#a78bfa", // roxo
+  "#fb923c", // laranja
+  "#14b8a6"  // turquesa
+];
+let corIndex = 0;
+
+const eventos = snap.docs.map(doc => {
+  const d = doc.data();
+  const cor = cores[corIndex % cores.length];
+  corIndex++;
+  return {
+    id: doc.id,
+    title: `${d.clienteNome} • ${d.produtoNome} (${d.quantidade})`,
+    start: d.data,
+    backgroundColor: cor,
+    borderColor: cor,
+    textColor: "#000", // opcional: texto sempre preto
+    extendedProps: {
+      representante: d.representanteNome,
+      observacao: d.observacao
+    }
+  };
+});
 
         const calendarEl = document.getElementById("calendar");
         calendarEl.innerHTML = "";
