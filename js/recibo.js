@@ -203,12 +203,12 @@ function renderRecibo() {
 
     y += 15;
 
-   // ===== DATA =====
+// ===== DATA =====
 doc.setFont("helvetica", "bold");
 doc.text("Data:", margemX + 5, y);
-doc.rect(margemX + 30, y - 5, 130, 10);  // corrigido para não invadir a borda geral
 doc.setFont("helvetica", "normal");
-doc.text(hoje, margemX + 34, y);
+doc.text(hoje, margemX + 30, y); // apenas texto, sem caixa
+
 
 
     // ===== ASSINATURA =====
