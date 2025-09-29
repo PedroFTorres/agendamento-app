@@ -961,34 +961,51 @@ function renderDashboard() {
     db.collection("agendamentos")
       .where("userId", "==", user.uid)
       .onSnapshot(snap => {
+        // Paleta de cores para eventos
         const cores = [
-  "#f87171", // vermelho
-  "#60a5fa", // azul
-  "#34d399", // verde
-  "#fbbf24", // amarelo
-  "#a78bfa", // roxo
-  "#fb923c", // laranja
-  "#14b8a6"  // turquesa
-];
-let corIndex = 0;
+          "#f87171", // vermelho
+          "#60a5fa", // azul
+          "#34d399", // verde
+          "#fbbf24", // amarelo
+          "#a78bfa", // roxo
+          "#fb923c", // laranja
+          "#14b8a6"  // turquesa
+        ];
+        let corIndex = 0;
 
-const eventos = snap.docs.map(doc => {
-  const d = doc.data();
-  const cor = cores[corIndex % cores.length];
-  corIndex++;
-  return {
-    id: doc.id,
-    title: `${d.clienteNome} • ${d.produtoNome} (${d.quantidade})`,
-    start: d.data,
-    backgroundColor: cor,
-    borderColor: cor,
-    textColor: "#000", // opcional: texto sempre preto
-    extendedProps: {
-      representante: d.representanteNome,
-      observacao: d.observacao
-    }
-  };
-});
+        // Cria eventos coloridos
+        const eventos = snap.docs.map(doc => {
+          const d = doc.data();
+          const cor = cores[corIndex % cores.length];
+          corIndex++;
+          return {
+            id: doc.id,
+            title: `${d.clienteNome} • ${d.produtoNome} (${d.quantidade})`,
+            start: d.data,
+            backgroundColor: cor,
+            borderColor: cor,
+            textColor: "#000",
+            extendedProps: {
+              representante: d.representanteNome,
+              observacao: d.observacao
+            }
+          };
+        });
+
+        // Resumo por dia → produtos e quantidades
+        const resumoPorDia = {};
+        snap.docs.forEach(doc => {
+          const d = doc.data();
+          const data = d.data;
+          if (!resumoPorDia[data]) resumoPorDia[data] = {};
+          resumoPorDia[data][d.produtoNome] =
+            (resumoPorDia[data][d.produtoNome] || 0) + (d.quantidade || 0);
+        });
+
+        // Tooltip container
+        const tooltip = document.createElement("div");
+        tooltip.className = "tooltip-custom";
+        document.body.appendChild(tooltip);
 
         const calendarEl = document.getElementById("calendar");
         calendarEl.innerHTML = "";
@@ -1003,6 +1020,32 @@ const eventos = snap.docs.map(doc => {
             right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
           },
           events: eventos,
+
+          // Tooltip customizado ao passar mouse no dia
+          dayCellDidMount: function(info) {
+            const dataISO = info.date.toISOString().split("T")[0];
+            if (resumoPorDia[dataISO]) {
+              const produtosDia = resumoPorDia[dataISO];
+              const linhas = Object.entries(produtosDia)
+                .map(([prod, qtd]) => `${prod}: ${qtd.toLocaleString("pt-BR")}`)
+                .join("\n");
+
+              info.el.addEventListener("mouseenter", e => {
+                tooltip.textContent = linhas;
+                tooltip.style.opacity = "1";
+                tooltip.style.top = e.pageY + 10 + "px";
+                tooltip.style.left = e.pageX + 10 + "px";
+              });
+              info.el.addEventListener("mousemove", e => {
+                tooltip.style.top = e.pageY + 10 + "px";
+                tooltip.style.left = e.pageX + 10 + "px";
+              });
+              info.el.addEventListener("mouseleave", () => {
+                tooltip.style.opacity = "0";
+              });
+            }
+          },
+
           eventClick: function(info) {
             const ev = info.event;
             alert(
