@@ -1,3 +1,92 @@
+// ================== Conversor número → extenso (BRL) ==================
+function numeroParaExtensoBRL(valor) {
+  valor = Number(valor || 0);
+
+  let inteiro = Math.floor(valor);
+  let cent = Math.round((valor - inteiro) * 100);
+  if (cent === 100) { inteiro += 1; cent = 0; }
+
+  if (inteiro === 0 && cent === 0) return "zero real";
+
+  const unidades = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
+  const especiais = ["dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
+  const dezenas = ["", "", "vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
+  const centenas = ["","cento","duzentos","trezentos","quatrocentos","quinhentos","seiscentos","setecentos","oitocentos","novecentos"];
+
+  function trioParaExtenso(n) {
+    n = n % 1000;
+    if (n === 0) return "";
+
+    const c = Math.floor(n / 100);
+    const d = Math.floor((n % 100) / 10);
+    const u = n % 10;
+
+    let partes = [];
+    if (n === 100) return "cem";
+    if (c > 0) partes.push(centenas[c]);
+
+    if (d === 1) {
+      partes.push(especiais[u]);
+    } else {
+      if (d > 1) partes.push(dezenas[d]);
+      if (u > 0) partes.push(unidades[u]);
+    }
+
+    return partes.join(" e ");
+  }
+
+  const escalasSing = ["", "mil", "milhão", "bilhão", "trilhão"];
+  const escalasPlural = ["", "mil", "milhões", "bilhões", "trilhões"];
+
+  function inteiroParaExtenso(n) {
+    if (n === 0) return "";
+
+    const grupos = [];
+    while (n > 0) {
+      grupos.push(n % 1000);
+      n = Math.floor(n / 1000);
+    }
+
+    const partes = [];
+    for (let idx = grupos.length - 1; idx >= 0; idx--) {
+      const g = grupos[idx];
+      if (g === 0) continue;
+
+      let ext = trioParaExtenso(g);
+      const singular = g === 1;
+
+      if (idx > 0) {
+        if (idx === 1) {
+          ext = singular && ext === "um" ? "mil" : `${ext} mil`;
+        } else {
+          ext += ` ${singular ? escalasSing[idx] : escalasPlural[idx]}`;
+        }
+      }
+      partes.push(ext);
+    }
+
+    return partes.length > 1
+      ? partes.slice(0, -1).join(", ") + " e " + partes.slice(-1)
+      : partes[0];
+  }
+
+  const parteInteira = inteiroParaExtenso(inteiro);
+  const rotuloReal = inteiro === 1 ? "real" : "reais";
+
+  let resultado = parteInteira ? `${parteInteira} ${rotuloReal}` : "";
+
+  if (cent > 0) {
+    const centavosExt = trioParaExtenso(cent);
+    const rotuloCent = cent === 1 ? "centavo" : "centavos";
+    resultado = resultado
+      ? `${resultado} e ${centavosExt} ${rotuloCent}`
+      : `${centavosExt} ${rotuloCent}`;
+  }
+
+  return resultado;
+}
+
+// ================== RENDER RECIBO ==================
 function renderRecibo() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Recibo</h2>
@@ -30,63 +119,49 @@ function renderRecibo() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // ===== DIMENSÕES =====
+    // ===== Caixa principal (meia folha) =====
     const margemX = 20;
     const larguraCaixa = 170;
-    const alturaCaixa = 130; // ocupa meia folha
+    const alturaCaixa = 130;
     const inicioY = 20;
-
-    // Desenha a caixa principal
-    doc.setDrawColor(0);
     doc.rect(margemX, inicioY, larguraCaixa, alturaCaixa);
 
     let y = inicioY + 10;
 
-    // ===== CABEÇALHO =====
-    try {
-      const logo = document.createElement("img");
-      logo.src = "img/logo.png";
-      doc.addImage(logo, "PNG", margemX + 5, y, 20, 20);
-    } catch {}
-
+    // ===== Cabeçalho =====
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text("CERÂMICA FORTES LTDA.", margemX + 90, y + 5, { align: "center" });
+    doc.text("CERÂMICA FORTES LTDA.", margemX + 85, y, { align: "center" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("BR 316 KM 05 S/N – Timon(MA) – CEP 65.630-000", margemX + 90, y + 10, { align: "center" });
-    doc.text("Fone: (99) 3118-3700 | Fax: (99) 3118-3701", margemX + 90, y + 15, { align: "center" });
-    doc.text("E-mail: fortes@fortes.com.br  www.fortes.com.br", margemX + 90, y + 20, { align: "center" });
-    doc.text("CNPJ: 06.849.988/0001-44 – I.E: 12.095.413-3", margemX + 90, y + 25, { align: "center" });
+    doc.text("BR 316 KM 05 S/N – Timon(MA) – CEP 65.630-000", margemX + 85, y + 6, { align: "center" });
+    doc.text("Fone: (99) 3118-3700 | Fax: (99) 3118-3701", margemX + 85, y + 11, { align: "center" });
+    doc.text("E-mail: fortes@fortes.com.br  www.fortes.com.br", margemX + 85, y + 16, { align: "center" });
+    doc.text("CNPJ: 06.849.988/0001-44 – I.E: 12.095.413-3", margemX + 85, y + 21, { align: "center" });
 
     y += 35;
 
-    // ===== VALOR =====
+    // ===== Valor numérico =====
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.text("Valor do Recibo (R$):", margemX + 5, y);
-
-    const valorTexto = valorMoeda;
-    const larguraValor = doc.getTextWidth(valorTexto) + 8;
+    const larguraValor = doc.getTextWidth(valorMoeda) + 8;
     doc.setFillColor(255, 204, 153);
     doc.rect(margemX + 60, y - 5, larguraValor, 10, "F");
-    doc.text(valorTexto, margemX + 64, y);
+    doc.text(valorMoeda, margemX + 64, y);
 
     y += 12;
 
-    // ===== EXTENSO =====
-    const extensoTexto = valorExtenso;
-    const larguraExt = doc.getTextWidth(extensoTexto) + 8;
+    // ===== Valor por extenso =====
+    const larguraExt = doc.getTextWidth(valorExtenso) + 8;
     doc.setFillColor(255, 229, 204);
     doc.rect(margemX + 60, y - 5, larguraExt, 10, "F");
-    doc.setFontSize(9);
-    doc.text(extensoTexto, margemX + 64, y);
+    doc.text(valorExtenso, margemX + 64, y);
 
-    y += 15;
+    y += 18;
 
-    // ===== REFERÊNCIA =====
+    // ===== Referência =====
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
     doc.text("Referência:", margemX + 5, y);
     doc.rect(margemX + 30, y - 5, 130, 15);
     doc.setFont("helvetica", "normal");
@@ -95,7 +170,7 @@ function renderRecibo() {
 
     y += 25;
 
-    // ===== PAGADOR =====
+    // ===== Pagador =====
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.text("Recebemos de:", margemX + 5, y);
@@ -105,7 +180,7 @@ function renderRecibo() {
 
     y += 15;
 
-    // ===== FAVORECIDO =====
+    // ===== Favorecido =====
     doc.setFont("helvetica", "bold");
     doc.text("Favorecido:", margemX + 5, y);
     doc.rect(margemX + 30, y - 5, 130, 10);
@@ -114,14 +189,14 @@ function renderRecibo() {
 
     y += 15;
 
-    // ===== DATA =====
+    // ===== Data =====
     doc.setFont("helvetica", "bold");
     doc.text("Data:", margemX + 5, y);
     doc.rect(margemX + 20, y - 5, 40, 10);
     doc.setFont("helvetica", "normal");
     doc.text(hoje, margemX + 24, y);
 
-    // ===== ASSINATURA =====
+    // ===== Assinatura =====
     y += 25;
     doc.line(margemX + 50, y, margemX + 120, y);
     doc.setFontSize(8);
