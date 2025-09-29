@@ -87,4 +87,6 @@ function renderRecibo() {
     doc.setFont("helvetica", "normal");
     doc.text("Cerâmica Fortes LTDA.", 105, y + 6, { align: "center" });
 
-    doc.save(`recibo-${cliente}.pdf`)
+    doc.save(`recibo-${cliente}.pdf`);
+  });
+}
