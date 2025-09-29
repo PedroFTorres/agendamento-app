@@ -1,100 +1,3 @@
-// ================== RECIBO ==================
-// Conversor de número -> extenso (pt-BR) para moeda
-function numeroParaExtensoBRL(valor) {
-  valor = Number(valor || 0);
-
-  let inteiro = Math.floor(valor);
-  let cent = Math.round((valor - inteiro) * 100);
-  if (cent === 100) { inteiro += 1; cent = 0; }
-
-  if (inteiro === 0 && cent === 0) return "zero real";
-
-  const unidades = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
-  const especiais = ["dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
-  const dezenas = ["", "", "vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
-  const centenas = ["","cento","duzentos","trezentos","quatrocentos","quinhentos","seiscentos","setecentos","oitocentos","novecentos"];
-
-  function trioParaExtenso(n) {
-    n = n % 1000;
-    if (n === 0) return "";
-
-    const c = Math.floor(n / 100);
-    const d = Math.floor((n % 100) / 10);
-    const u = n % 10;
-
-    let partes = [];
-    if (n === 100) return "cem";
-    if (c > 0) partes.push(centenas[c]);
-
-    if (d === 1) {
-      partes.push(especiais[u]);
-    } else {
-      if (d > 1) partes.push(dezenas[d]);
-      if (u > 0) partes.push(unidades[u]);
-    }
-
-    // Junta com "e" quando cabível
-    return partes.join(" e ");
-  }
-
-  const escalasSing = ["", "mil", "milhão", "bilhão", "trilhão"];
-  const escalasPlural = ["", "mil", "milhões", "bilhões", "trilhões"];
-
-  function inteiroParaExtenso(n) {
-    if (n === 0) return "";
-
-    const grupos = [];
-    let i = 0;
-    while (n > 0) {
-      grupos.push(n % 1000);
-      n = Math.floor(n / 1000);
-      i++;
-    }
-
-    const partes = [];
-    for (let idx = grupos.length - 1; idx >= 0; idx--) {
-      const g = grupos[idx];
-      if (g === 0) continue;
-
-      let ext = trioParaExtenso(g);
-      const escalaIdx = idx;
-      const singular = g === 1;
-
-      if (escalaIdx > 0) {
-        if (escalaIdx === 1) {
-          // mil: não usamos "um mil"
-          ext = singular && ext === "um" ? "mil" : (ext ? `${ext} mil` : "mil");
-        } else {
-          ext += ` ${singular ? escalasSing[escalaIdx] : escalasPlural[escalaIdx]}`;
-        }
-      }
-      partes.push(ext);
-    }
-
-    // Insere "e" apenas entre os dois últimos blocos quando apropriado
-    if (partes.length > 1) {
-      const last = partes.pop();
-      return partes.join(", ") + " e " + last;
-    }
-    return partes[0] || "";
-  }
-
-  const parteInteira = inteiroParaExtenso(inteiro);
-  const rotuloReal = inteiro === 1 ? "real" : "reais";
-
-  let resultado = parteInteira ? `${parteInteira} ${rotuloReal}` : "";
-
-  if (cent > 0) {
-    const centavosExt = trioParaExtenso(cent);
-    const rotuloCent = cent === 1 ? "centavo" : "centavos";
-    resultado = resultado
-      ? `${resultado} e ${centavosExt} ${rotuloCent}`
-      : `${centavosExt} ${rotuloCent}`;
-  }
-
-  return resultado;
-}
-
 function renderRecibo() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Recibo</h2>
@@ -125,48 +28,63 @@ function renderRecibo() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // ===== LOGO =====
+    // ===== LOGO + CABEÇALHO =====
     try {
       const logo = await fetch("img/logo.png").then(r => r.blob()).then(b => new Promise(res => {
         const reader = new FileReader();
         reader.onload = () => res(reader.result);
         reader.readAsDataURL(b);
       }));
-      doc.addImage(logo, "PNG", 14, 10, 30, 30);
-    } catch {
-      console.warn("Logo não encontrada em img/logo.png");
-    }
+      doc.addImage(logo, "PNG", 14, 10, 25, 25);
+    } catch {}
 
-    // ===== CABEÇALHO EMPRESA =====
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("CERÂMICA FORTES LTDA.", 50, 20);
+    doc.text("CERÂMICA FORTES LTDA.", 45, 18);
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text("BR 316 KM 05 S/N – Timon(MA) – CEP 65.630-000 – Cx. Postal 26", 50, 26);
-    doc.text("Fone: (99) 3118-3700 Fax: (99) 3118-3701", 50, 31);
-    doc.text("E-mail: fortes@fortes.com.br   HomePage: www.fortes.com.br", 50, 36);
-    doc.text("CNPJ 06.849.988/0001-44 – I. E. 12.095.413-3", 50, 41);
+    doc.text("BR 316 KM 05 S/N – Timon(MA) – CEP 65.630-000 – Cx. Postal 26", 45, 24);
+    doc.text("Fone: (99) 3118-3700 | Fax: (99) 3118-3701", 45, 29);
+    doc.text("E-mail: fortes@fortes.com.br   www.fortes.com.br", 45, 34);
+    doc.text("CNPJ: 06.849.988/0001-44 – I.E: 12.095.413-3", 45, 39);
+
+    doc.setDrawColor(150);
+    doc.line(14, 45, 195, 45);
 
     // ===== TÍTULO =====
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("RECIBO", 105, 60, { align: "center" });
+    doc.setDrawColor(0);
+    doc.line(80, 63, 130, 63);
 
     // ===== CORPO =====
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
     const hoje = new Date().toLocaleDateString("pt-BR");
+    let y = 80;
 
-    const y0 = 80;
-    doc.text(`Recebemos de: ${cliente}`, 20, y0);
-    doc.text(`A importância de: ${valorMoeda} (${valorExtenso})`, 20, y0 + 10);
-    doc.text(`Referente a: ${ref || "_________________________________________"}`, 20, y0 + 20);
-    doc.text(`Data: ${hoje}`, 20, y0 + 30);
+    doc.text(`Recebemos de: ${cliente}`, 20, y);
+    y += 12;
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`A importância de: ${valorMoeda}`, 20, y);
+    y += 8;
+
+    doc.setFont("helvetica", "italic");
+    doc.text(`(${valorExtenso})`, 20, y);
+    y += 12;
+
+    doc.setFont("helvetica", "normal");
+    doc.text(`Referente a: ${ref || "_________________________________________"}`, 20, y);
+    y += 12;
+
+    doc.text(`Data: ${hoje}`, 20, y);
 
     // ===== ASSINATURA =====
-    doc.line(60, y0 + 60, 150, y0 + 60);
-    doc.text("Assinatura", 105, y0 + 66, { align: "center" });
+    y += 40;
+    doc.line(60, y, 150, y);
+    doc.setFont("helvetica", "normal");
+    doc.text("Cerâmica Fortes LTDA.", 105, y + 6, { align: "center" });
 
-    // Salvar (atenção: use crases/backticks aqui)
-    doc.save(`recibo-${cliente}.pdf`);
-  });
-}
+    doc.save(`recibo-${cliente}.pdf`)
