@@ -205,9 +205,12 @@ function renderRecibo() {
 
 // ===== DATA =====
 doc.setFont("helvetica", "bold");
-doc.text("Data:", margemX + 5, y);
+doc.setFontSize(9); // fonte menor
+doc.text("Data:", margemX + 5, y - 2); // subimos 2px
 doc.setFont("helvetica", "normal");
-doc.text(hoje, margemX + 30, y); // apenas texto, sem caixa
+doc.setFontSize(9); // fonte menor também
+doc.text(hoje, margemX + 30, y - 2);
+
 
 
 
