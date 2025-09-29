@@ -117,58 +117,59 @@ function renderRecibo() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // ===== CABEÇALHO =====
+    // ===== LOGO ESQUERDA =====
     try {
       const logo = await fetch("img/logo.png").then(r => r.blob()).then(b => new Promise(res => {
         const reader = new FileReader();
         reader.onload = () => res(reader.result);
         reader.readAsDataURL(b);
       }));
-      doc.addImage(logo, "PNG", 90, 10, 30, 30);
+      doc.addImage(logo, "PNG", 20, 10, 30, 30); // lado esquerdo
     } catch {}
 
+    // ===== CABEÇALHO =====
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("CERÂMICA FORTES LTDA.", 105, 50, { align: "center" });
+    doc.text("CERÂMICA FORTES LTDA.", 105, 20, { align: "center" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text("BR 316 KM 05 S/N – Timon(MA) – CEP 65.630-000 – Cx. Postal 26", 105, 56, { align: "center" });
-    doc.text("Fone: (99) 3118-3700 | Fax: (99) 3118-3701", 105, 61, { align: "center" });
-    doc.text("E-mail: fortes@fortes.com.br   www.fortes.com.br", 105, 66, { align: "center" });
-    doc.text("CNPJ: 06.849.988/0001-44 – I.E: 12.095.413-3", 105, 71, { align: "center" });
+    doc.text("BR 316 KM 05 S/N – Timon(MA) – CEP 65.630-000 – Cx. Postal 26", 105, 26, { align: "center" });
+    doc.text("Fone: (99) 3118-3700 | Fax: (99) 3118-3701", 105, 31, { align: "center" });
+    doc.text("E-mail: fortes@fortes.com.br   www.fortes.com.br", 105, 36, { align: "center" });
+    doc.text("CNPJ: 06.849.988/0001-44 – I.E: 12.095.413-3", 105, 41, { align: "center" });
 
-    doc.line(20, 75, 190, 75);
+    doc.line(20, 48, 190, 48);
 
     // ===== TÍTULO =====
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
-    doc.text("RECIBO", 105, 90, { align: "center" });
+    doc.text("RECIBO", 105, 65, { align: "center" });
 
     // ===== CORPO =====
     const hoje = new Date().toLocaleDateString("pt-BR");
-    let y = 115;
+    let y = 90;
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
     doc.text(`Recebemos de: ${cliente}`, 20, y);
     y += 20;
 
-    // ===== VALOR NUMÉRICO EM DESTAQUE =====
+    // ===== VALOR NUMÉRICO COM HIGHLIGHT =====
     const valorTexto = `A importância de: ${valorMoeda}`;
-    const larguraValor = doc.getTextWidth(valorTexto) + 4;
-    doc.setFillColor(255, 229, 204); // Laranja claro
-    doc.rect(18, y - 6, larguraValor, 10, "F");
+    const larguraValor = doc.getTextWidth(valorTexto);
+    doc.setFillColor(255, 229, 204); // laranja claro
+    doc.rect(18, y - 6, larguraValor + 6, 10, "F");
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text(valorTexto, 20, y);
     y += 20;
 
-    // ===== VALOR POR EXTENSO EM DESTAQUE =====
+    // ===== VALOR POR EXTENSO COM HIGHLIGHT =====
     const extensoTexto = `(${valorExtenso})`;
-    const larguraExt = doc.getTextWidth(extensoTexto) + 4;
-    doc.setFillColor(255, 239, 213); // Laranja bem clarinho
-    doc.rect(18, y - 6, larguraExt, 10, "F");
+    const larguraExt = doc.getTextWidth(extensoTexto);
+    doc.setFillColor(255, 239, 213); // laranja bem clarinho
+    doc.rect(18, y - 6, larguraExt + 6, 10, "F");
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "italic");
     doc.setFontSize(12);
