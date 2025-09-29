@@ -11,13 +11,32 @@
   <!-- FullCalendar -->
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales-all.global.min.js"></script>
 
+  <!-- Estilos extras -->
   <style>
     body { background: #f3f4f6; }
     .sidebar { position: sticky; top: 0; height: 100vh; }
     #chart-reps, #chart-clis {
       height: 400px !important;
       max-height: 400px !important;
+    }
+
+    /* Tooltip customizado */
+    .tooltip-custom {
+      position: absolute;
+      background: #1f2937; /* cinza escuro */
+      color: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: nowrap;
+      z-index: 50;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25); /* sombra estilo Tailwind */
     }
   </style>
 </head>
@@ -64,7 +83,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales-all.global.min.js"></script>
 
   <!-- Seus scripts -->
   <script src="js/firebase.js"></script>
