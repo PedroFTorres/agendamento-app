@@ -1,7 +1,9 @@
-// Simulação do representante logado (depois a gente troca por Firebase Auth)
+// ================== Representante logado (simulação) ==================
+// Depois vamos trocar por Firebase Auth
 const representanteLogado = { id: "sampaio", nome: "Sampaio" };
 
-// Dados em memória (vamos migrar para Firestore depois)
+// ================== Banco de dados em memória (simulado) ==================
+// Depois migramos para Firestore
 let clientes = [
   { id: "c1", nome: "João", representanteId: "sampaio" },
   { id: "c2", nome: "Maria", representanteId: "outro" }
@@ -10,9 +12,28 @@ let pedidos = [];
 
 // ================== Navegação ==================
 function showPage(page) {
-  if (page === "clientes") renderClientes();
+  if (page === "home") renderHome();
+  else if (page === "clientes") renderClientes();
   else if (page === "novoPedido") renderNovoPedido();
   else if (page === "meusPedidos") renderMeusPedidos();
+}
+
+// ================== Tela Inicial ==================
+function renderHome() {
+  const html = `
+    <div class="welcome">
+      <h2>Bem-vindo, ${representanteLogado.nome}</h2>
+      <p>Você está conectado ao aplicativo exclusivo de representantes da <b>Cerâmica Fortes</b>.</p>
+      <p>Aqui você pode:</p>
+      <ul style="text-align:left; max-width:400px; margin:auto;">
+        <li>Consultar sua carteira de clientes</li>
+        <li>Enviar pedidos de forma rápida</li>
+        <li>Acompanhar o status de cada agendamento</li>
+      </ul>
+      <p style="margin-top:20px; font-size:0.9rem; color:#555;">Cerâmica Fortes © 2025</p>
+    </div>
+  `;
+  document.getElementById("content").innerHTML = html;
 }
 
 // ================== Clientes ==================
@@ -74,35 +95,4 @@ function salvarPedido() {
     produto,
     quantidade: qtd,
     status: "pendente",   // admin vai aprovar depois
-    dataAgendada: null
-  });
-
-  alert("Pedido enviado! Aguarde aprovação.");
-  renderMeusPedidos();
-}
-
-// ================== Meus Pedidos ==================
-function renderMeusPedidos() {
-  const meusPedidos = pedidos.filter(p => p.representanteId === representanteLogado.id);
-  let html = "<h3>Meus Pedidos</h3>";
-  if (meusPedidos.length === 0) {
-    html += "<p>Você ainda não fez pedidos.</p>";
-  } else {
-    meusPedidos.forEach(p => {
-      const cliente = clientes.find(c => c.id === p.clienteId);
-      html += `
-        <div class="card">
-          <b>Cliente:</b> ${cliente.nome}<br>
-          <b>Produto:</b> ${p.produto}<br>
-          <b>Quantidade:</b> ${p.quantidade}<br>
-          <b>Status:</b> ${p.status}<br>
-          <b>Data:</b> ${p.dataAgendada || "Aguardando admin"}
-        </div>
-      `;
-    });
-  }
-  document.getElementById("content").innerHTML = html;
-}
-
-// ================== Início ==================
-window.onload = () => showPage("clientes");
+    dataAgendada:
