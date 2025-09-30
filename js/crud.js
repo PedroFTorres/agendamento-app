@@ -1070,6 +1070,8 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else if (page === "dashboard") renderDashboard();
     else if (page === "producao") renderProducao();
     else if (page === "recibo") renderRecibo();
+    else if (page === "whatsapp") renderWhatsapp();
+
     else renderForm(page);
   });
 });
