@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>App Representante</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }
+    header { background: #2c3e50; color: #fff; padding: 15px; text-align: center; }
+    nav { display: flex; justify-content: space-around; background: #34495e; }
+    nav button { flex: 1; padding: 10px; color: #fff; background: none; border: none; cursor: pointer; }
+    nav button:hover { background: #2c3e50; }
+    #content { padding: 20px; }
+    .card { background: #fff; padding: 15px; margin-bottom: 10px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input, select, button { padding: 8px; margin: 5px 0; width: 100%; }
+    button.save { background: #27ae60; color: #fff; border: none; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>App Representante</h2>
+  </header>
+  <nav>
+    <button onclick="showPage('clientes')">Clientes</button>
+    <button onclick="showPage('novoPedido')">Novo Pedido</button>
+    <button onclick="showPage('meusPedidos')">Meus Pedidos</button>
+  </nav>
+
+  <main id="content"></main>
+
+  <!-- JS do app representantes -->
+  <script src="js/app-representantes.js"></script>
+</body>
+</html>
