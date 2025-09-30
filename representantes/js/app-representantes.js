@@ -95,4 +95,35 @@ function salvarPedido() {
     produto,
     quantidade: qtd,
     status: "pendente",   // admin vai aprovar depois
-    dataAgendada:
+    dataAgendada: null
+  });
+
+  alert("Pedido enviado! Aguarde aprovação.");
+  renderMeusPedidos();
+}
+
+// ================== Meus Pedidos ==================
+function renderMeusPedidos() {
+  const meusPedidos = pedidos.filter(p => p.representanteId === representanteLogado.id);
+  let html = "<h3>Meus Pedidos</h3>";
+  if (meusPedidos.length === 0) {
+    html += "<p>Você ainda não fez pedidos.</p>";
+  } else {
+    meusPedidos.forEach(p => {
+      const cliente = clientes.find(c => c.id === p.clienteId);
+      html += `
+        <div class="card">
+          <b>Cliente:</b> ${cliente.nome}<br>
+          <b>Produto:</b> ${p.produto}<br>
+          <b>Quantidade:</b> ${p.quantidade}<br>
+          <b>Status:</b> ${p.status}<br>
+          <b>Data:</b> ${p.dataAgendada || "Aguardando admin"}
+        </div>
+      `;
+    });
+  }
+  document.getElementById("content").innerHTML = html;
+}
+
+// ================== Início ==================
+window.onload = () => showPage("home");
