@@ -96,6 +96,7 @@ function renderRecibo() {
       <select id="recibo-ref" class="border p-2 rounded w-full">
         <option value="Referente a pagamento de material Cerâmico à vista.">Referente a pagamento de material Cerâmico à vista.</option>
         <option value="Referente a pagamento de material Cerâmico à prazo.">Referente a pagamento de material Cerâmico à prazo.</option>
+         <option value="Referente a pagamento de material Cerâmico ANTECIPADO.">Referente a pagamento de material Cerâmico ANTECIPADO.</option>
       </select>
       <button class="bg-green-600 text-white p-2 rounded w-full">Gerar Recibo (PDF)</button>
     </form>
