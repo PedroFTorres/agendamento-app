@@ -1,4 +1,4 @@
-// whatsapp.js — versão com integração WhatsApp Cloud API (Meta)
+// whatsapp.js — versão com integração via API hospedada na Vercel (Pedro Torres)
 
 async function renderWhatsapp() {
   pageContent.innerHTML = `
@@ -50,7 +50,7 @@ async function renderWhatsapp() {
         list.appendChild(li);
       });
 
-      // Enviar mensagem via WhatsApp Cloud API
+      // Enviar mensagem via API da Vercel (Cloud API da Meta)
       list.querySelectorAll(".btn-msg").forEach(btn => {
         btn.addEventListener("click", async () => {
           const num = btn.dataset.num;
@@ -58,19 +58,27 @@ async function renderWhatsapp() {
           if (!msg) return;
 
           try {
-            // Chama a Cloud Function no Firebase
-            const fn = firebase
-              .app()
-              .functions("southamerica-east1")
-              .httpsCallable("sendWhatsAppMessage");
+            // 🔗 URL da API hospedada na Vercel
+            const response = await fetch(
+              "https://whatsapp-api-lime-eight.vercel.app/api/sendWhatsAppMessage",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ to: num, text: msg }),
+              }
+            );
 
-            // Executa a função e aguarda a resposta
-            await fn({ to: num, text: msg });
+            const data = await response.json();
 
-            alert("✅ Mensagem enviada com sucesso via WhatsApp Cloud API!");
+            if (response.ok) {
+              alert("✅ Mensagem enviada com sucesso via WhatsApp Cloud API!");
+            } else {
+              console.error("Erro na API:", data);
+              alert("❌ Erro no envio: " + (data.error?.message || "Ver console"));
+            }
           } catch (err) {
             console.error("Erro ao enviar mensagem:", err);
-            alert("❌ Erro ao enviar mensagem. Verifique o console para detalhes.");
+            alert("❌ Falha de comunicação com o servidor.");
           }
         });
       });
