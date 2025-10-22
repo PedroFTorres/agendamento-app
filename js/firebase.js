@@ -8,6 +8,10 @@ const firebaseConfig = {
   appId: "1:61119567504:web:556bb893c9eba6c4e12a15"
 };
 
+// Inicializa o app
 firebase.initializeApp(firebaseConfig);
+
+// Conexões principais
 const auth = firebase.auth();
 const db = firebase.firestore();
+const functions = firebase.app().functions("southamerica-east1");
