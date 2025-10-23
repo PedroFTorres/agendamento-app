@@ -15,3 +15,4 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 const functions = firebase.app().functions("southamerica-east1");
+export { app, auth, db };
