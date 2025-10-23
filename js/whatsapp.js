@@ -1,4 +1,4 @@
-// whatsapp.js — versão com integração via API hospedada na Vercel (Pedro Torres)
+// whatsapp.js — versão final com envio direto via API Vercel
 
 async function renderWhatsapp() {
   pageContent.innerHTML = `
@@ -13,10 +13,8 @@ async function renderWhatsapp() {
   const list = document.getElementById("whats-list");
   const searchInput = document.getElementById("whats-search");
 
-  // Garante que o usuário está logado
   const user = await waitForAuth();
 
-  // Carrega lista de clientes com WhatsApp
   db.collection("clientes")
     .where("userId", "==", user.uid)
     .orderBy("createdAt", "desc")
@@ -42,7 +40,7 @@ async function renderWhatsapp() {
           <div class="space-x-2">
             ${
               tel
-                ? `<button data-num="${tel}" class="bg-blue-600 text-white px-2 py-1 rounded btn-msg">Enviar Mensagem</button>`
+                ? `<button data-num="${tel}" class="bg-green-600 text-white px-3 py-1 rounded btn-msg">Enviar WhatsApp</button>`
                 : ""
             }
           </div>
@@ -50,31 +48,34 @@ async function renderWhatsapp() {
         list.appendChild(li);
       });
 
-      // Enviar mensagem via API da Vercel (Cloud API da Meta)
+      // Envio da mensagem ao clicar
       list.querySelectorAll(".btn-msg").forEach(btn => {
         btn.addEventListener("click", async () => {
           const num = btn.dataset.num;
           const msg = prompt("Digite a mensagem para enviar via WhatsApp API:");
+
           if (!msg) return;
 
           try {
-            // 🔗 URL da API hospedada na Vercel
             const response = await fetch(
               "https://whatsapp-api-lime-eight.vercel.app/api/sendWhatsAppMessage",
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ to: num, text: msg }),
+                body: JSON.stringify({
+                  to: num,
+                  text: msg
+                }),
               }
             );
 
             const data = await response.json();
 
-            if (response.ok) {
+            if (response.ok && data.success) {
               alert("✅ Mensagem enviada com sucesso via WhatsApp Cloud API!");
             } else {
               console.error("Erro na API:", data);
-              alert("❌ Erro no envio: " + (data.error?.message || "Ver console"));
+              alert("❌ Erro ao enviar mensagem: " + (data.error?.message || "Ver console"));
             }
           } catch (err) {
             console.error("Erro ao enviar mensagem:", err);
@@ -84,7 +85,7 @@ async function renderWhatsapp() {
       });
     });
 
-  // Filtro de pesquisa por nome ou número
+  // Filtro de pesquisa
   searchInput.addEventListener("input", () => {
     const termo = searchInput.value.toLowerCase();
     list.querySelectorAll("li").forEach(li => {
@@ -92,3 +93,4 @@ async function renderWhatsapp() {
     });
   });
 }
+
