@@ -1,4 +1,4 @@
-// whatsapp.js — versão final com envio direto via API Vercel
+// whatsapp.js — versão final compatível com o backend hospedado na Vercel
 
 async function renderWhatsapp() {
   pageContent.innerHTML = `
@@ -18,7 +18,7 @@ async function renderWhatsapp() {
   db.collection("clientes")
     .where("userId", "==", user.uid)
     .orderBy("createdAt", "desc")
-    .onSnapshot(snap => {
+    .onSnapshot((snap) => {
       list.innerHTML = "";
 
       if (snap.empty) {
@@ -26,7 +26,7 @@ async function renderWhatsapp() {
         return;
       }
 
-      snap.forEach(doc => {
+      snap.forEach((doc) => {
         const d = doc.data();
         const tel = d.whatsapp ? `55${d.whatsapp.replace(/\D/g, "")}` : "";
 
@@ -48,8 +48,8 @@ async function renderWhatsapp() {
         list.appendChild(li);
       });
 
-      // Envio da mensagem ao clicar
-      list.querySelectorAll(".btn-msg").forEach(btn => {
+      // Ação do botão de envio
+      list.querySelectorAll(".btn-msg").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const num = btn.dataset.num;
           const msg = prompt("Digite a mensagem para enviar via WhatsApp API:");
@@ -61,24 +61,28 @@ async function renderWhatsapp() {
               "https://whatsapp-api-lime-eight.vercel.app/api/sendWhatsAppMessage",
               {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                },
                 body: JSON.stringify({
                   to: num,
-                  text: msg
+                  text: msg,
                 }),
               }
             );
 
+            // Ler resposta
             const data = await response.json();
 
             if (response.ok && data.success) {
               alert("✅ Mensagem enviada com sucesso via WhatsApp Cloud API!");
+              console.log("📤 Resposta:", data);
             } else {
-              console.error("Erro na API:", data);
-              alert("❌ Erro ao enviar mensagem: " + (data.error?.message || "Ver console"));
+              console.error("❌ Erro na API:", data);
+              alert("❌ Erro ao enviar mensagem. Verifique o console para detalhes.");
             }
           } catch (err) {
-            console.error("Erro ao enviar mensagem:", err);
+            console.error("⚠️ Erro ao enviar mensagem:", err);
             alert("❌ Falha de comunicação com o servidor.");
           }
         });
@@ -88,9 +92,10 @@ async function renderWhatsapp() {
   // Filtro de pesquisa
   searchInput.addEventListener("input", () => {
     const termo = searchInput.value.toLowerCase();
-    list.querySelectorAll("li").forEach(li => {
-      li.style.display = li.textContent.toLowerCase().includes(termo) ? "" : "none";
+    list.querySelectorAll("li").forEach((li) => {
+      li.style.display = li.textContent.toLowerCase().includes(termo)
+        ? ""
+        : "none";
     });
   });
 }
-
