@@ -248,6 +248,49 @@ async function atualizarInbox() {
   }
 }
 
-// atualiza a cada 5s
-setInterval(atualizarInbox, 5000);
+/***** RECEBER MENSAGENS VIA WEBHOOK *****/
+const URL_WEBHOOK = "https://whatsapp-webhook-xxxxx.onrender.com/mensagens"; // troque pelo seu link do Render
+
+async function atualizarMensagensRecebidas() {
+  try {
+    const res = await fetch(URL_WEBHOOK);
+    if (!res.ok) throw new Error("Erro ao consultar webhook");
+    const msgs = await res.json();
+
+    // Mostra as novas mensagens no chat
+    const box = document.querySelector("#mensagens");
+    if (!box || !Array.isArray(msgs)) return;
+
+    box.innerHTML = ""; // limpa antes de redesenhar
+    msgs.forEach((m) => {
+      const bubble = document.createElement("div");
+      bubble.classList.add("bubble");
+      const body = document.createTextNode(m.body);
+      bubble.appendChild(body);
+
+      const meta = document.createElement("span");
+      meta.className = "meta";
+      const data = new Date(m.timestamp || Date.now());
+      meta.textContent = data.toLocaleString();
+      bubble.appendChild(meta);
+
+      // se for mensagem recebida, deixa na esquerda
+      if (m.from && !m.from.includes(INSTANCE_ID)) {
+        bubble.classList.add("received");
+      } else {
+        bubble.classList.add("me");
+      }
+
+      box.appendChild(bubble);
+    });
+
+    box.scrollTop = box.scrollHeight;
+  } catch (e) {
+    console.warn("Falha ao buscar mensagens recebidas:", e);
+  }
+}
+
+// Atualiza a cada 5 segundos
+setInterval(atualizarMensagensRecebidas, 5000);
+
 
