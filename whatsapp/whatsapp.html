@@ -3,17 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WhatsApp + Envio em Massa | Cerâmica Fortes</title>
+  <title>WhatsApp Integrado | Cerâmica Fortes</title>
   <link rel="stylesheet" href="whatsapp.css" />
 </head>
 <body>
   <div class="container">
+    <!-- Lado esquerdo: WhatsApp UltraMsg -->
     <div class="left">
-      <h2>💬 WhatsApp</h2>
-      <p>Acompanhe suas conversas diretamente no WhatsApp Web</p>
-      <button id="abrirWhatsApp">Abrir WhatsApp Web</button>
+      <h2>💬 WhatsApp Conectado</h2>
+      <iframe 
+        src="https://ultramsg.com/painel/instance147478" 
+        id="whatsappFrame" 
+        title="WhatsApp Integrado"
+        frameborder="0" 
+        allowfullscreen></iframe>
     </div>
 
+    <!-- Lado direito: envio em massa -->
     <div class="right">
       <h2>📢 Envio em Massa</h2>
       <textarea id="mensagem" placeholder="Digite a mensagem..."></textarea>
@@ -28,6 +34,7 @@
       <ul id="relatorio"></ul>
     </div>
   </div>
+
   <script src="whatsapp.js"></script>
 </body>
 </html>
