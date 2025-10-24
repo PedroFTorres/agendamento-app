@@ -1,10 +1,6 @@
-const INSTANCE_ID = "instanceXXXX"; // 🔹 substitua aqui
-const API_TOKEN = "seu_token_aqui"; // 🔹 substitua aqui
+const INSTANCE_ID = "instance147478";
+const API_TOKEN = "c4j1m6wyghzhvhrd";
 const API_URL = "https://api.ultramsg.com";
-
-document.getElementById("abrirWhatsApp").addEventListener("click", () => {
-  window.open("https://web.whatsapp.com", "_blank");
-});
 
 document.getElementById("enviar").addEventListener("click", async () => {
   const msg = document.getElementById("mensagem").value.trim();
@@ -57,4 +53,3 @@ document.getElementById("enviar").addEventListener("click", async () => {
     contador.textContent = `${enviados} de ${numbers.length} enviados`;
   }
 });
-
