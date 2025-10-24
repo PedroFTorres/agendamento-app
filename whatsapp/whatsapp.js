@@ -8,8 +8,8 @@ document.getElementById("enviar").addEventListener("click", async () => {
 
   const text = await file.text();
   const numbers = text.split(/\r?\n/).filter(n => n.trim());
-
-  const res = await fetch("http://localhost:3000/send", {
+  
+  const res = await fetch("https://agendamento-app-fwls.onrender.com/send", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ numbers, message: msg })
