@@ -235,3 +235,19 @@ $("#btnEnviarMassa").addEventListener("click", async () => {
 
 /***** BOOT *****/
 startPolling();
+
+/***** BUSCAR NOVAS MENSAGENS DO WEBHOOK *****/
+async function atualizarInbox() {
+  try {
+    const res = await fetch("https://whatsapp-webhook-xxxxx.onrender.com/mensagens");
+    const data = await res.json();
+    // aqui você pode exibir as novas mensagens na lateral esquerda do chat
+    console.log("Mensagens recebidas:", data);
+  } catch (err) {
+    console.warn("Erro ao buscar webhook:", err);
+  }
+}
+
+// atualiza a cada 5s
+setInterval(atualizarInbox, 5000);
+
