@@ -3,87 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WhatsApp + Envio em Massa</title>
+  <title>WhatsApp + Envio em Massa | Cerâmica Fortes</title>
   <link rel="stylesheet" href="whatsapp.css" />
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      display: flex;
-      height: 100vh;
-      background: #f3f3f3;
-    }
-    .left {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #e0e0e0;
-      border-right: 2px solid #ccc;
-    }
-    .left button {
-      padding: 12px 20px;
-      font-size: 16px;
-      background: #25d366;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .left button:hover {
-      background: #128c7e;
-    }
-    .right {
-      flex: 1;
-      background: white;
-      padding: 30px;
-      display: flex;
-      flex-direction: column;
-    }
-    textarea {
-      width: 100%;
-      height: 120px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      padding: 10px;
-    }
-    button#enviar {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      background: #0a8d48;
-      color: white;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button#enviar:hover {
-      background: #0c6f3b;
-    }
-    ul { margin-top: 20px; list-style: none; padding: 0; }
-    .ok { color: green; }
-    .fail { color: red; }
-  </style>
 </head>
 <body>
-  <div class="left">
-    <h2>💬 WhatsApp</h2>
-    <button onclick="window.open('https://web.whatsapp.com', '_blank')">
-      Abrir WhatsApp Web
-    </button>
-    <p style="margin-top:10px;color:#333;">Acompanhe as conversas na nova aba</p>
-  </div>
+  <div class="container">
+    <div class="left">
+      <h2>💬 WhatsApp</h2>
+      <p>Acompanhe suas conversas diretamente no WhatsApp Web</p>
+      <button id="abrirWhatsApp">Abrir WhatsApp Web</button>
+    </div>
 
-  <div class="right">
-    <h2>📢 Envio em Massa</h2>
-    <textarea id="mensagem" placeholder="Digite a mensagem..."></textarea>
-    <input type="file" id="arquivo" accept=".csv" />
-    <button id="enviar">Enviar Mensagens</button>
-    <ul id="relatorio"></ul>
-  </div>
+    <div class="right">
+      <h2>📢 Envio em Massa</h2>
+      <textarea id="mensagem" placeholder="Digite a mensagem..."></textarea>
+      <input type="file" id="arquivo" accept=".csv" />
+      <button id="enviar">Enviar Mensagens</button>
 
+      <div id="progresso" class="progress-container" style="display:none;">
+        <div id="barra" class="progress-bar"></div>
+      </div>
+
+      <div id="contador"></div>
+      <ul id="relatorio"></ul>
+    </div>
+  </div>
   <script src="whatsapp.js"></script>
 </body>
 </html>
