@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhatsApp Integrado</title>
+  <link rel="stylesheet" href="whatsapp.css" />
+</head>
+<body>
+  <div id="app">
+    <iframe src="https://web.whatsapp.com" id="wa-frame" title="WhatsApp"></iframe>
+    <div class="painel">
+      <h2>📱 Envio em Massa</h2>
+      <textarea id="mensagem" placeholder="Digite a mensagem..."></textarea>
+      <input type="file" id="arquivo" accept=".csv" />
+      <button id="enviar">Enviar Mensagens</button>
+      <ul id="relatorio"></ul>
+    </div>
+  </div>
+  <script src="whatsapp.js"></script>
+</body>
+</html>
