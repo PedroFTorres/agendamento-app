@@ -2,70 +2,28 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WhatsApp – Chat + Envio em Massa</title>
-  <link rel="stylesheet" href="whatsapp.css"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Envio em Massa - Cerâmica Fortes</title>
+  <link rel="stylesheet" href="whatsapp.css" />
 </head>
 <body>
-  <div class="app">
-    <!-- Sidebar: conversas -->
-    <aside class="sidebar">
-      <header class="sb-header">
-        <h1>💬 Conversas</h1>
-        <div class="search">
-          <input id="busca" type="text" placeholder="Buscar número ou nome...">
-        </div>
-        <div class="new-chat">
-          <input id="novoNumero" type="text" placeholder="Iniciar chat (ex: 5586...)">
-          <button id="btnNovoChat">Iniciar</button>
-        </div>
-      </header>
-      <ul id="listaConversas" class="chat-list"></ul>
-    </aside>
+  <div class="container">
+    <h2>📢 Envio em Massa Personalizado</h2>
 
-    <!-- Main: chat e massa -->
-    <main class="main">
-      <section class="chat-header">
-        <div>
-          <h2 id="chatTitulo">Selecione um chat</h2>
-          <small id="chatSub">—</small>
-        </div>
-        <div class="actions">
-          <button id="abrirMassa" class="ghost">Envio em Massa</button>
-        </div>
-      </section>
+    <textarea id="mensagem" placeholder="Escreva sua mensagem... Use {{nome}} para personalizar."></textarea>
 
-      <section id="chatArea" class="chat-area">
-        <div id="mensagens" class="msgs"></div>
-      </section>
-
-      <section class="composer">
-        <input id="texto" type="text" placeholder="Digite uma mensagem..." />
-        <button id="enviarMsg">Enviar</button>
-      </section>
-    </main>
-  </div>
-
-  <!-- Drawer de Envio em Massa -->
-  <div id="drawer" class="drawer">
-    <div class="drawer-card">
-      <header>
-        <h3>📢 Envio em Massa</h3>
-        <button id="fecharMassa" class="ghost">Fechar</button>
-      </header>
-      <div class="drawer-body">
-        <textarea id="mensagemMassa" placeholder="Mensagem a enviar para todos..."></textarea>
-        <div class="row">
-          <input type="file" id="arquivoCSV" accept=".csv" />
-          <button id="btnEnviarMassa">Enviar</button>
-        </div>
-        <div id="progressoBox" class="progress" style="display:none;">
-          <div id="barra" class="bar"></div>
-        </div>
-        <div id="contador" class="counter"></div>
-        <ul id="relatorio" class="log"></ul>
-      </div>
+    <div class="file-upload">
+      <label for="arquivo">Selecione arquivo CSV (nome, telefone)</label>
+      <input type="file" id="arquivo" accept=".csv" />
     </div>
+
+    <button id="enviar">Enviar Mensagens</button>
+
+    <div id="progresso" class="progress">
+      <div id="barra" class="bar"></div>
+    </div>
+
+    <ul id="relatorio"></ul>
   </div>
 
   <script src="whatsapp.js"></script>
