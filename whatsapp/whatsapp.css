@@ -1,50 +1,57 @@
-:root{
-  --bg:#f5f6f7; --card:#fff; --border:#e5e7eb; --text:#1f2937;
-  --green:#25d366; --greenDark:#128c7e; --muted:#6b7280; --danger:#dc2626;
+body {
+  font-family: Arial, sans-serif;
+  background: #f7f7f7;
+  color: #333;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
 }
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text);background:var(--bg)}
-.app{height:100vh;display:grid;grid-template-columns:360px 1fr;gap:12px;padding:12px}
-.sidebar,.main{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-.sb-header{padding:12px;border-bottom:1px solid var(--border)}
-.sb-header h1{margin:0 0 8px 0;font-size:18px}
-.search input,.new-chat input{width:100%;padding:10px;border:1px solid var(--border);border-radius:8px}
-.new-chat{display:flex;gap:6px;margin-top:8px}
-.new-chat button{padding:10px 14px;border:0;border-radius:8px;background:var(--green);color:#fff;font-weight:700;cursor:pointer}
-.chat-list{list-style:none;padding:0;margin:0;height:calc(100% - 122px);overflow:auto}
-.chat-list li{display:flex;gap:10px;padding:12px;border-bottom:1px solid var(--border);cursor:pointer}
-.chat-list li:hover{background:#f8fafc}
-.chat-meta{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
-.chat-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.badge{background:#10b981;color:#fff;font-size:11px;border-radius:999px;padding:2px 8px;height:20px;display:inline-flex;align-items:center}
-
-.main{display:grid;grid-template-rows:auto 1fr auto}
-.chat-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.chat-header h2{margin:0;font-size:18px}
-.chat-header small{color:var(--muted)}
-.ghost{background:transparent;border:1px solid var(--border);padding:8px 10px;border-radius:8px;cursor:pointer}
-.chat-area{position:relative;background:#eef2f7}
-.msgs{height:100%;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
-.bubble{max-width:65%;padding:10px 12px;border-radius:12px;line-height:1.35;background:#fff;border:1px solid var(--border)}
-.me{background:#dcf8c6;border-color:#c7ebb1;align-self:flex-end}
-.meta{display:block;margin-top:4px;font-size:11px;color:var(--muted)}
-.composer{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border)}
-.composer input{flex:1;padding:12px;border:1px solid var(--border);border-radius:10px}
-.composer button{padding:12px 16px;border:0;border-radius:10px;background:var(--green);color:#fff;font-weight:700;cursor:pointer}
-.composer button:hover{background:var(--greenDark)}
-
-.drawer{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:16px}
-.drawer-card{width:min(800px,95vw);background:#fff;border-radius:12px;border:1px solid var(--border);overflow:hidden}
-.drawer-card header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border)}
-.drawer-body{padding:12px;display:flex;flex-direction:column;gap:10px}
-.drawer-body textarea{width:100%;height:120px;padding:10px;border:1px solid var(--border);border-radius:8px}
-.drawer-body .row{display:flex;gap:8px;align-items:center}
-.drawer-body button{padding:10px 14px;border:0;border-radius:8px;background:var(--green);color:#fff;font-weight:700;cursor:pointer}
-.progress{width:100%;height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
-.bar{height:100%;width:0;background:var(--green);transition:width .25s ease}
-.counter{font-weight:700}
-.log{list-style:none;margin:6px 0 0 0;padding:0;max-height:240px;overflow:auto;border-top:1px dashed var(--border)}
-.log li{padding:6px 0;border-bottom:1px dashed var(--border)}
-.ok{color:#16a34a;font-weight:600}
-.fail{color:var(--danger);font-weight:600}
+.container {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+textarea {
+  width: 100%;
+  height: 120px;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+.file-upload {
+  margin-bottom: 15px;
+}
+button {
+  width: 100%;
+  padding: 12px;
+  background: #25D366;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+button:hover {
+  background: #1da955;
+}
+.progress {
+  width: 100%;
+  height: 8px;
+  background: #ddd;
+  border-radius: 5px;
+  margin-top: 15px;
+  overflow: hidden;
+}
+.bar {
+  height: 100%;
+  width: 0%;
+  background: #25D366;
+  transition: width 0.4s;
+}
+.ok { color: green; }
+.fail { color: red; }
