@@ -1,10 +1,10 @@
 // whatsappConfirmacao.js
-// 🔄 Função para confirmar agendamentos do dia e enviar via WhatsApp (UltraMsg)
+// 🔄 Envio de confirmações de agendamento via UltraMsg (com FormData para 100% de compatibilidade)
 
 const INSTANCE_ID = "instance147478";
 const TOKEN = "c4j1m6wyghzhvhrd";
 
-// Pequeno atraso entre os envios para não sobrecarregar a API
+// Função para atrasar os envios (evita bloqueio de API)
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -12,13 +12,13 @@ function delay(ms) {
 async function confirmarAgendamentosDoDia() {
   console.log("📅 Data selecionada:", window.dataSelecionada);
 
-  // Verifica se há agendamentos carregados no sistema
+  // Verifica se há agendamentos carregados
   if (!window.agendamentos || window.agendamentos.length === 0) {
     alert("Nenhum agendamento carregado no sistema.");
     return;
   }
 
-  // Filtra os agendamentos para a data selecionada (no formato YYYY-MM-DD)
+  // Filtra os agendamentos do dia selecionado
   const agendamentosDoDia = (window.agendamentos || []).filter(a => {
     const dataAg = a.data?.includes("/") 
       ? a.data.split("/").reverse().join("-") 
@@ -36,10 +36,8 @@ async function confirmarAgendamentosDoDia() {
     return;
   }
 
-  // Confirma com o usuário antes de enviar
-  if (!confirm(`Enviar confirmação para ${agendamentosDoDia.length} clientes em ${window.dataSelecionada}?`)) {
-    return;
-  }
+  // Confirma antes de enviar
+  if (!confirm(`Deseja enviar confirmação para ${agendamentosDoDia.length} clientes?`)) return;
 
   let enviados = 0;
 
@@ -47,7 +45,6 @@ async function confirmarAgendamentosDoDia() {
     const nome = ag.clienteNome || ag.nomeCliente || "Cliente";
     const telefone = (ag.whatsapp || ag.telefone || "").replace(/\D/g, "");
 
-    // Verifica se há telefone cadastrado
     if (!telefone) {
       console.warn(`⚠️ ${nome} sem telefone — ignorado.`);
       continue;
@@ -60,20 +57,20 @@ Qualquer dúvida, estamos à disposição!
 📞 (86) 98812-5673`;
 
     try {
+      const formData = new FormData();
+      formData.append("token", TOKEN);
+      formData.append("to", `55${telefone.replace(/^55/, "")}`); // garante o formato brasileiro
+      formData.append("body", mensagem);
+
       const r = await fetch(`https://api.ultramsg.com/${INSTANCE_ID}/messages/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          token: TOKEN,
-          to: `55${telefone.replace(/^55/, "")}`, // garante o DDI Brasil
-          body: mensagem
-        })
+        body: formData
       });
 
       const data = await r.json();
       console.log("📨 Resposta UltraMsg:", data);
 
-      if (data.sent) {
+      if (data.sent || data.message || data.id) {
         enviados++;
       } else {
         console.warn(`⚠️ Falha ao enviar para ${nome}:`, data);
@@ -87,3 +84,4 @@ Qualquer dúvida, estamos à disposição!
 
   alert(`✅ Mensagens enviadas com sucesso para ${enviados} clientes.`);
 }
+
