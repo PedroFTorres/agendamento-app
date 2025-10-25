@@ -94,13 +94,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const botao = document.createElement("button");
       botao.id = "botaoConfirmarAgendamentos";
       botao.textContent = "📢 Confirmar Agendamentos do Dia";
-      botao.className = "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow mb-4";
+      botao.className = "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow";
       botao.style.display = "block";
-      botao.style.margin = "15px 0 20px auto";
+      botao.style.margin = "10px auto";
+      botao.style.maxWidth = "400px";
       botao.style.width = "100%";
       botao.onclick = confirmarAgendamentosDoDia;
 
-      // insere o botão logo acima do calendário
+      // Insere o botão logo acima do calendário
       calendario.parentElement.insertBefore(botao, calendario);
       console.log("✅ Botão reposicionado corretamente na aba de Agendamentos.");
     }
