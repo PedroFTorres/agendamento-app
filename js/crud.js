@@ -1013,6 +1013,12 @@ function renderDashboard() {
         const calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: "dayGridMonth",
           locale: "pt-br",
+          // ✅ Registra o clique no dia do calendário
+          dateClick: function(info) {
+            window.dataSelecionada = info.dateStr;
+            console.log("📅 Data selecionada:", window.dataSelecionada);
+          S},
+
           height: "auto",
           headerToolbar: {
             left: "prev,next today",
