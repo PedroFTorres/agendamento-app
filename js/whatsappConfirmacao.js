@@ -1,13 +1,12 @@
 // ==========================================
 // MÓDULO DE CONFIRMAÇÃO DE AGENDAMENTOS (UltraMsg)
 // ==========================================
-// Este script trabalha junto com o calendário existente
-// sem alterar o crud.js principal.
-// Ele injeta automaticamente o botão 📢 e faz o envio via WhatsApp.
+// Funciona de forma independente, sem modificar o crud.js.
+// Adiciona o botão 📢 e envia mensagens de confirmação via WhatsApp.
 // ==========================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  // tenta detectar quando a aba de agendamentos foi carregada
+  // Observa mudanças no DOM (quando o calendário é renderizado)
   const observer = new MutationObserver(() => {
     const calendarContainer = document.getElementById("calendar");
     if (calendarContainer && !document.getElementById("btnConfirmarAgendamentos")) {
@@ -19,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function inserirBotaoConfirmar(container) {
-  // cria o botão e insere antes do calendário
+  // Cria o cabeçalho com botão de confirmação
   const cabecalho = document.createElement("div");
   cabecalho.className = "flex justify-between items-center mb-4";
   cabecalho.innerHTML = `
@@ -32,32 +31,46 @@ function inserirBotaoConfirmar(container) {
   `;
   container.prepend(cabecalho);
 
+  // Ativa o clique do botão
   document.getElementById("btnConfirmarAgendamentos").addEventListener("click", confirmarAgendamentosDoDia);
 }
 
 async function confirmarAgendamentosDoDia() {
   const dataSelecionada = window.dataSelecionada;
+
   if (!dataSelecionada) {
     alert("Selecione uma data no calendário primeiro!");
     return;
   }
 
-  const INSTANCE_ID = "instance147478";
-  const TOKEN = "c4j1m6wyghzhvhrd";
-  const dataBR = formatarDataBR(dataSelecionada);
+  const INSTANCE_ID = "instance147478"; // sua instância UltraMsg
+  const TOKEN = "c4j1m6wyghzhvhrd";     // seu token UltraMsg
 
- const agendamentosDoDia = (window.agendamentos || []).filter(a => {
-  const [dia, mes, ano] = (a.data || "").split("/");
-  const iso = `${ano}-${mes}-${dia}`;
-  return iso === window.dataSelecionada;
-});
+  // 🔹 Ajusta formato da data
+  const dataSelecionadaLimpa = (dataSelecionada || "").substring(0, 10);
+  const dataBR = formatarDataBR(dataSelecionadaLimpa);
+
+  // 🔹 Filtra os agendamentos do dia (corrigido para formato BR)
+  const agendamentosDoDia = (window.agendamentos || []).filter(a => {
+    if (!a.data) return false;
+
+    // Converte "26/10/2025" → "2025-10-26"
+    const [dia, mes, ano] = a.data.split("/");
+    const iso = `${ano}-${mes}-${dia}`;
+
+    // Log para depuração
+    console.log("Comparando", iso, "com", dataSelecionadaLimpa);
+
+    // Faz comparação limpa
+    return iso === dataSelecionadaLimpa;
+  });
 
   if (agendamentosDoDia.length === 0) {
-    alert("Nenhum agendamento encontrado nesta data.");
+    alert(`Nenhum agendamento encontrado para ${dataBR}.`);
     return;
   }
 
-  if (!confirm(`Deseja enviar mensagens para ${agendamentosDoDia.length} agendamento(s) do dia ${dataBR}?`)) return;
+  if (!confirm(`Deseja enviar mensagens de confirmação para ${agendamentosDoDia.length} agendamento(s) do dia ${dataBR}?`)) return;
 
   let enviados = 0;
 
@@ -67,7 +80,10 @@ async function confirmarAgendamentosDoDia() {
     const quantidade = ag.quantidade || "";
     const telefone = (ag.telefone || "").replace(/\D/g, "");
 
-    if (!telefone) continue;
+    if (!telefone) {
+      console.warn(`⚠️ ${nome} sem telefone — ignorado.`);
+      continue;
+    }
 
     const mensagem = `Olá ${nome}, no dia ${dataBR} há um agendamento de ${produto} (${quantidade}). Podemos confirmar? ✅`;
 
@@ -77,6 +93,7 @@ async function confirmarAgendamentosDoDia() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: TOKEN, to: telefone, body: mensagem })
       });
+
       const data = await r.json();
       console.log(`✅ Mensagem enviada para ${nome} (${telefone})`, data);
       enviados++;
@@ -90,7 +107,9 @@ async function confirmarAgendamentosDoDia() {
 }
 
 // ======= FUNÇÕES AUXILIARES =======
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function delay(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
 function formatarDataBR(isoDate) {
   const [y, m, d] = isoDate.split("-");
