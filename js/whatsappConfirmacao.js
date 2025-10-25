@@ -53,24 +53,21 @@ async function confirmarAgendamentosDoDia() {
   // ✅ Diagnóstico: lista todos os agendamentos carregados
   console.log("📋 AGENDAMENTOS DISPONÍVEIS:");
   (window.agendamentos || []).forEach((a, i) => {
-    console.log(`#${i + 1}`, a.data, a.cliente);
+    console.log(`#${i + 1}`, a.data, a.clienteNome || a.cliente);
   });
 
-  // 🔹 Corrige comparação de datas (ISO do calendário ↔ BR do Firestore)
+  // 🔹 Corrige comparação de datas (agora formato ISO do Firestore)
   const agendamentosDoDia = (window.agendamentos || []).filter(a => {
     if (!a.data) return false;
 
-    // Converte "26/10/2025" → "2025-10-26"
-    const [dia, mes, ano] = a.data.split("/");
-    const iso = `${ano}-${mes}-${dia}`;
-
-    // Limpa a data clicada (remove hora/fuso)
+    // Exemplo do Firestore: "2025-10-23" ou "2025-10-23T00:00:00.000Z"
+    const dataNormalizada = (a.data.length > 10) ? a.data.substring(0, 10) : a.data;
     const dataSelecionadaLimpaFinal = (window.dataSelecionada || "").substring(0, 10);
 
     // Log de depuração
-    console.log("Comparando", iso, "com", dataSelecionadaLimpaFinal);
+    console.log("Comparando", dataNormalizada, "com", dataSelecionadaLimpaFinal);
 
-    return iso === dataSelecionadaLimpaFinal;
+    return dataNormalizada === dataSelecionadaLimpaFinal;
   });
 
   if (agendamentosDoDia.length === 0) {
@@ -83,8 +80,8 @@ async function confirmarAgendamentosDoDia() {
   let enviados = 0;
 
   for (const ag of agendamentosDoDia) {
-    const nome = ag.cliente || "Cliente";
-    const produto = ag.produto || "produto";
+    const nome = ag.clienteNome || ag.cliente || "Cliente";
+    const produto = ag.produtoNome || ag.produto || "produto";
     const quantidade = ag.quantidade || "";
     const telefone = (ag.telefone || "").replace(/\D/g, "");
 
