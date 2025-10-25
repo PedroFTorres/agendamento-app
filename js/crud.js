@@ -991,6 +991,7 @@ function renderDashboard() {
             }
           };
         });
+        window.agendamentos = snap.docs.map(doc => doc.data());
 
         // Resumo por dia → produtos e quantidades
         const resumoPorDia = {};
