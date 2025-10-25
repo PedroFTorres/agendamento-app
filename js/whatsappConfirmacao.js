@@ -84,4 +84,27 @@ Qualquer dúvida, estamos à disposição!
 
   alert(`✅ Mensagens enviadas com sucesso para ${enviados} clientes.`);
 }
+// 🔘 Insere automaticamente o botão "Confirmar Agendamentos" na aba de Agendamentos
+document.addEventListener("DOMContentLoaded", () => {
+  const menuBtn = document.querySelector("#menu-agendamentos, [data-page='agendamentos']");
+  const containerPrincipal = document.querySelector("#calendar")?.parentElement || document.body;
+
+  if (containerPrincipal) {
+    const botaoExistente = document.getElementById("botaoConfirmarAgendamentos");
+    if (!botaoExistente) {
+      const botao = document.createElement("button");
+      botao.id = "botaoConfirmarAgendamentos";
+      botao.textContent = "📢 Confirmar Agendamentos do Dia";
+      botao.className = "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow mb-4";
+      botao.style.display = "block";
+      botao.style.margin = "10px auto";
+      botao.onclick = confirmarAgendamentosDoDia;
+
+      // Insere o botão acima do calendário (ou da listagem de agendamentos)
+      containerPrincipal.insertAdjacentElement("beforebegin", botao);
+      console.log("✅ Botão de confirmação adicionado automaticamente.");
+    }
+  }
+});
+
 
