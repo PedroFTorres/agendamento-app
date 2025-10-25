@@ -1,106 +1,89 @@
-// ==========================================
-// MÓDULO DE CONFIRMAÇÃO DE AGENDAMENTOS (UltraMsg)
-// ==========================================
-// Integrado ao calendário, sem alterar o crud.js.
-// Adiciona botão 📢 e envia mensagens personalizadas.
-// ==========================================
+// whatsappConfirmacao.js
+// 🔄 Função para confirmar agendamentos do dia e enviar via WhatsApp (UltraMsg)
 
-document.addEventListener("DOMContentLoaded", () => {
-  const observer = new MutationObserver(() => {
-    const calendarContainer = document.getElementById("calendar");
-    if (calendarContainer && !document.getElementById("btnConfirmarAgendamentos")) {
-      inserirBotaoConfirmar(calendarContainer);
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-});
+const INSTANCE_ID = "instance147478";
+const TOKEN = "c4j1m6wyghzhvhrd";
 
-function inserirBotaoConfirmar(container) {
-  const cabecalho = document.createElement("div");
-  cabecalho.className = "flex justify-between items-center mb-4";
-  cabecalho.innerHTML = `
-    <h2 class="text-2xl font-bold">Agendamentos</h2>
-    <button 
-      id="btnConfirmarAgendamentos"
-      class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex items-center gap-2">
-      📢 Confirmar Agendamentos
-    </button>
-  `;
-  container.prepend(cabecalho);
-
-  document.getElementById("btnConfirmarAgendamentos").addEventListener("click", confirmarAgendamentosDoDia);
+// Pequeno atraso entre os envios para não sobrecarregar a API
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function confirmarAgendamentosDoDia() {
-  const dataSelecionada = window.dataSelecionada;
-  if (!dataSelecionada) {
-    alert("Selecione uma data no calendário primeiro!");
+  console.log("📅 Data selecionada:", window.dataSelecionada);
+
+  // Verifica se há agendamentos carregados no sistema
+  if (!window.agendamentos || window.agendamentos.length === 0) {
+    alert("Nenhum agendamento carregado no sistema.");
     return;
   }
 
-  const INSTANCE_ID = "instance147478"; // UltraMsg
-  const TOKEN = "c4j1m6wyghzhvhrd";
-
-  const dataSelecionadaLimpa = (dataSelecionada || "").substring(0, 10);
-  const dataBR = formatarDataBR(dataSelecionadaLimpa);
-
+  // Filtra os agendamentos para a data selecionada (no formato YYYY-MM-DD)
   const agendamentosDoDia = (window.agendamentos || []).filter(a => {
-    if (!a.data) return false;
-    const dataNormalizada = (a.data.length > 10) ? a.data.substring(0, 10) : a.data;
-    const dataSelecionadaLimpaFinal = (window.dataSelecionada || "").substring(0, 10);
-    return dataNormalizada === dataSelecionadaLimpaFinal;
+    const dataAg = a.data?.includes("/") 
+      ? a.data.split("/").reverse().join("-") 
+      : a.data;
+    return dataAg === window.dataSelecionada;
+  });
+
+  console.log("📋 AGENDAMENTOS DISPONÍVEIS:");
+  agendamentosDoDia.forEach((a, i) => {
+    console.log(`#${i + 1}`, a.data, a.clienteNome || a.nomeCliente);
   });
 
   if (agendamentosDoDia.length === 0) {
-    alert(`Nenhum agendamento encontrado para ${dataBR}.`);
+    alert(`Nenhum agendamento encontrado para ${window.dataSelecionada}.`);
     return;
   }
 
-  if (!confirm(`Deseja enviar mensagens de confirmação para ${agendamentosDoDia.length} agendamento(s) do dia ${dataBR}?`)) return;
+  // Confirma com o usuário antes de enviar
+  if (!confirm(`Enviar confirmação para ${agendamentosDoDia.length} clientes em ${window.dataSelecionada}?`)) {
+    return;
+  }
 
   let enviados = 0;
 
   for (const ag of agendamentosDoDia) {
-    const nome = ag.clienteNome || ag.cliente || "Cliente";
-    const produto = ag.produtoNome || ag.produto || "produto";
-    const quantidade = ag.quantidade || "";
+    const nome = ag.clienteNome || ag.nomeCliente || "Cliente";
+    const telefone = (ag.whatsapp || ag.telefone || "").replace(/\D/g, "");
 
-    // Busca telefone no cadastro global de clientes
-    const clienteCadastro = (window.clientes || []).find(c =>
-      c.nome === nome || c.clienteNome === nome
-    );
-    
-    const telefone = clienteCadastro
-      ? (clienteCadastro.telefone || clienteCadastro.whatsapp || "").replace(/\D/g, "")
-      : (ag.telefone || "").replace(/\D/g, "");
+    // Verifica se há telefone cadastrado
+    if (!telefone) {
+      console.warn(`⚠️ ${nome} sem telefone — ignorado.`);
+      continue;
+    }
 
-    if (!telefone) continue;
-
-    const mensagem = `Olá ${nome}, no dia ${dataBR} há um agendamento de ${produto} (${quantidade}). Podemos confirmar? ✅`;
+    const mensagem = 
+`Olá ${nome}! 👋
+Confirmando o seu agendamento na *Cerâmica Fortes* para o dia ${ag.data}.
+Qualquer dúvida, estamos à disposição!
+📞 (86) 98812-5673`;
 
     try {
       const r = await fetch(`https://api.ultramsg.com/${INSTANCE_ID}/messages/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: TOKEN, to: telefone, body: mensagem })
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          token: TOKEN,
+          to: `55${telefone.replace(/^55/, "")}`, // garante o DDI Brasil
+          body: mensagem
+        })
       });
-      await r.json();
-      enviados++;
+
+      const data = await r.json();
+      console.log("📨 Resposta UltraMsg:", data);
+
+      if (data.sent) {
+        enviados++;
+      } else {
+        console.warn(`⚠️ Falha ao enviar para ${nome}:`, data);
+      }
+
       await delay(800);
     } catch (err) {
-      console.error(`Erro ao enviar para ${nome}:`, err);
+      console.error(`❌ Erro ao enviar para ${nome}:`, err);
     }
   }
 
-  alert(`Mensagens enviadas com sucesso (${enviados}/${agendamentosDoDia.length}).`);
-}
-
-// ======= Funções auxiliares =======
-function delay(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
-
-function formatarDataBR(isoDate) {
-  const [y, m, d] = isoDate.split("-");
-  return `${d}/${m}/${y}`;
+  alert(`✅ Mensagens enviadas com sucesso para ${enviados} clientes.`);
 }
