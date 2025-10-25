@@ -50,7 +50,13 @@ async function confirmarAgendamentosDoDia() {
   const dataSelecionadaLimpa = (dataSelecionada || "").substring(0, 10);
   const dataBR = formatarDataBR(dataSelecionadaLimpa);
 
-  // 🔹 Filtra os agendamentos do dia (corrigido para formato BR)
+  // ✅ Diagnóstico: lista todos os agendamentos carregados
+  console.log("📋 AGENDAMENTOS DISPONÍVEIS:");
+  (window.agendamentos || []).forEach((a, i) => {
+    console.log(`#${i + 1}`, a.data, a.cliente);
+  });
+
+  // 🔹 Corrige comparação de datas (ISO do calendário ↔ BR do Firestore)
   const agendamentosDoDia = (window.agendamentos || []).filter(a => {
     if (!a.data) return false;
 
@@ -58,11 +64,13 @@ async function confirmarAgendamentosDoDia() {
     const [dia, mes, ano] = a.data.split("/");
     const iso = `${ano}-${mes}-${dia}`;
 
-    // Log para depuração
-    console.log("Comparando", iso, "com", dataSelecionadaLimpa);
+    // Limpa a data clicada (remove hora/fuso)
+    const dataSelecionadaLimpaFinal = (window.dataSelecionada || "").substring(0, 10);
 
-    // Faz comparação limpa
-    return iso === dataSelecionadaLimpa;
+    // Log de depuração
+    console.log("Comparando", iso, "com", dataSelecionadaLimpaFinal);
+
+    return iso === dataSelecionadaLimpaFinal;
   });
 
   if (agendamentosDoDia.length === 0) {
