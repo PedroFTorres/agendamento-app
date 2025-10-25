@@ -84,27 +84,27 @@ Qualquer dúvida, estamos à disposição!
 
   alert(`✅ Mensagens enviadas com sucesso para ${enviados} clientes.`);
 }
-// 🔘 Insere automaticamente o botão "Confirmar Agendamentos" na aba de Agendamentos
+// 🔘 Insere automaticamente o botão "Confirmar Agendamentos do Dia" apenas na aba de Agendamentos
 document.addEventListener("DOMContentLoaded", () => {
-  const menuBtn = document.querySelector("#menu-agendamentos, [data-page='agendamentos']");
-  const containerPrincipal = document.querySelector("#calendar")?.parentElement || document.body;
+  const observer = new MutationObserver(() => {
+    const paginaAgendamentosAtiva = document.querySelector(".page[data-page='agendamentos']");
+    const calendario = document.querySelector("#calendar");
 
-  if (containerPrincipal) {
-    const botaoExistente = document.getElementById("botaoConfirmarAgendamentos");
-    if (!botaoExistente) {
+    if (paginaAgendamentosAtiva && calendario && !document.getElementById("botaoConfirmarAgendamentos")) {
       const botao = document.createElement("button");
       botao.id = "botaoConfirmarAgendamentos";
       botao.textContent = "📢 Confirmar Agendamentos do Dia";
       botao.className = "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow mb-4";
       botao.style.display = "block";
-      botao.style.margin = "10px auto";
+      botao.style.margin = "15px 0 20px auto";
+      botao.style.width = "100%";
       botao.onclick = confirmarAgendamentosDoDia;
 
-      // Insere o botão acima do calendário (ou da listagem de agendamentos)
-      containerPrincipal.insertAdjacentElement("beforebegin", botao);
-      console.log("✅ Botão de confirmação adicionado automaticamente.");
+      // insere o botão logo acima do calendário
+      calendario.parentElement.insertBefore(botao, calendario);
+      console.log("✅ Botão reposicionado corretamente na aba de Agendamentos.");
     }
-  }
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
 });
-
-
