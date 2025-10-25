@@ -46,7 +46,12 @@ async function confirmarAgendamentosDoDia() {
   const TOKEN = "c4j1m6wyghzhvhrd";
   const dataBR = formatarDataBR(dataSelecionada);
 
-  const agendamentosDoDia = (window.agendamentos || []).filter(a => a.data === dataBR);
+ const agendamentosDoDia = (window.agendamentos || []).filter(a => {
+  const [dia, mes, ano] = (a.data || "").split("/");
+  const iso = `${ano}-${mes}-${dia}`;
+  return iso === window.dataSelecionada;
+});
+
   if (agendamentosDoDia.length === 0) {
     alert("Nenhum agendamento encontrado nesta data.");
     return;
