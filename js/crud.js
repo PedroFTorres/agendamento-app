@@ -1017,7 +1017,7 @@ function renderDashboard() {
           dateClick: function(info) {
             window.dataSelecionada = info.dateStr;
             console.log("📅 Data selecionada:", window.dataSelecionada);
-          S},
+          },
 
           height: "auto",
           headerToolbar: {
