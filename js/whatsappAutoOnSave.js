@@ -1,15 +1,17 @@
 // whatsappAutoOnSave.js
-// 🚀 Atualiza o WhatsApp automaticamente apenas quando um novo agendamento é criado
+// 🚀 Atualiza WhatsApp automaticamente apenas após o formulário estar carregado
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("⚙️ whatsappAutoOnSave.js carregado.");
+console.log("⚙️ whatsappAutoOnSave.js carregado.");
 
-  // Espera o envio do formulário de agendamento
+function iniciarIntegracao() {
   const agForm = document.getElementById("agendamento-form");
   if (!agForm) {
-    console.warn("⚠️ Formulário de agendamento não encontrado.");
+    console.warn("⏳ Aguardando formulário de agendamento...");
+    setTimeout(iniciarIntegracao, 1000); // tenta novamente em 1 segundo
     return;
   }
+
+  console.log("✅ Formulário encontrado, integração ativada.");
 
   agForm.addEventListener("submit", async (e) => {
     setTimeout(async () => {
@@ -17,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const user = firebase.auth().currentUser;
         if (!user) return;
 
-        // Buscar o último agendamento criado pelo usuário
+        // Buscar o último agendamento criado
         const snap = await db.collection("agendamentos")
           .where("userId", "==", user.uid)
           .orderBy("createdAt", "desc")
@@ -28,9 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const docRef = snap.docs[0].ref;
         const agendamento = snap.docs[0].data();
-        if (agendamento.whatsapp) return; // já tem, não faz nada
+        if (agendamento.whatsapp) return;
 
-        // Buscar o WhatsApp do cliente correspondente
+        // Buscar WhatsApp do cliente
         const clienteSnap = await db.collection("clientes")
           .where("userId", "==", user.uid)
           .where("nome", "==", agendamento.clienteNome)
@@ -53,6 +55,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (err) {
         console.error("❌ Erro ao atualizar WhatsApp:", err);
       }
-    }, 1500); // pequeno atraso para garantir que o Firestore já gravou o agendamento
+    }, 1500);
   });
-});
+}
+
+// Aguarda o DOM carregar antes de rodar
+document.addEventListener("DOMContentLoaded", iniciarIntegracao);
