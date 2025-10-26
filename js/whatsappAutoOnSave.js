@@ -17,7 +17,7 @@ function ativarIntegracaoWhatsApp() {
         const user = firebase.auth().currentUser;
         if (!user) return;
 
-        // Último agendamento criado
+        // Busca o último agendamento criado
         const snap = await db.collection("agendamentos")
           .where("userId", "==", user.uid)
           .orderBy("createdAt", "desc")
@@ -31,6 +31,7 @@ function ativarIntegracaoWhatsApp() {
 
         if (data.whatsapp) return;
 
+        // Busca WhatsApp do cliente
         const clienteSnap = await db.collection("clientes")
           .where("userId", "==", user.uid)
           .where("nome", "==", data.clienteNome)
@@ -55,7 +56,7 @@ function ativarIntegracaoWhatsApp() {
   });
 }
 
-// Escuta quando a página muda e ativa apenas se for Agendamentos
+// Ativa apenas quando a página de Agendamentos for aberta
 const observer = new MutationObserver(() => {
   const titulo = document.querySelector("h2");
   if (titulo && titulo.textContent.includes("Agendamentos")) {
@@ -64,4 +65,3 @@ const observer = new MutationObserver(() => {
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
-
