@@ -1,7 +1,9 @@
 // whatsappConfirmacao.js
 console.log("⚙️ whatsappConfirmacao.js carregado.");
 
-// Função principal de confirmação de agendamentos
+// ================================
+// FUNÇÃO PRINCIPAL DE CONFIRMAÇÃO
+// ================================
 async function confirmarAgendamentosDoDia() {
   if (!window.dataSelecionada) {
     alert("Selecione um dia no calendário para confirmar os agendamentos.");
@@ -17,10 +19,8 @@ async function confirmarAgendamentosDoDia() {
     return;
   }
 
-  // 🔍 Filtra os agendamentos do dia selecionado
   const agendamentosDoDia = agendamentos.filter(a => {
-    const dataAg = (a.data || "").replace(/\//g, "-");
-    const partes = dataAg.split("-");
+    const partes = (a.data || "").split("/");
     if (partes.length === 3) {
       const [dia, mes, ano] = partes;
       const iso = `${ano}-${mes}-${dia}`;
@@ -29,16 +29,16 @@ async function confirmarAgendamentosDoDia() {
     return false;
   });
 
-  console.log("📋 Agendamentos do dia encontrados:", agendamentosDoDia.length);
+  console.log("📋 Agendamentos do dia:", agendamentosDoDia.length);
 
   if (agendamentosDoDia.length === 0) {
     alert("Nenhum agendamento encontrado nesta data.");
     return;
   }
 
-  // 🔗 Configuração UltraMsg
-  const INSTANCE_ID = "xxxxxx"; // substitua pelo seu ID UltraMsg
-  const TOKEN = "xxxxxx";       // substitua pelo seu token UltraMsg
+  // 🔗 UltraMsg API
+  const INSTANCE_ID = "xxxxxx"; // Seu Instance ID
+  const TOKEN = "xxxxxx";       // Seu Token UltraMsg
 
   for (const ag of agendamentosDoDia) {
     if (!ag.whatsapp) {
@@ -62,9 +62,8 @@ async function confirmarAgendamentosDoDia() {
           }),
         }
       );
-
       const resultado = await resposta.json();
-      console.log("✅ Mensagem enviada:", resultado);
+      console.log("✅ Enviado:", resultado);
     } catch (err) {
       console.error("❌ Erro ao enviar mensagem:", err);
     }
@@ -73,10 +72,11 @@ async function confirmarAgendamentosDoDia() {
   alert("Mensagens de confirmação enviadas!");
 }
 
-// 🧠 Observa o carregamento do calendário e insere o botão automaticamente
-const observer = new MutationObserver(() => {
+// =====================================
+// INSERIR O BOTÃO ACIMA DO CALENDÁRIO
+// =====================================
+function criarBotaoConfirmacao() {
   const calendario = document.querySelector("#calendar");
-
   if (calendario && !document.getElementById("botaoConfirmarAgendamentos")) {
     const botao = document.createElement("button");
     botao.id = "botaoConfirmarAgendamentos";
@@ -88,11 +88,17 @@ const observer = new MutationObserver(() => {
     botao.style.width = "100%";
     botao.onclick = confirmarAgendamentosDoDia;
 
-    // Insere o botão logo acima do calendário
     calendario.parentElement.insertBefore(botao, calendario);
-    console.log("✅ Botão 'Confirmar Agendamentos do Dia' adicionado.");
+    console.log("✅ Botão de confirmação inserido acima do calendário!");
   }
+}
+
+// ======================================
+// MONITOR CONTÍNUO — GARANTE QUE SURJA
+// ======================================
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🕒 Monitorando calendário para inserir botão...");
+  setInterval(() => {
+    criarBotaoConfirmacao();
+  }, 2000); // checa a cada 2 segundos
 });
-
-observer.observe(document.body, { childList: true, subtree: true });
-
