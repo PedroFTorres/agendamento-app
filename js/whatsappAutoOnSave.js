@@ -1,25 +1,23 @@
 // whatsappAutoOnSave.js
-// 🚀 Atualiza WhatsApp automaticamente apenas após o formulário estar carregado
-
 console.log("⚙️ whatsappAutoOnSave.js carregado.");
 
-function iniciarIntegracao() {
-  const agForm = document.getElementById("agendamento-form");
-  if (!agForm) {
-    console.warn("⏳ Aguardando formulário de agendamento...");
-    setTimeout(iniciarIntegracao, 1000); // tenta novamente em 1 segundo
+function ativarIntegracaoWhatsApp() {
+  const form = document.querySelector("form button.bg-blue-600")?.closest("form");
+  if (!form) {
+    console.warn("⏳ Aguardando renderização do formulário de agendamento...");
+    setTimeout(ativarIntegracaoWhatsApp, 1500);
     return;
   }
 
-  console.log("✅ Formulário encontrado, integração ativada.");
+  console.log("✅ Formulário de agendamento encontrado.");
 
-  agForm.addEventListener("submit", async (e) => {
+  form.addEventListener("submit", async () => {
     setTimeout(async () => {
       try {
         const user = firebase.auth().currentUser;
         if (!user) return;
 
-        // Buscar o último agendamento criado
+        // Último agendamento criado
         const snap = await db.collection("agendamentos")
           .where("userId", "==", user.uid)
           .orderBy("createdAt", "desc")
@@ -28,36 +26,42 @@ function iniciarIntegracao() {
 
         if (snap.empty) return;
 
-        const docRef = snap.docs[0].ref;
-        const agendamento = snap.docs[0].data();
-        if (agendamento.whatsapp) return;
+        const ref = snap.docs[0].ref;
+        const data = snap.docs[0].data();
 
-        // Buscar WhatsApp do cliente
+        if (data.whatsapp) return;
+
         const clienteSnap = await db.collection("clientes")
           .where("userId", "==", user.uid)
-          .where("nome", "==", agendamento.clienteNome)
+          .where("nome", "==", data.clienteNome)
           .limit(1)
           .get();
 
         if (!clienteSnap.empty) {
-          const clienteData = clienteSnap.docs[0].data();
-          const whatsapp = clienteData.whatsapp || "";
-
-          if (whatsapp) {
-            await docRef.update({ whatsapp });
-            console.log(`✅ WhatsApp adicionado automaticamente: ${whatsapp}`);
+          const cliente = clienteSnap.docs[0].data();
+          if (cliente.whatsapp) {
+            await ref.update({ whatsapp: cliente.whatsapp });
+            console.log(`✅ WhatsApp adicionado automaticamente: ${cliente.whatsapp}`);
           } else {
-            console.warn(`⚠️ Cliente ${agendamento.clienteNome} sem número cadastrado.`);
+            console.warn(`⚠️ Cliente ${data.clienteNome} sem número cadastrado.`);
           }
         } else {
-          console.warn(`⚠️ Cliente ${agendamento.clienteNome} não encontrado.`);
+          console.warn(`⚠️ Cliente ${data.clienteNome} não encontrado no banco.`);
         }
       } catch (err) {
-        console.error("❌ Erro ao atualizar WhatsApp:", err);
+        console.error("❌ Erro ao sincronizar WhatsApp:", err);
       }
     }, 1500);
   });
 }
 
-// Aguarda o DOM carregar antes de rodar
-document.addEventListener("DOMContentLoaded", iniciarIntegracao);
+// Escuta quando a página muda e ativa apenas se for Agendamentos
+const observer = new MutationObserver(() => {
+  const titulo = document.querySelector("h2");
+  if (titulo && titulo.textContent.includes("Agendamentos")) {
+    ativarIntegracaoWhatsApp();
+  }
+});
+
+observer.observe(document.body, { childList: true, subtree: true });
+
