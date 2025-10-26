@@ -28,7 +28,7 @@ async function enviarConfirmacaoWhatsApp() {
 
     if (snap.empty) {
       alert("Nenhum agendamento encontrado nesta data.");
-      console.warn("⚠️ Nenhum documento encontrado em agendamentos para:", dataSelecionada);
+      console.warn("⚠️ Nenhum documento encontrado para:", dataSelecionada);
       return;
     }
 
@@ -64,8 +64,8 @@ async function enviarConfirmacaoWhatsApp() {
         continue;
       }
 
-      // Monta a mensagem de confirmação
-      const mensagem = 
+      // Monta a mensagem
+      const mensagem =
         `Olá ${cliente}! 👋%0A` +
         `Aqui é da *Cerâmica Fortes* 🧱.%0A` +
         `Seu agendamento está *confirmado* para o dia *${data}*.%0A` +
@@ -77,7 +77,6 @@ async function enviarConfirmacaoWhatsApp() {
       const linkWhatsApp = `https://wa.me/${numero.replace(/\D/g, "")}?text=${mensagem}`;
       console.log(`💬 Enviando para ${cliente}: ${linkWhatsApp}`);
 
-      // Abre o link em uma nova aba (envio manual)
       window.open(linkWhatsApp, "_blank");
     }
 
@@ -89,13 +88,17 @@ async function enviarConfirmacaoWhatsApp() {
   }
 }
 
-// Ativar botão na página
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("btnConfirmarWhatsApp");
-  if (btn) {
-    btn.addEventListener("click", enviarConfirmacaoWhatsApp);
-    console.log("🚀 Botão de confirmação WhatsApp conectado.");
-  } else {
-    console.warn("⚠️ Botão #btnConfirmarWhatsApp não encontrado no HTML.");
-  }
+// ⏳ Aguarda o DOM estar completamente pronto antes de procurar o botão
+window.addEventListener("load", () => {
+  const tentarConectarBotao = () => {
+    const btn = document.getElementById("btnConfirmarWhatsApp");
+    if (btn) {
+      btn.addEventListener("click", enviarConfirmacaoWhatsApp);
+      console.log("🚀 Botão de confirmação WhatsApp conectado com sucesso.");
+    } else {
+      console.warn("⏳ Aguardando renderização do botão #btnConfirmarWhatsApp...");
+      setTimeout(tentarConectarBotao, 1000);
+    }
+  };
+  tentarConectarBotao();
 });
