@@ -1,32 +1,54 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Envio em Massa - Cerâmica Fortes</title>
-  <link rel="stylesheet" href="whatsapp.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Confirmação WhatsApp - Agendamento</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="whatsapp.css">
 </head>
-<body>
-  <div class="container">
-    <h2>📢 Envio em Massa Personalizado</h2>
 
-    <textarea id="mensagem" placeholder="Escreva sua mensagem... Use {{nome}} para personalizar."></textarea>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+  <div class="bg-white shadow-md rounded-lg p-6 w-full max-w-md">
+    <h1 class="text-2xl font-bold text-center text-green-700 mb-6">
+      Confirmação de Agendamentos 📅
+    </h1>
 
-    <div class="file-upload">
-      <label for="arquivo">Selecione arquivo CSV (nome, telefone)</label>
-      <input type="file" id="arquivo" accept=".csv" />
-    </div>
+    <!-- Campo de seleção de data -->
+    <label for="dataConfirmacao" class="block mb-2 font-semibold text-gray-700">
+      Selecione a data do agendamento:
+    </label>
+    <input
+      type="date"
+      id="dataConfirmacao"
+      class="border border-gray-300 rounded-md w-full p-2 mb-6 focus:ring focus:ring-green-200"
+    >
 
-    <button id="enviar">Enviar Mensagens</button>
+    <!-- Botão de envio -->
+    <button
+      id="btnConfirmarWhatsApp"
+      class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded w-full transition-all"
+    >
+      Enviar Confirmações via WhatsApp
+    </button>
 
-    <div id="progresso" class="progress">
-      <div id="barra" class="bar"></div>
-    </div>
-
-    <ul id="relatorio"></ul>
+    <!-- Mensagem de status -->
+    <p id="statusMsg" class="text-center text-sm text-gray-500 mt-4"></p>
   </div>
 
-  <script src="whatsapp.js"></script>
+  <!-- Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+  <!-- Firebase config -->
+  <script src="../js/firebase.js"></script>
+
+  <!-- Scripts do WhatsApp -->
+  <script src="../js/whatsappAutoOnSave.js"></script>
+  <script src="../js/whatsappConfirmacao.js"></script>
 </body>
 </html>
-
