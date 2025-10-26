@@ -1,111 +1,98 @@
 // whatsappConfirmacao.js
-// 🔄 Envio de confirmações de agendamento via UltraMsg (com FormData para 100% de compatibilidade)
+console.log("⚙️ whatsappConfirmacao.js carregado.");
 
-const INSTANCE_ID = "instance147478";
-const TOKEN = "c4j1m6wyghzhvhrd";
-
-// Função para atrasar os envios (evita bloqueio de API)
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
+// Função principal de confirmação de agendamentos
 async function confirmarAgendamentosDoDia() {
-  console.log("📅 Data selecionada:", window.dataSelecionada);
-
-  // Verifica se há agendamentos carregados
-  if (!window.agendamentos || window.agendamentos.length === 0) {
-    alert("Nenhum agendamento carregado no sistema.");
+  if (!window.dataSelecionada) {
+    alert("Selecione um dia no calendário para confirmar os agendamentos.");
     return;
   }
 
-  // Filtra os agendamentos do dia selecionado
-  const agendamentosDoDia = (window.agendamentos || []).filter(a => {
-    const dataAg = a.data?.includes("/") 
-      ? a.data.split("/").reverse().join("-") 
-      : a.data;
-    return dataAg === window.dataSelecionada;
+  const dataSelecionadaISO = window.dataSelecionada;
+  console.log("📅 Data selecionada:", dataSelecionadaISO);
+
+  const agendamentos = window.agendamentos || [];
+  if (!Array.isArray(agendamentos) || agendamentos.length === 0) {
+    alert("Nenhum agendamento carregado ainda.");
+    return;
+  }
+
+  // 🔍 Filtra os agendamentos do dia selecionado
+  const agendamentosDoDia = agendamentos.filter(a => {
+    const dataAg = (a.data || "").replace(/\//g, "-");
+    const partes = dataAg.split("-");
+    if (partes.length === 3) {
+      const [dia, mes, ano] = partes;
+      const iso = `${ano}-${mes}-${dia}`;
+      return iso === dataSelecionadaISO;
+    }
+    return false;
   });
 
-  console.log("📋 AGENDAMENTOS DISPONÍVEIS:");
-  agendamentosDoDia.forEach((a, i) => {
-    console.log(`#${i + 1}`, a.data, a.clienteNome || a.nomeCliente);
-  });
+  console.log("📋 Agendamentos do dia encontrados:", agendamentosDoDia.length);
 
   if (agendamentosDoDia.length === 0) {
-    alert(`Nenhum agendamento encontrado para ${window.dataSelecionada}.`);
+    alert("Nenhum agendamento encontrado nesta data.");
     return;
   }
 
-  // Confirma antes de enviar
-  if (!confirm(`Deseja enviar confirmação para ${agendamentosDoDia.length} clientes?`)) return;
-
-  let enviados = 0;
+  // 🔗 Configuração UltraMsg
+  const INSTANCE_ID = "xxxxxx"; // substitua pelo seu ID UltraMsg
+  const TOKEN = "xxxxxx";       // substitua pelo seu token UltraMsg
 
   for (const ag of agendamentosDoDia) {
-    const nome = ag.clienteNome || ag.nomeCliente || "Cliente";
-    const telefone = (ag.whatsapp || ag.telefone || "").replace(/\D/g, "");
-
-    if (!telefone) {
-      console.warn(`⚠️ ${nome} sem telefone — ignorado.`);
+    if (!ag.whatsapp) {
+      console.warn(`⚠️ ${ag.clienteNome} sem telefone — ignorado.`);
       continue;
     }
 
-    const mensagem = 
-`Olá ${nome}! 👋
-Confirmando o seu agendamento na *Cerâmica Fortes* para o dia ${ag.data}.
-Qualquer dúvida, estamos à disposição!
-📞 (86) 98812-5673`;
+    const numero = ag.whatsapp.replace(/\D/g, "");
+    const mensagem = `Olá *${ag.clienteNome}*, no dia *${ag.data}* está agendado *${ag.produtoNome}* (${ag.quantidade}). Podemos confirmar?`;
 
     try {
-      const formData = new FormData();
-      formData.append("token", TOKEN);
-      formData.append("to", `55${telefone.replace(/^55/, "")}`); // garante o formato brasileiro
-      formData.append("body", mensagem);
+      const resposta = await fetch(
+        `https://api.ultramsg.com/${INSTANCE_ID}/messages/chat`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            token: TOKEN,
+            to: `55${numero}`,
+            body: mensagem,
+          }),
+        }
+      );
 
-      const r = await fetch(`https://api.ultramsg.com/${INSTANCE_ID}/messages/chat`, {
-        method: "POST",
-        body: formData
-      });
-
-      const data = await r.json();
-      console.log("📨 Resposta UltraMsg:", data);
-
-      if (data.sent || data.message || data.id) {
-        enviados++;
-      } else {
-        console.warn(`⚠️ Falha ao enviar para ${nome}:`, data);
-      }
-
-      await delay(800);
+      const resultado = await resposta.json();
+      console.log("✅ Mensagem enviada:", resultado);
     } catch (err) {
-      console.error(`❌ Erro ao enviar para ${nome}:`, err);
+      console.error("❌ Erro ao enviar mensagem:", err);
     }
   }
 
-  alert(`✅ Mensagens enviadas com sucesso para ${enviados} clientes.`);
+  alert("Mensagens de confirmação enviadas!");
 }
-// 🔘 Insere automaticamente o botão "Confirmar Agendamentos do Dia" apenas na aba de Agendamentos
-document.addEventListener("DOMContentLoaded", () => {
-  const observer = new MutationObserver(() => {
-    const paginaAgendamentosAtiva = document.querySelector(".page[data-page='agendamentos']");
-    const calendario = document.querySelector("#calendar");
 
-    if (paginaAgendamentosAtiva && calendario && !document.getElementById("botaoConfirmarAgendamentos")) {
-      const botao = document.createElement("button");
-      botao.id = "botaoConfirmarAgendamentos";
-      botao.textContent = "📢 Confirmar Agendamentos do Dia";
-      botao.className = "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow";
-      botao.style.display = "block";
-      botao.style.margin = "10px auto";
-      botao.style.maxWidth = "400px";
-      botao.style.width = "100%";
-      botao.onclick = confirmarAgendamentosDoDia;
+// 🧠 Observa o carregamento do calendário e insere o botão automaticamente
+const observer = new MutationObserver(() => {
+  const calendario = document.querySelector("#calendar");
 
-      // Insere o botão logo acima do calendário
-      calendario.parentElement.insertBefore(botao, calendario);
-      console.log("✅ Botão reposicionado corretamente na aba de Agendamentos.");
-    }
-  });
+  if (calendario && !document.getElementById("botaoConfirmarAgendamentos")) {
+    const botao = document.createElement("button");
+    botao.id = "botaoConfirmarAgendamentos";
+    botao.textContent = "📢 Confirmar Agendamentos do Dia";
+    botao.className = "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow";
+    botao.style.display = "block";
+    botao.style.margin = "10px auto";
+    botao.style.maxWidth = "400px";
+    botao.style.width = "100%";
+    botao.onclick = confirmarAgendamentosDoDia;
 
-  observer.observe(document.body, { childList: true, subtree: true });
+    // Insere o botão logo acima do calendário
+    calendario.parentElement.insertBefore(botao, calendario);
+    console.log("✅ Botão 'Confirmar Agendamentos do Dia' adicionado.");
+  }
 });
+
+observer.observe(document.body, { childList: true, subtree: true });
+
