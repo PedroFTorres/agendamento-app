@@ -1,16 +1,53 @@
 // whatsappConfirmacao.js
 console.log("⚙️ whatsappConfirmacao.js carregado.");
 
-// ================================
-// FUNÇÃO PRINCIPAL DE CONFIRMAÇÃO
-// ================================
+// ============================
+// FUNÇÕES DE SUPORTE DE DATAS
+// ============================
+function zero2(n) { return String(n).padStart(2, "0"); }
+
+function toISOFromDateObj(d) {
+  return `${d.getFullYear()}-${zero2(d.getMonth() + 1)}-${zero2(d.getDate())}`;
+}
+
+function normalizarParaISO(valor) {
+  if (!valor) return "";
+
+  if (typeof valor === "string") {
+    // já ISO
+    if (/^\d{4}-\d{2}-\d{2}$/.test(valor.trim())) return valor.trim();
+    // dd/mm/aaaa
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(valor.trim())) {
+      const [d, m, y] = valor.trim().split("/");
+      return `${y}-${zero2(m)}-${zero2(d)}`;
+    }
+    // string ISO longa
+    if (/^\d{4}-\d{2}-\d{2}/.test(valor)) return valor.slice(0, 10);
+  }
+
+  if (valor instanceof Date) return toISOFromDateObj(valor);
+
+  if (typeof valor === "object") {
+    if (valor.seconds != null) return toISOFromDateObj(new Date(valor.seconds * 1000));
+    if (valor.start instanceof Date) return toISOFromDateObj(valor.start);
+    if (typeof valor.startStr === "string") return valor.startStr.slice(0, 10);
+    if (typeof valor.data === "string") return normalizarParaISO(valor.data);
+  }
+
+  const d = new Date(valor);
+  return isNaN(d) ? "" : toISOFromDateObj(d);
+}
+
+// ============================
+// FUNÇÃO PRINCIPAL DE ENVIO
+// ============================
 async function confirmarAgendamentosDoDia() {
   if (!window.dataSelecionada) {
     alert("Selecione um dia no calendário para confirmar os agendamentos.");
     return;
   }
 
-  const dataSelecionadaISO = window.dataSelecionada;
+  const dataSelecionadaISO = window.dataSelecionada.slice(0, 10);
   console.log("📅 Data selecionada:", dataSelecionadaISO);
 
   const agendamentos = window.agendamentos || [];
@@ -19,35 +56,42 @@ async function confirmarAgendamentosDoDia() {
     return;
   }
 
-// 🔍 Filtra os agendamentos do dia selecionado
-const agendamentosDoDia = agendamentos.filter(a => {
-  if (!a.data) return false;
+  const agendamentosDoDia = agendamentos.filter(a => {
+    const candidatos = [
+      a.data,
+      a.start,
+      a.startStr,
+      a.extendedProps?.data,
+      a.extendedProps?.start,
+      a.extendedProps?.startStr
+    ].filter(v => v != null);
 
-  // Converte "26/10/2025" → "2025-10-26"
-  const partes = a.data.split("/");
-  if (partes.length !== 3) return false;
+    let iso = "";
+    for (const v of candidatos) {
+      iso = normalizarParaISO(v);
+      if (iso) break;
+    }
+    if (!iso) iso = normalizarParaISO(a);
 
-  const [dia, mes, ano] = partes;
-  const dataFormatada = `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
-  
-  // Compara com window.dataSelecionada
-  const igual = dataFormatada === dataSelecionadaISO;
-  if (igual) {
-    console.log(`✅ Agendamento encontrado: ${a.clienteNome} (${a.data})`);
-  }
-  return igual;
-});
-  
-  console.log("📋 Agendamentos do dia:", agendamentosDoDia.length);
+    console.log("🔎 DATA AG:", {
+      cliente: a.clienteNome || a.title,
+      raw: a.data || a.start || a.startStr,
+      normalizada: iso
+    });
+
+    return iso === dataSelecionadaISO;
+  });
+
+  console.log("📋 Agendamentos encontrados:", agendamentosDoDia.length, agendamentosDoDia);
 
   if (agendamentosDoDia.length === 0) {
     alert("Nenhum agendamento encontrado nesta data.");
     return;
   }
 
-  // 🔗 UltraMsg API
-  const INSTANCE_ID = "xxxxxx"; // Seu Instance ID
-  const TOKEN = "xxxxxx";       // Seu Token UltraMsg
+  // 🔗 Configuração UltraMsg
+  const INSTANCE_ID = "COLOQUE_SEU_INSTANCE_ID";
+  const TOKEN = "COLOQUE_SEU_TOKEN";
 
   for (const ag of agendamentosDoDia) {
     if (!ag.whatsapp) {
@@ -59,18 +103,16 @@ const agendamentosDoDia = agendamentos.filter(a => {
     const mensagem = `Olá *${ag.clienteNome}*, no dia *${ag.data}* está agendado *${ag.produtoNome}* (${ag.quantidade}). Podemos confirmar?`;
 
     try {
-      const resposta = await fetch(
-        `https://api.ultramsg.com/${INSTANCE_ID}/messages/chat`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            token: TOKEN,
-            to: `55${numero}`,
-            body: mensagem,
-          }),
-        }
-      );
+      const resposta = await fetch(`https://api.ultramsg.com/${INSTANCE_ID}/messages/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          token: TOKEN,
+          to: `55${numero}`,
+          body: mensagem,
+        }),
+      });
+
       const resultado = await resposta.json();
       console.log("✅ Enviado:", resultado);
     } catch (err) {
@@ -81,9 +123,9 @@ const agendamentosDoDia = agendamentos.filter(a => {
   alert("Mensagens de confirmação enviadas!");
 }
 
-// =====================================
-// INSERIR O BOTÃO ACIMA DO CALENDÁRIO
-// =====================================
+// ============================
+// INSERÇÃO AUTOMÁTICA DO BOTÃO
+// ============================
 function criarBotaoConfirmacao() {
   const calendario = document.querySelector("#calendar");
   if (calendario && !document.getElementById("botaoConfirmarAgendamentos")) {
@@ -102,12 +144,8 @@ function criarBotaoConfirmacao() {
   }
 }
 
-// ======================================
-// MONITOR CONTÍNUO — GARANTE QUE SURJA
-// ======================================
+// Observa continuamente o DOM até o calendário aparecer
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("🕒 Monitorando calendário para inserir botão...");
-  setInterval(() => {
-    criarBotaoConfirmacao();
-  }, 2000); // checa a cada 2 segundos
+  console.log("🕒 Aguardando calendário para inserir botão...");
+  setInterval(() => criarBotaoConfirmacao(), 2000);
 });
