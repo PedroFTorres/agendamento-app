@@ -19,16 +19,25 @@ async function confirmarAgendamentosDoDia() {
     return;
   }
 
-  const agendamentosDoDia = agendamentos.filter(a => {
-    const partes = (a.data || "").split("/");
-    if (partes.length === 3) {
-      const [dia, mes, ano] = partes;
-      const iso = `${ano}-${mes}-${dia}`;
-      return iso === dataSelecionadaISO;
-    }
-    return false;
-  });
+// 🔍 Filtra os agendamentos do dia selecionado
+const agendamentosDoDia = agendamentos.filter(a => {
+  if (!a.data) return false;
 
+  // Converte "26/10/2025" → "2025-10-26"
+  const partes = a.data.split("/");
+  if (partes.length !== 3) return false;
+
+  const [dia, mes, ano] = partes;
+  const dataFormatada = `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+  
+  // Compara com window.dataSelecionada
+  const igual = dataFormatada === dataSelecionadaISO;
+  if (igual) {
+    console.log(`✅ Agendamento encontrado: ${a.clienteNome} (${a.data})`);
+  }
+  return igual;
+});
+  
   console.log("📋 Agendamentos do dia:", agendamentosDoDia.length);
 
   if (agendamentosDoDia.length === 0) {
