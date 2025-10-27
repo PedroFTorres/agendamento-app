@@ -1188,10 +1188,10 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else renderForm(page);
   });
 });
-// ====== PATCH GLOBAL: SELECT DE REPRESENTANTE NO CADASTRO DE CLIENTE ======
-console.log("🧩 Patch de select de representantes ativo");
+// ====== PATCH GLOBAL: transformar "Representante" em <select> com lista do Firestore ======
+console.log("🧩 Patch select de representantes (global) ativo");
 
-async function carregarRepresentantesSelectGlobal($select, valorAtual = "") {
+async function carregarRepresentantes($select, valorAtual = "") {
   try {
     const user = await waitForAuth();
     const snap = await db.collection("representantes")
@@ -1201,10 +1201,10 @@ async function carregarRepresentantesSelectGlobal($select, valorAtual = "") {
 
     $select.innerHTML = `<option value="">Selecione o representante</option>`;
     snap.forEach(doc => {
-      const rep = doc.data();
+      const rep = doc.data() || {};
       const opt = document.createElement("option");
-      opt.value = rep.nome;
-      opt.textContent = rep.nome;
+      opt.value = rep.nome || "";
+      opt.textContent = rep.nome || "(sem nome)";
       $select.appendChild(opt);
     });
 
@@ -1217,34 +1217,61 @@ async function carregarRepresentantesSelectGlobal($select, valorAtual = "") {
       opt.disabled = true;
       $select.appendChild(opt);
     }
-  } catch (err) {
-    console.error("Erro ao carregar representantes:", err);
+  } catch (e) {
+    console.error("Erro ao carregar representantes:", e);
     $select.innerHTML = `<option value="">Erro ao carregar representantes</option>`;
   }
 }
 
-// Observa a tela e detecta quando um formulário de cliente é criado
-const obsPatchRep = new MutationObserver(() => {
-  document.querySelectorAll("input[placeholder='Representante'], #novo-rep").forEach(async campo => {
-    // Evita duplicar
+// Procura qualquer campo de "representante" no DOM e converte para <select>
+function enhanceRepresentanteCampos(root = document) {
+  // 1) matches por id/name comuns
+  const candidatosDiretos = Array.from(root.querySelectorAll(
+    "#cliente-representante, #novo-rep, #cad-rep, [name='representante']"
+  ));
+
+  // 2) matches por placeholder que contenha a palavra "representante" (case-insensitive)
+  const candidatosPlaceholder = Array.from(root.querySelectorAll("input[placeholder]"))
+    .filter(el => (el.getAttribute("placeholder") || "").toLowerCase().includes("representante"));
+
+  const campos = [...new Set([...candidatosDiretos, ...candidatosPlaceholder])];
+
+  campos.forEach(async campo => {
+    // evita processar duas vezes
     if (campo.dataset.repEnhanced === "1") return;
     campo.dataset.repEnhanced = "1";
 
-    // Substitui input por select
+    // Se já for select e ainda não populado, apenas carregar opções
+    if (campo.tagName === "SELECT") {
+      await carregarRepresentantes(campo);
+      campo.required = true; // torna obrigatório
+      return;
+    }
+
+    // Só converte inputs (text, search, etc)
+    if (campo.tagName !== "INPUT") return;
+
+    const valorAtual = campo.value || "";
     const select = document.createElement("select");
-    select.className = campo.className || "border p-2 rounded";
-    select.id = campo.id || "novo-rep";
+
+    // preserva aparência
+    select.className = campo.className || "border p-2 rounded w-full";
+    select.id = campo.id || "cliente-representante";
     select.name = campo.name || "representante";
     select.required = true;
+    select.dataset.repEnhanced = "1";
     select.innerHTML = `<option value="">Carregando representantes...</option>`;
 
+    // troca no DOM mantendo posição
     campo.parentNode.replaceChild(select, campo);
-    await carregarRepresentantesSelectGlobal(select);
+
+    await carregarRepresentantes(select, valorAtual);
   });
-});
+}
 
-// Ativa o observador na página principal
+// Observa o DOM para quando a tela de "Clientes" (cadastro) for renderizada dinamicamente
+const obsSelectRep = new MutationObserver(() => enhanceRepresentanteCampos(document));
 document.addEventListener("DOMContentLoaded", () => {
-  obsPatchRep.observe(document.body, { childList: true, subtree: true });
+  enhanceRepresentanteCampos(document);
+  obsSelectRep.observe(document.body, { childList: true, subtree: true });
 });
-
