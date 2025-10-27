@@ -1275,3 +1275,77 @@ document.addEventListener("DOMContentLoaded", () => {
   enhanceRepresentanteCampos(document);
   obsSelectRep.observe(document.body, { childList: true, subtree: true });
 });
+// ====== AUTO-PREENCHER E BLOQUEAR REPRESENTANTE NO AGENDAMENTO ======
+console.log("🤝 Auto-preencher representante ao selecionar cliente ativo (versão final)");
+
+async function configurarAutoRepresentante() {
+  // identifica campos possíveis no formulário de agendamento
+  const campoCliente = document.querySelector("#ag-cliente, #agendamento-cliente, select[name='cliente'], input[placeholder*='Cliente']");
+  const campoRepresentante = document.querySelector("#ag-rep, #agendamento-rep, select[name='representante'], input[placeholder*='Representante']");
+
+  if (!campoCliente || !campoRepresentante) return; // formulário ainda não carregado
+
+  // evita duplicação do evento
+  if (campoCliente.dataset.repLinked === "1") return;
+  campoCliente.dataset.repLinked = "1";
+
+  campoCliente.addEventListener("change", async () => {
+    const clienteNome = campoCliente.value.trim();
+    if (!clienteNome) {
+      campoRepresentante.value = "";
+      campoRepresentante.removeAttribute("disabled");
+      return;
+    }
+
+    try {
+      const user = await waitForAuth();
+      const snap = await db.collection("clientes")
+        .where("userId", "==", user.uid)
+        .where("nome", "==", clienteNome)
+        .limit(1)
+        .get();
+
+      if (!snap.empty) {
+        const cliente = snap.docs[0].data();
+        if (cliente.representante) {
+          // Preenche automaticamente
+          if (campoRepresentante.tagName === "SELECT") {
+            const optExistente = Array.from(campoRepresentante.options).find(o => o.value === cliente.representante);
+            if (optExistente) {
+              campoRepresentante.value = cliente.representante;
+            } else {
+              const novaOpt = document.createElement("option");
+              novaOpt.value = cliente.representante;
+              novaOpt.textContent = cliente.representante;
+              campoRepresentante.appendChild(novaOpt);
+              campoRepresentante.value = cliente.representante;
+            }
+          } else {
+            campoRepresentante.value = cliente.representante;
+          }
+
+          // bloqueia o campo para evitar edição manual
+          campoRepresentante.setAttribute("disabled", "disabled");
+        } else {
+          campoRepresentante.value = "";
+          campoRepresentante.removeAttribute("disabled");
+          alert(`⚠️ O cliente "${clienteNome}" não possui representante vinculado.\n\nAcesse o cadastro de clientes e adicione um representante para esse cliente antes de agendar.`);
+        }
+      } else {
+        campoRepresentante.value = "";
+        campoRepresentante.removeAttribute("disabled");
+        alert(`⚠️ Cliente "${clienteNome}" não encontrado no cadastro.`);
+      }
+    } catch (err) {
+      console.error("Erro ao buscar representante do cliente:", err);
+      alert("❌ Erro ao buscar o representante deste cliente. Verifique sua conexão ou tente novamente.");
+    }
+  });
+}
+
+// Observa o DOM e ativa assim que o formulário de agendamento aparece
+const obsAutoRep = new MutationObserver(() => configurarAutoRepresentante());
+document.addEventListener("DOMContentLoaded", () => {
+  configurarAutoRepresentante();
+  obsAutoRep.observe(document.body, { childList: true, subtree: true });
+});
