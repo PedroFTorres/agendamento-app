@@ -1275,77 +1275,138 @@ document.addEventListener("DOMContentLoaded", () => {
   enhanceRepresentanteCampos(document);
   obsSelectRep.observe(document.body, { childList: true, subtree: true });
 });
-// ====== AUTO-PREENCHER E BLOQUEAR REPRESENTANTE NO AGENDAMENTO ======
-console.log("🤝 Auto-preencher representante ao selecionar cliente ativo (versão final)");
+// ====== AUTO-PREENCHER + BLOQUEAR REPRESENTANTE NO AGENDAMENTO (robusto) ======
+console.log("🤝 Patch: auto-vincular representante ao escolher cliente (robusto)");
 
-async function configurarAutoRepresentante() {
-  // identifica campos possíveis no formulário de agendamento
-  const campoCliente = document.querySelector("#ag-cliente, #agendamento-cliente, select[name='cliente'], input[placeholder*='Cliente']");
-  const campoRepresentante = document.querySelector("#ag-rep, #agendamento-rep, select[name='representante'], input[placeholder*='Representante']");
+/** Busca um campo por id/name/placeholder/aria-label ou por <label> associado cujo texto contenha qualquer palavra-chave. */
+function encontrarCampoPorRotuloOuAtributos(palavrasChave = [], root = document) {
+  const testStr = (v) => (v || "").toLowerCase();
+  const matchAny = (txt) => palavrasChave.some(k => testStr(txt).includes(k));
 
-  if (!campoCliente || !campoRepresentante) return; // formulário ainda não carregado
+  // 1) tentar por input/select com atributos
+  const candidatos = Array.from(root.querySelectorAll("input, select, textarea"));
+  for (const el of candidatos) {
+    const attrs = [
+      el.id, el.name, el.placeholder, el.getAttribute("aria-label"), el.getAttribute("title")
+    ].filter(Boolean).join(" | ");
+    if (matchAny(attrs)) return el;
+  }
 
-  // evita duplicação do evento
+  // 2) tentar por <label> cujo texto combine e que aponte para um campo
+  const labels = Array.from(root.querySelectorAll("label[for]"));
+  for (const lb of labels) {
+    if (matchAny(lb.textContent)) {
+      const forId = lb.getAttribute("for");
+      const el = root.getElementById(forId);
+      if (el) return el;
+    }
+  }
+
+  // 3) fallback: procurar elementos próximos de labels sem "for"
+  const looseLabels = Array.from(root.querySelectorAll("label"));
+  for (const lb of looseLabels) {
+    if (matchAny(lb.textContent)) {
+      // tenta campo no mesmo container
+      const el = lb.parentElement && lb.parentElement.querySelector("input, select, textarea");
+      if (el) return el;
+    }
+  }
+
+  return null;
+}
+
+async function obterRepresentanteDoCliente(nomeCliente) {
+  if (!nomeCliente) return "";
+  const user = await waitForAuth();
+  const snap = await db.collection("clientes")
+    .where("userId", "==", user.uid)
+    .where("nome", "==", nomeCliente)
+    .limit(1)
+    .get();
+  if (snap.empty) return "";
+  const cl = snap.docs[0].data() || {};
+  return (cl.representante || "").trim();
+}
+
+// Evita alertas repetidos
+let __alertSemRepMostrado = false;
+
+async function aplicarVinculoClienteRepresentante(root = document) {
+  // Achamos “cliente”
+  const campoCliente = encontrarCampoPorRotuloOuAtributos(
+    ["cliente", "nome do cliente"], root
+  );
+
+  // Achamos “representante”
+  const campoRep = encontrarCampoPorRotuloOuAtributos(
+    ["representante"], root
+  );
+
+  if (!campoCliente || !campoRep) return; // formulário ainda não está visível
+
   if (campoCliente.dataset.repLinked === "1") return;
   campoCliente.dataset.repLinked = "1";
 
-  campoCliente.addEventListener("change", async () => {
-    const clienteNome = campoCliente.value.trim();
-    if (!clienteNome) {
-      campoRepresentante.value = "";
-      campoRepresentante.removeAttribute("disabled");
+  const preencherTravar = (valor) => {
+    if (campoRep.tagName === "SELECT") {
+      // tenta selecionar; se não existir na lista, adiciona
+      const opt = Array.from(campoRep.options).find(o => o.value === valor);
+      if (valor && !opt) {
+        const o = document.createElement("option");
+        o.value = valor;
+        o.textContent = valor;
+        campoRep.appendChild(o);
+      }
+      campoRep.value = valor || "";
+    } else {
+      campoRep.value = valor || "";
+    }
+    if (valor) {
+      campoRep.setAttribute("disabled", "disabled");
+    } else {
+      campoRep.removeAttribute("disabled");
+    }
+  };
+
+  const onChangeCliente = async () => {
+    const nomeCli = (campoCliente.value || "").trim();
+    if (!nomeCli) {
+      preencherTravar("");
       return;
     }
-
     try {
-      const user = await waitForAuth();
-      const snap = await db.collection("clientes")
-        .where("userId", "==", user.uid)
-        .where("nome", "==", clienteNome)
-        .limit(1)
-        .get();
-
-      if (!snap.empty) {
-        const cliente = snap.docs[0].data();
-        if (cliente.representante) {
-          // Preenche automaticamente
-          if (campoRepresentante.tagName === "SELECT") {
-            const optExistente = Array.from(campoRepresentante.options).find(o => o.value === cliente.representante);
-            if (optExistente) {
-              campoRepresentante.value = cliente.representante;
-            } else {
-              const novaOpt = document.createElement("option");
-              novaOpt.value = cliente.representante;
-              novaOpt.textContent = cliente.representante;
-              campoRepresentante.appendChild(novaOpt);
-              campoRepresentante.value = cliente.representante;
-            }
-          } else {
-            campoRepresentante.value = cliente.representante;
-          }
-
-          // bloqueia o campo para evitar edição manual
-          campoRepresentante.setAttribute("disabled", "disabled");
-        } else {
-          campoRepresentante.value = "";
-          campoRepresentante.removeAttribute("disabled");
-          alert(`⚠️ O cliente "${clienteNome}" não possui representante vinculado.\n\nAcesse o cadastro de clientes e adicione um representante para esse cliente antes de agendar.`);
-        }
+      const representante = await obterRepresentanteDoCliente(nomeCli);
+      if (representante) {
+        preencherTravar(representante);
       } else {
-        campoRepresentante.value = "";
-        campoRepresentante.removeAttribute("disabled");
-        alert(`⚠️ Cliente "${clienteNome}" não encontrado no cadastro.`);
+        preencherTravar("");
+        if (!__alertSemRepMostrado) {
+          __alertSemRepMostrado = true;
+          alert(
+            `⚠️ O cliente "${nomeCli}" não possui representante vinculado.\n` +
+            `Abra o cadastro de clientes e defina um representante antes de concluir o agendamento.`
+          );
+          setTimeout(() => { __alertSemRepMostrado = false; }, 3000);
+        }
       }
-    } catch (err) {
-      console.error("Erro ao buscar representante do cliente:", err);
-      alert("❌ Erro ao buscar o representante deste cliente. Verifique sua conexão ou tente novamente.");
+    } catch (e) {
+      console.error("Erro ao vincular representante:", e);
     }
-  });
+  };
+
+  // Listener e disparo inicial
+  campoCliente.addEventListener("change", onChangeCliente);
+  // dispara uma vez (se já houver cliente pré-selecionado)
+  onChangeCliente();
 }
 
-// Observa o DOM e ativa assim que o formulário de agendamento aparece
-const obsAutoRep = new MutationObserver(() => configurarAutoRepresentante());
-document.addEventListener("DOMContentLoaded", () => {
-  configurarAutoRepresentante();
-  obsAutoRep.observe(document.body, { childList: true, subtree: true });
+// Observa o DOM, pois o formulário de agendamento pode ser injetado dinamicamente
+const obsAutoRepRobusto = new MutationObserver(() => {
+  aplicarVinculoClienteRepresentante(document);
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  aplicarVinculoClienteRepresentante(document);
+  obsAutoRepRobusto.observe(document.body, { childList: true, subtree: true });
+});
+
