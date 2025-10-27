@@ -1188,4 +1188,63 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else renderForm(page);
   });
 });
+// ====== PATCH GLOBAL: SELECT DE REPRESENTANTE NO CADASTRO DE CLIENTE ======
+console.log("🧩 Patch de select de representantes ativo");
+
+async function carregarRepresentantesSelectGlobal($select, valorAtual = "") {
+  try {
+    const user = await waitForAuth();
+    const snap = await db.collection("representantes")
+      .where("userId", "==", user.uid)
+      .orderBy("nome")
+      .get();
+
+    $select.innerHTML = `<option value="">Selecione o representante</option>`;
+    snap.forEach(doc => {
+      const rep = doc.data();
+      const opt = document.createElement("option");
+      opt.value = rep.nome;
+      opt.textContent = rep.nome;
+      $select.appendChild(opt);
+    });
+
+    if (valorAtual) $select.value = valorAtual;
+
+    if (snap.empty) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "⚠️ Nenhum representante cadastrado";
+      opt.disabled = true;
+      $select.appendChild(opt);
+    }
+  } catch (err) {
+    console.error("Erro ao carregar representantes:", err);
+    $select.innerHTML = `<option value="">Erro ao carregar representantes</option>`;
+  }
+}
+
+// Observa a tela e detecta quando um formulário de cliente é criado
+const obsPatchRep = new MutationObserver(() => {
+  document.querySelectorAll("input[placeholder='Representante'], #novo-rep").forEach(async campo => {
+    // Evita duplicar
+    if (campo.dataset.repEnhanced === "1") return;
+    campo.dataset.repEnhanced = "1";
+
+    // Substitui input por select
+    const select = document.createElement("select");
+    select.className = campo.className || "border p-2 rounded";
+    select.id = campo.id || "novo-rep";
+    select.name = campo.name || "representante";
+    select.required = true;
+    select.innerHTML = `<option value="">Carregando representantes...</option>`;
+
+    campo.parentNode.replaceChild(select, campo);
+    await carregarRepresentantesSelectGlobal(select);
+  });
+});
+
+// Ativa o observador na página principal
+document.addEventListener("DOMContentLoaded", () => {
+  obsPatchRep.observe(document.body, { childList: true, subtree: true });
+});
 
