@@ -1409,13 +1409,12 @@ document.addEventListener("DOMContentLoaded", () => {
   aplicarVinculoClienteRepresentante(document);
   obsAutoRepRobusto.observe(document.body, { childList: true, subtree: true });
 });
-// ====== VÍNCULO: ao escolher CLIENTE, preencher/bloquear REPRESENTANTE ======
-console.log("🤝 Patch: cliente → representante (por texto dos selects)");
+// ====== VÍNCULO: ao escolher CLIENTE, preencher/bloquear REPRESENTANTE (ID ou Nome) ======
+console.log("🤝 Patch: cliente → representante (suporta value=id ou value=nome)");
 
-// Normaliza texto pra comparação
 function _norm(t){ return (t||"").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu,"").trim(); }
 
-// Encontra um <select> cujo 1º option contenha algum dos textos dados (ex.: "Selecione clientes")
+// Encontra um <select> pelo texto do 1º option
 function _findSelectByFirstOptionContains(possiveis){
   const all = Array.from(document.querySelectorAll("select"));
   const keys = possiveis.map(_norm);
@@ -1428,17 +1427,30 @@ function _findSelectByFirstOptionContains(possiveis){
 
 let __alertSemRepOnce = false;
 
-async function _getRepDoClientePorNome(nomeCliente){
-  if(!nomeCliente) return "";
-  const user = await waitForAuth();
-  const q = await db.collection("clientes")
-    .where("userId","==",user.uid)
-    .where("nome","==",nomeCliente)
-    .limit(1)
-    .get();
-  if(q.empty) return "";
-  const d = q.docs[0].data() || {};
-  return (d.representante||"").trim();
+async function _getClienteDadosPorIdOuNome(user, idValue, displayName){
+  // 1) tentar por ID
+  if (idValue) {
+    try {
+      const doc = await db.collection("clientes").doc(idValue).get();
+      if (doc.exists) {
+        const d = doc.data() || {};
+        // Confirma que é do mesmo usuário
+        if (!d.userId || d.userId === user.uid) {
+          return d;
+        }
+      }
+    } catch(e){ console.debug("Lookup por ID falhou/ignorado:", e); }
+  }
+  // 2) fallback por nome
+  if (displayName) {
+    const q = await db.collection("clientes")
+      .where("userId","==",user.uid)
+      .where("nome","==",displayName)
+      .limit(1)
+      .get();
+    if (!q.empty) return q.docs[0].data() || {};
+  }
+  return null;
 }
 
 function _selecionarOuCriarOption(sel, valor){
@@ -1462,18 +1474,19 @@ function _selecionarOuCriarOption(sel, valor){
 }
 
 async function aplicarVinculoClienteRep(){
-  // pega pelo texto dos primeiros options
   const selCliente = _findSelectByFirstOptionContains(["selecione clientes","selecionar clientes","clientes"]);
   const selRep     = _findSelectByFirstOptionContains(["selecione representantes","selecionar representantes","representantes"]);
-
   if(!selCliente || !selRep) return;
 
   if(selCliente.dataset.vincRep === "1") return;
   selCliente.dataset.vincRep = "1";
 
   const handle = async ()=>{
-    const clienteNome = (selCliente.value||"").trim();
-    if(!clienteNome){
+    const selectedIndex = selCliente.selectedIndex >= 0 ? selCliente.selectedIndex : -1;
+    const valueIdOrName = selectedIndex >= 0 ? (selCliente.options[selectedIndex].value || "").trim() : (selCliente.value||"").trim();
+    const displayName   = selectedIndex >= 0 ? (selCliente.options[selectedIndex].textContent || "").trim() : (selCliente.value||"").trim();
+
+    if(!valueIdOrName && !displayName){
       selRep.removeAttribute("disabled");
       selRep.title = "";
       _selecionarOuCriarOption(selRep, "");
@@ -1481,23 +1494,26 @@ async function aplicarVinculoClienteRep(){
     }
 
     try{
-      const rep = await _getRepDoClientePorNome(clienteNome);
-      if(rep){
+      const user = await waitForAuth();
+      const cliente = await _getClienteDadosPorIdOuNome(user, valueIdOrName, displayName);
+
+      if (cliente && cliente.representante) {
+        const rep = (cliente.representante || "").trim();
         _selecionarOuCriarOption(selRep, rep);
         selRep.setAttribute("disabled","disabled");
         selRep.title = "Vinculado automaticamente ao cliente";
-      }else{
+      } else {
         _selecionarOuCriarOption(selRep, "");
         selRep.removeAttribute("disabled");
         selRep.title = "";
         if(!__alertSemRepOnce){
           __alertSemRepOnce = true;
-          alert(`⚠️ O cliente "${clienteNome}" não possui representante cadastrado.\nAtualize o cadastro do cliente antes de concluir o agendamento.`);
+          alert(`⚠️ O cliente "${displayName}" não possui representante vinculado.\nAbra o cadastro de clientes e defina um representante antes de concluir o agendamento.`);
           setTimeout(()=>{ __alertSemRepOnce = false; }, 3000);
         }
       }
     }catch(e){
-      console.error("Erro ao vincular representante:", e);
+      console.error("Erro ao vincular representante (ID/Nome):", e);
     }
   };
 
@@ -1506,10 +1522,8 @@ async function aplicarVinculoClienteRep(){
   handle();
 }
 
-// Observa o DOM para quando o formulário for montado
 const __obsVinc = new MutationObserver(()=>aplicarVinculoClienteRep());
 document.addEventListener("DOMContentLoaded", ()=>{
   aplicarVinculoClienteRep();
   __obsVinc.observe(document.body, { childList:true, subtree:true });
 });
-
