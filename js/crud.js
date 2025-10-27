@@ -113,37 +113,83 @@ function bindBasicActions(container) {
         const snap = await db.collection(type).doc(id).get();
         const d = snap.data() || {};
 
-        // -------- CLIENTES --------
-        if (type === "clientes") {
-          const modal = document.createElement("div");
-          modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
-          modal.innerHTML = `
-            <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
-              <h3 class="text-lg font-bold mb-2">Editar Cliente</h3>
-              <div class="grid grid-cols-1 gap-3">
-                <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome">
-                <input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp">
-                <input id="edit-rep" class="border p-2 rounded" value="${d.representante || ""}" placeholder="Representante">
-              </div>
-              <div class="flex justify-end space-x-3 mt-4">
-                <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
-                <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
-              </div>
-            </div>
-          `;
-          document.body.appendChild(modal);
+  // -------- CLIENTES --------
+if (type === "clientes") {
+  const modal = document.createElement("div");
+  modal.className =
+    "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+  modal.innerHTML = `
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 space-y-4">
+      <h3 class="text-lg font-bold mb-2">Editar Cliente</h3>
+      <div class="grid grid-cols-1 gap-3">
+        <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome">
+        <input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp">
 
-          modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+        <!-- substituiremos este campo por um <select> dinâmico -->
+        <select id="edit-rep" class="border p-2 rounded">
+          <option value="">Carregando representantes...</option>
+        </select>
+      </div>
+      <div class="flex justify-end space-x-3 mt-4">
+        <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+        <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
 
-          modal.querySelector("#btn-save").addEventListener("click", async () => {
-            const nome = modal.querySelector("#edit-nome").value.trim();
-            const whatsapp = modal.querySelector("#edit-whats").value.trim();
-            const representante = modal.querySelector("#edit-rep").value.trim();
+  const $nome = modal.querySelector("#edit-nome");
+  const $whats = modal.querySelector("#edit-whats");
+  const $rep = modal.querySelector("#edit-rep");
 
-            await db.collection(type).doc(id).update({ nome, whatsapp, representante });
-            modal.remove();
-          });
+  // === carregar lista de representantes do Firestore ===
+  waitForAuth().then(user => {
+    db.collection("representantes")
+      .where("userId", "==", user.uid)
+      .orderBy("nome")
+      .get()
+      .then(snapshot => {
+        $rep.innerHTML = `<option value="">Selecione o representante</option>`;
+        snapshot.forEach(doc => {
+          const rep = doc.data();
+          const opt = document.createElement("option");
+          opt.value = rep.nome;
+          opt.textContent = rep.nome;
+          $rep.appendChild(opt);
+        });
+
+        // Se o cliente já tinha um representante, seleciona automaticamente
+        if (d.representante) {
+          $rep.value = d.representante;
         }
+
+        // Se não houver representantes cadastrados
+        if (snapshot.empty) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "⚠️ Nenhum representante cadastrado";
+          opt.disabled = true;
+          $rep.appendChild(opt);
+        }
+      })
+      .catch(err => {
+        console.error("Erro ao carregar representantes:", err);
+        $rep.innerHTML = `<option value="">Erro ao carregar representantes</option>`;
+      });
+  });
+
+  // === botões ===
+  modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+
+  modal.querySelector("#btn-save").addEventListener("click", async () => {
+    const nome = $nome.value.trim();
+    const whatsapp = $whats.value.trim();
+    const representante = $rep.value.trim();
+
+    await db.collection(type).doc(id).update({ nome, whatsapp, representante });
+    modal.remove();
+  });
+}
 
         // -------- REPRESENTANTES --------
         if (type === "representantes") {
