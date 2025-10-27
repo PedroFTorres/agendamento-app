@@ -1409,4 +1409,107 @@ document.addEventListener("DOMContentLoaded", () => {
   aplicarVinculoClienteRepresentante(document);
   obsAutoRepRobusto.observe(document.body, { childList: true, subtree: true });
 });
+// ====== VÍNCULO: ao escolher CLIENTE, preencher/bloquear REPRESENTANTE ======
+console.log("🤝 Patch: cliente → representante (por texto dos selects)");
+
+// Normaliza texto pra comparação
+function _norm(t){ return (t||"").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu,"").trim(); }
+
+// Encontra um <select> cujo 1º option contenha algum dos textos dados (ex.: "Selecione clientes")
+function _findSelectByFirstOptionContains(possiveis){
+  const all = Array.from(document.querySelectorAll("select"));
+  const keys = possiveis.map(_norm);
+  for(const sel of all){
+    const first = sel.options && sel.options[0] ? _norm(sel.options[0].textContent || sel.options[0].label || "") : "";
+    if(keys.some(k => first.includes(k))) return sel;
+  }
+  return null;
+}
+
+let __alertSemRepOnce = false;
+
+async function _getRepDoClientePorNome(nomeCliente){
+  if(!nomeCliente) return "";
+  const user = await waitForAuth();
+  const q = await db.collection("clientes")
+    .where("userId","==",user.uid)
+    .where("nome","==",nomeCliente)
+    .limit(1)
+    .get();
+  if(q.empty) return "";
+  const d = q.docs[0].data() || {};
+  return (d.representante||"").trim();
+}
+
+function _selecionarOuCriarOption(sel, valor){
+  if(!sel) return;
+  if(!valor){
+    sel.value = "";
+    return;
+  }
+  const byVal  = Array.from(sel.options).find(o => _norm(o.value) === _norm(valor));
+  const byText = Array.from(sel.options).find(o => _norm(o.textContent) === _norm(valor));
+  const opt = byVal || byText;
+  if(opt){
+    sel.value = opt.value;
+  }else{
+    const o = document.createElement("option");
+    o.value = valor;
+    o.textContent = valor;
+    sel.appendChild(o);
+    sel.value = valor;
+  }
+}
+
+async function aplicarVinculoClienteRep(){
+  // pega pelo texto dos primeiros options
+  const selCliente = _findSelectByFirstOptionContains(["selecione clientes","selecionar clientes","clientes"]);
+  const selRep     = _findSelectByFirstOptionContains(["selecione representantes","selecionar representantes","representantes"]);
+
+  if(!selCliente || !selRep) return;
+
+  if(selCliente.dataset.vincRep === "1") return;
+  selCliente.dataset.vincRep = "1";
+
+  const handle = async ()=>{
+    const clienteNome = (selCliente.value||"").trim();
+    if(!clienteNome){
+      selRep.removeAttribute("disabled");
+      selRep.title = "";
+      _selecionarOuCriarOption(selRep, "");
+      return;
+    }
+
+    try{
+      const rep = await _getRepDoClientePorNome(clienteNome);
+      if(rep){
+        _selecionarOuCriarOption(selRep, rep);
+        selRep.setAttribute("disabled","disabled");
+        selRep.title = "Vinculado automaticamente ao cliente";
+      }else{
+        _selecionarOuCriarOption(selRep, "");
+        selRep.removeAttribute("disabled");
+        selRep.title = "";
+        if(!__alertSemRepOnce){
+          __alertSemRepOnce = true;
+          alert(`⚠️ O cliente "${clienteNome}" não possui representante cadastrado.\nAtualize o cadastro do cliente antes de concluir o agendamento.`);
+          setTimeout(()=>{ __alertSemRepOnce = false; }, 3000);
+        }
+      }
+    }catch(e){
+      console.error("Erro ao vincular representante:", e);
+    }
+  };
+
+  selCliente.addEventListener("change", handle);
+  // dispara uma vez se já houver cliente selecionado
+  handle();
+}
+
+// Observa o DOM para quando o formulário for montado
+const __obsVinc = new MutationObserver(()=>aplicarVinculoClienteRep());
+document.addEventListener("DOMContentLoaded", ()=>{
+  aplicarVinculoClienteRep();
+  __obsVinc.observe(document.body, { childList:true, subtree:true });
+});
 
