@@ -156,118 +156,135 @@ box.className = `${cores[ci % 2]} p-3 rounded`;
   }
 
   // ================== SALVAR ==================
-  $form.addEventListener("submit", async e => {
-    e.preventDefault();
-    const user = await waitForAuth();
+$form.addEventListener("submit", async e => {
+  e.preventDefault();
+  const user = await waitForAuth();
 
-    const titulo = document.getElementById("nota-titulo").value.trim();
-    const data = document.getElementById("nota-data").value;
-    const texto = document.getElementById("nota-texto").value.trim();
+  const titulo = document.getElementById("nota-titulo").value.trim();
+  const data = document.getElementById("nota-data").value;
+  const texto = document.getElementById("nota-texto").value.trim();
 
-    if (!titulo || !data || clientesNota.length === 0) {
-      alert("Informe título, data e pelo menos um cliente.");
-      return;
-    }
+  if (!titulo || !data || clientesNota.length === 0) {
+    alert("Informe título, data e pelo menos um cliente.");
+    return;
+  }
 
-    await db.collection("notas").add({
-      userId: user.uid,
-      titulo,
-      data,
-      clientes: clientesNota,
-      observacaoGeral: texto,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    clientesNota = [];
-    $form.reset();
-    renderPreview();
+  await db.collection("notas").add({
+    userId: user.uid,
+    titulo,
+    data,
+    clientes: clientesNota,
+    observacaoGeral: texto,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 
-  // ================== LISTAR + IMPRIMIR ==================
-  waitForAuth().then(user => {
-    db.collection("notas")
-      .where("userId", "==", user.uid)
-      .orderBy("createdAt", "desc")
-      .onSnapshot(snap => {
-        $list.innerHTML = "";
+  clientesNota = [];
+  $form.reset();
+  renderPreview();
+});
 
-        if (snap.empty) {
-          $list.innerHTML = `<p class="text-gray-500">Nenhuma anotação.</p>`;
-          return;
-        }
 
-        snap.forEach(doc => {
-          const n = doc.data();
+// ================== LISTAR + IMPRIMIR ==================
+waitForAuth().then(user => {
+  db.collection("notas")
+    .where("userId", "==", user.uid)
+    .orderBy("createdAt", "desc")
+    .onSnapshot(snap => {
+      $list.innerHTML = "";
 
-          const card = document.createElement("div");
-          card.className = "bg-yellow-100 p-4 rounded shadow";
+      if (snap.empty) {
+        $list.innerHTML = `<p class="text-gray-500">Nenhuma anotação.</p>`;
+        return;
+      }
 
-          card.innerHTML = `
-            <div class="flex justify-between items-center mb-2">
-              <h3 class="font-bold">${n.titulo}</h3>
-              <button class="bg-gray-700 text-white px-3 py-1 rounded btn-print">
-                Imprimir
-              </button>
+      snap.forEach(doc => {
+        const n = doc.data();
+
+        const card = document.createElement("div");
+        card.className = "bg-yellow-100 p-4 rounded shadow";
+
+        card.innerHTML = `
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="font-bold">${n.titulo}</h3>
+            <button class="bg-gray-700 text-white px-3 py-1 rounded btn-print">
+              Imprimir
+            </button>
+          </div>
+
+          <p class="text-sm text-gray-600 mb-2">
+            📅 ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}
+          </p>
+
+          ${n.clientes.map((c, i) => `
+            <div class="mb-2 ${i % 2 === 0 ? "bg-gray-100" : "bg-white"} p-2 rounded">
+              <strong>${c.cliente}</strong>
+              <ul class="ml-4 list-disc">
+                ${c.produtos.map(p => `
+                  <li>
+                    ${p.nome}
+                    ${p.obs ? `— <em>${p.obs}</em>` : ""}
+                  </li>
+                `).join("")}
+              </ul>
             </div>
+          `).join("")}
 
-            <p class="text-sm text-gray-600 mb-2">
-              📅 ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}
-            </p>
+          ${n.observacaoGeral ? `<p class="mt-2">${n.observacaoGeral}</p>` : ""}
+        `;
 
-            ${n.clientes.map(c => `
-              <div class="mb-2">
-                <strong>${c.cliente}</strong>
-                <ul class="ml-4 list-disc">
-                  ${c.produtos.map(p => `
-                    <li>
-                      ${p.nome}
-                      ${p.obs ? `— <em>${p.obs}</em>` : ""}
-                    </li>
-                  `).join("")}
-                </ul>
-              </div>
-            `).join("")}
+        // ===== IMPRESSÃO COM ZEBRA =====
+        card.querySelector(".btn-print").onclick = () => {
+          const w = window.open("", "_blank");
+          w.document.write(`
+            <html>
+              <head>
+                <title>${n.titulo}</title>
+                <style>
+                  body {
+                    font-family: Arial;
+                    padding: 20px;
+                  }
+                  h2 {
+                    margin-bottom: 5px;
+                  }
+                  .cliente {
+                    padding: 8px;
+                    margin-bottom: 6px;
+                  }
+                  .zebra-0 {
+                    background: #f3f4f6;
+                  }
+                  .zebra-1 {
+                    background: #ffffff;
+                  }
+                </style>
+              </head>
+              <body>
+                <h2>${n.titulo}</h2>
+                <p><strong>Data:</strong> ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}</p>
 
-            ${n.observacaoGeral ? `<p class="mt-2">${n.observacaoGeral}</p>` : ""}
-          `;
+                ${n.clientes.map((c, i) => `
+                  <div class="cliente zebra-${i % 2}">
+                    <strong>${c.cliente}</strong>
+                    <ul>
+                      ${c.produtos.map(p => `
+                        <li>${p.nome}${p.obs ? ` — ${p.obs}` : ""}</li>
+                      `).join("")}
+                    </ul>
+                  </div>
+                `).join("")}
 
-          card.querySelector(".btn-print").onclick = () => {
-            const w = window.open("", "_blank");
-            w.document.write(`
-              <html>
-                <head>
-                  <title>${n.titulo}</title>
-                  <style>
-                    body { font-family: Arial; padding: 20px; }
-                    h2 { margin-bottom: 5px; }
-                    .cliente { margin-top: 10px; }
-                  </style>
-                </head>
-                <body>
-                  <h2>${n.titulo}</h2>
-                  <p><strong>Data:</strong> ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}</p>
+                ${n.observacaoGeral ? `<p>${n.observacaoGeral}</p>` : ""}
+              </body>
+            </html>
+          `);
+          w.document.close();
+          w.print();
+        };
 
-                  ${n.clientes.map(c => `
-                    <div class="cliente">
-                      <strong>${c.cliente}</strong>
-                      <ul>
-                        ${c.produtos.map(p => `
-                          <li>${p.nome} ${p.obs ? `— ${p.obs}` : ""}</li>
-                        `).join("")}
-                      </ul>
-                    </div>
-                  `).join("")}
-
-                  ${n.observacaoGeral ? `<p>${n.observacaoGeral}</p>` : ""}
-                </body>
-              </html>
-            `);
-            w.document.close();
-            w.print();
-          };
-
-          $list.appendChild(card);
-        });
+        $list.appendChild(card);
       });
-  });
+    });
+});
+
 }
