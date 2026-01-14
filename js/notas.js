@@ -6,9 +6,16 @@ function renderNotas() {
 
       <form id="nota-form" class="bg-yellow-50 p-4 rounded shadow space-y-4">
 
+        <!-- TÍTULO -->
         <input id="nota-titulo"
           class="border p-2 rounded w-full"
           placeholder="Título da anotação (ex: Anotações do dia)"
+          required>
+
+        <!-- DATA -->
+        <input id="nota-data"
+          type="date"
+          class="border p-2 rounded w-full"
           required>
 
         <!-- CLIENTE -->
@@ -28,7 +35,7 @@ function renderNotas() {
           Vincular produto ao cliente
         </button>
 
-        <!-- PREVIEW DA ANOTAÇÃO -->
+        <!-- PREVIEW -->
         <div id="preview-nota" class="space-y-3"></div>
 
         <!-- OBSERVAÇÃO GERAL -->
@@ -52,18 +59,6 @@ function renderNotas() {
   const $preview = document.getElementById("preview-nota");
   const $list = document.getElementById("notas-list");
 
-  /*
-    Estrutura final:
-    clientesNota = [
-      {
-        cliente: "Pedro",
-        produtos: [
-          { nome: "Produto X", obs: "Observação..." },
-          { nome: "Produto Y", obs: "Outra obs..." }
-        ]
-      }
-    ]
-  */
   let clientesNota = [];
 
   // ================== CARREGAR CLIENTES E PRODUTOS ==================
@@ -103,21 +98,18 @@ function renderNotas() {
       return;
     }
 
-    // procura cliente
     let c = clientesNota.find(x => x.cliente === cliente);
     if (!c) {
       c = { cliente, produtos: [] };
       clientesNota.push(c);
     }
 
-    // evita produto duplicado
     if (c.produtos.find(p => p.nome === produto)) {
       alert("Este produto já foi adicionado para este cliente.");
       return;
     }
 
     c.produtos.push({ nome: produto, obs });
-
     $obsProduto.value = "";
     renderPreview();
   };
@@ -161,22 +153,24 @@ function renderNotas() {
     });
   }
 
-  // ================== SALVAR ANOTAÇÃO ==================
+  // ================== SALVAR ==================
   $form.addEventListener("submit", async e => {
     e.preventDefault();
     const user = await waitForAuth();
 
     const titulo = document.getElementById("nota-titulo").value.trim();
+    const data = document.getElementById("nota-data").value;
     const texto = document.getElementById("nota-texto").value.trim();
 
-    if (!titulo || clientesNota.length === 0) {
-      alert("Informe o título e adicione pelo menos um cliente.");
+    if (!titulo || !data || clientesNota.length === 0) {
+      alert("Informe título, data e pelo menos um cliente.");
       return;
     }
 
     await db.collection("notas").add({
       userId: user.uid,
       titulo,
+      data,
       clientes: clientesNota,
       observacaoGeral: texto,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -187,7 +181,7 @@ function renderNotas() {
     renderPreview();
   });
 
-  // ================== LISTAR ANOTAÇÕES ==================
+  // ================== LISTAR + IMPRIMIR ==================
   waitForAuth().then(user => {
     db.collection("notas")
       .where("userId", "==", user.uid)
@@ -207,7 +201,16 @@ function renderNotas() {
           card.className = "bg-yellow-100 p-4 rounded shadow";
 
           card.innerHTML = `
-            <h3 class="font-bold mb-2">${n.titulo}</h3>
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="font-bold">${n.titulo}</h3>
+              <button class="bg-gray-700 text-white px-3 py-1 rounded btn-print">
+                Imprimir
+              </button>
+            </div>
+
+            <p class="text-sm text-gray-600 mb-2">
+              📅 ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}
+            </p>
 
             ${n.clientes.map(c => `
               <div class="mb-2">
@@ -225,6 +228,41 @@ function renderNotas() {
 
             ${n.observacaoGeral ? `<p class="mt-2">${n.observacaoGeral}</p>` : ""}
           `;
+
+          card.querySelector(".btn-print").onclick = () => {
+            const w = window.open("", "_blank");
+            w.document.write(`
+              <html>
+                <head>
+                  <title>${n.titulo}</title>
+                  <style>
+                    body { font-family: Arial; padding: 20px; }
+                    h2 { margin-bottom: 5px; }
+                    .cliente { margin-top: 10px; }
+                  </style>
+                </head>
+                <body>
+                  <h2>${n.titulo}</h2>
+                  <p><strong>Data:</strong> ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}</p>
+
+                  ${n.clientes.map(c => `
+                    <div class="cliente">
+                      <strong>${c.cliente}</strong>
+                      <ul>
+                        ${c.produtos.map(p => `
+                          <li>${p.nome} ${p.obs ? `— ${p.obs}` : ""}</li>
+                        `).join("")}
+                      </ul>
+                    </div>
+                  `).join("")}
+
+                  ${n.observacaoGeral ? `<p>${n.observacaoGeral}</p>` : ""}
+                </body>
+              </html>
+            `);
+            w.document.close();
+            w.print();
+          };
 
           $list.appendChild(card);
         });
