@@ -1,43 +1,43 @@
-// ================== BLOCO DE ANOTAÇÕES (NOVO) ==================
-
+// ================== BLOCO DE ANOTAÇÕES ==================
 function renderNotas() {
   pageContent.innerHTML = `
     <div class="p-4">
       <h2 class="text-2xl font-bold mb-4">📒 Bloco de Anotações</h2>
 
-      <form id="nota-form" class="bg-yellow-50 p-4 rounded shadow space-y-3">
+      <form id="nota-form" class="bg-yellow-50 p-4 rounded shadow space-y-4">
 
         <input id="nota-titulo"
           class="border p-2 rounded w-full"
-          placeholder="Título da anotação"
+          placeholder="Título da anotação (ex: Anotações do dia)"
           required>
 
-        <!-- CLIENTE + PRODUTOS -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <select id="nota-cliente" class="border p-2 rounded"></select>
+        <!-- CLIENTE -->
+        <select id="nota-cliente" class="border p-2 rounded w-full"></select>
 
-          <select id="nota-produtos"
-            multiple
-            class="border p-2 rounded h-28">
-          </select>
+        <!-- PRODUTO -->
+        <select id="nota-produto" class="border p-2 rounded w-full"></select>
 
-          <button type="button"
-            id="btn-add-cliente"
-            class="bg-blue-600 text-white rounded">
-            Vincular
-          </button>
-        </div>
+        <!-- OBSERVAÇÃO DO PRODUTO -->
+        <textarea id="nota-obs-produto"
+          class="border p-2 rounded w-full h-20"
+          placeholder="Observação deste produto para este cliente..."></textarea>
 
-        <!-- LISTA DE CLIENTES VINCULADOS -->
-        <div id="clientes-vinculados" class="space-y-2"></div>
+        <button type="button"
+          id="btn-add-produto"
+          class="bg-blue-600 text-white p-2 rounded w-full">
+          Vincular produto ao cliente
+        </button>
 
+        <!-- PREVIEW DA ANOTAÇÃO -->
+        <div id="preview-nota" class="space-y-3"></div>
+
+        <!-- OBSERVAÇÃO GERAL -->
         <textarea id="nota-texto"
-          class="border p-2 rounded w-full h-32"
-          placeholder="Anotação..."
-          required></textarea>
+          class="border p-2 rounded w-full h-28"
+          placeholder="Observação geral da anotação (opcional)"></textarea>
 
         <button class="bg-yellow-600 text-white p-2 rounded w-full">
-          Salvar Anotação
+          Salvar anotação do dia
         </button>
       </form>
 
@@ -47,10 +47,23 @@ function renderNotas() {
 
   const $form = document.getElementById("nota-form");
   const $cliente = document.getElementById("nota-cliente");
-  const $produtos = document.getElementById("nota-produtos");
-  const $listaClientes = document.getElementById("clientes-vinculados");
+  const $produto = document.getElementById("nota-produto");
+  const $obsProduto = document.getElementById("nota-obs-produto");
+  const $preview = document.getElementById("preview-nota");
   const $list = document.getElementById("notas-list");
 
+  /*
+    Estrutura final:
+    clientesNota = [
+      {
+        cliente: "Pedro",
+        produtos: [
+          { nome: "Produto X", obs: "Observação..." },
+          { nome: "Produto Y", obs: "Outra obs..." }
+        ]
+      }
+    ]
+  */
   let clientesNota = [];
 
   // ================== CARREGAR CLIENTES E PRODUTOS ==================
@@ -60,7 +73,7 @@ function renderNotas() {
       .where("userId", "==", user.uid)
       .get()
       .then(snap => {
-        $cliente.innerHTML = `<option value="">Cliente</option>`;
+        $cliente.innerHTML = `<option value="">Selecione o cliente</option>`;
         snap.forEach(doc => {
           const d = doc.data();
           $cliente.appendChild(new Option(d.nome, d.nome));
@@ -71,49 +84,80 @@ function renderNotas() {
       .where("userId", "==", user.uid)
       .get()
       .then(snap => {
-        $produtos.innerHTML = "";
+        $produto.innerHTML = `<option value="">Selecione o produto</option>`;
         snap.forEach(doc => {
           const d = doc.data();
-          $produtos.appendChild(new Option(d.nome, d.nome));
+          $produto.appendChild(new Option(d.nome, d.nome));
         });
       });
   });
 
-  // ================== VINCULAR CLIENTE ==================
-  document.getElementById("btn-add-cliente").onclick = () => {
+  // ================== VINCULAR PRODUTO AO CLIENTE ==================
+  document.getElementById("btn-add-produto").onclick = () => {
     const cliente = $cliente.value;
-    const produtos = [...$produtos.selectedOptions].map(o => o.value);
+    const produto = $produto.value;
+    const obs = $obsProduto.value.trim();
 
-    if (!cliente || produtos.length === 0) {
-      alert("Selecione cliente e produtos.");
+    if (!cliente || !produto) {
+      alert("Selecione cliente e produto.");
       return;
     }
 
-    clientesNota.push({ cliente, produtos });
-    renderClientes();
+    // procura cliente
+    let c = clientesNota.find(x => x.cliente === cliente);
+    if (!c) {
+      c = { cliente, produtos: [] };
+      clientesNota.push(c);
+    }
+
+    // evita produto duplicado
+    if (c.produtos.find(p => p.nome === produto)) {
+      alert("Este produto já foi adicionado para este cliente.");
+      return;
+    }
+
+    c.produtos.push({ nome: produto, obs });
+
+    $obsProduto.value = "";
+    renderPreview();
   };
 
-  function renderClientes() {
-    $listaClientes.innerHTML = "";
+  // ================== PREVIEW ==================
+  function renderPreview() {
+    $preview.innerHTML = "";
 
-    clientesNota.forEach((c, i) => {
-      const div = document.createElement("div");
-      div.className = "bg-blue-50 p-2 rounded flex justify-between";
+    clientesNota.forEach((c, ci) => {
+      const box = document.createElement("div");
+      box.className = "bg-blue-50 p-3 rounded";
 
-      div.innerHTML = `
-        <div>
-          <strong>${c.cliente}</strong><br>
-          <span class="text-sm">${c.produtos.join(", ")}</span>
+      box.innerHTML = `
+        <strong>${c.cliente}</strong>
+        <div class="mt-2 space-y-2">
+          ${c.produtos.map((p, pi) => `
+            <div class="bg-white p-2 rounded border flex justify-between">
+              <div>
+                <strong>${p.nome}</strong>
+                ${p.obs ? `<p class="text-sm text-gray-600">${p.obs}</p>` : ""}
+              </div>
+              <button class="text-red-600" data-ci="${ci}" data-pi="${pi}">✕</button>
+            </div>
+          `).join("")}
         </div>
-        <button class="text-red-600">✕</button>
       `;
 
-      div.querySelector("button").onclick = () => {
-        clientesNota.splice(i, 1);
-        renderClientes();
-      };
+      box.querySelectorAll("button").forEach(btn => {
+        btn.onclick = () => {
+          const ci = btn.dataset.ci;
+          const pi = btn.dataset.pi;
+          clientesNota[ci].produtos.splice(pi, 1);
+          if (clientesNota[ci].produtos.length === 0) {
+            clientesNota.splice(ci, 1);
+          }
+          renderPreview();
+        };
+      });
 
-      $listaClientes.appendChild(div);
+      $preview.appendChild(box);
     });
   }
 
@@ -125,19 +169,22 @@ function renderNotas() {
     const titulo = document.getElementById("nota-titulo").value.trim();
     const texto = document.getElementById("nota-texto").value.trim();
 
-    if (!titulo || !texto) return;
+    if (!titulo || clientesNota.length === 0) {
+      alert("Informe o título e adicione pelo menos um cliente.");
+      return;
+    }
 
     await db.collection("notas").add({
       userId: user.uid,
       titulo,
       clientes: clientesNota,
-      texto,
+      observacaoGeral: texto,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     clientesNota = [];
     $form.reset();
-    renderClientes();
+    renderPreview();
   });
 
   // ================== LISTAR ANOTAÇÕES ==================
@@ -160,15 +207,23 @@ function renderNotas() {
           card.className = "bg-yellow-100 p-4 rounded shadow";
 
           card.innerHTML = `
-            <h3 class="font-bold">${n.titulo}</h3>
+            <h3 class="font-bold mb-2">${n.titulo}</h3>
 
-            ${n.clientes?.map(c => `
-              <p class="text-sm mt-1">
-                <strong>${c.cliente}:</strong> ${c.produtos.join(", ")}
-              </p>
+            ${n.clientes.map(c => `
+              <div class="mb-2">
+                <strong>${c.cliente}</strong>
+                <ul class="ml-4 list-disc">
+                  ${c.produtos.map(p => `
+                    <li>
+                      ${p.nome}
+                      ${p.obs ? `— <em>${p.obs}</em>` : ""}
+                    </li>
+                  `).join("")}
+                </ul>
+              </div>
             `).join("")}
 
-            <p class="mt-2 whitespace-pre-line">${n.texto}</p>
+            ${n.observacaoGeral ? `<p class="mt-2">${n.observacaoGeral}</p>` : ""}
           `;
 
           $list.appendChild(card);
