@@ -120,7 +120,9 @@ function renderNotas() {
 
     clientesNota.forEach((c, ci) => {
       const box = document.createElement("div");
-      box.className = "bg-blue-50 p-3 rounded";
+
+const cores = ["bg-blue-50", "bg-gray-50"];
+box.className = `${cores[ci % 2]} p-3 rounded`;
 
       box.innerHTML = `
         <strong>${c.cliente}</strong>
