@@ -4,7 +4,6 @@ function renderProducao() {
     <h2 class="text-xl font-bold mb-4">Produção</h2>
 
     <form id="producao-form" class="bg-white p-4 rounded shadow mb-4 space-y-3">
-
       <input type="date" id="prod-data" class="border p-2 rounded w-full" required>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -25,10 +24,10 @@ function renderProducao() {
     <div id="prod-list" class="space-y-4"></div>
   `;
 
-  const $form    = document.getElementById("producao-form");
+  const $form = document.getElementById("producao-form");
   const $selProd = document.getElementById("prod-produto");
-  const $list    = document.getElementById("prod-list");
-  const $btnAdd  = document.getElementById("btn-add-item");
+  const $list = document.getElementById("prod-list");
+  const $btnAdd = document.getElementById("btn-add-item");
   const $itensDia = document.getElementById("itens-dia");
 
   let itensProducao = [];
@@ -36,8 +35,7 @@ function renderProducao() {
   // ===== helpers =====
   function diaSemanaPT(dateStr) {
     const nomes = ["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
-    const dt = new Date(dateStr + "T00:00:00");
-    return nomes[dt.getDay()];
+    return nomes[new Date(dateStr + "T00:00:00").getDay()];
   }
 
   function dataBR(dateStr) {
@@ -53,10 +51,9 @@ function renderProducao() {
       .then(snap => {
         $selProd.innerHTML = `<option value="">Selecione o produto</option>`;
         snap.forEach(doc => {
-          const d = doc.data();
           const opt = document.createElement("option");
-          opt.value = d.nome;
-          opt.textContent = d.nome;
+          opt.value = doc.data().nome;
+          opt.textContent = doc.data().nome;
           $selProd.appendChild(opt);
         });
       });
@@ -74,7 +71,6 @@ function renderProducao() {
 
     itensProducao.push({ produto, quantidade: qtd });
     renderItens();
-
     document.getElementById("prod-qtd").value = "";
   });
 
@@ -95,7 +91,7 @@ function renderProducao() {
     });
   }
 
-  // ===== salvar produção do dia (BATCH) =====
+  // ===== salvar produção do dia =====
   $form.addEventListener("submit", async e => {
     e.preventDefault();
     const user = await waitForAuth();
@@ -109,8 +105,7 @@ function renderProducao() {
     const batch = db.batch();
 
     itensProducao.forEach(item => {
-      const ref = db.collection("producao").doc();
-      batch.set(ref, {
+      batch.set(db.collection("producao").doc(), {
         userId: user.uid,
         data,
         produto: item.produto,
@@ -138,15 +133,16 @@ function renderProducao() {
           return;
         }
 
+        // agrupar por data
         const prodPorDia = {};
-
         snap.docs.forEach(doc => {
-          const p = { id: doc.id, ...doc.data() };
+          const p = doc.data();
           if (!prodPorDia[p.data]) prodPorDia[p.data] = [];
           prodPorDia[p.data].push(p);
         });
 
-        Object.keys(prodPorDia).forEach(dia => {
+        for (const dia of Object.keys(prodPorDia).sort((a,b)=>b.localeCompare(a))) {
+
           const header = document.createElement("div");
           header.className = "px-3 py-2 rounded border-l-4 border-blue-500 bg-blue-50 font-bold cursor-pointer";
           header.textContent = `${dataBR(dia)} - ${diaSemanaPT(dia)}`;
@@ -154,49 +150,47 @@ function renderProducao() {
           const container = document.createElement("div");
           container.className = "ml-4 mt-2 hidden space-y-2";
 
-          prodPorDia[dia].forEach(async item => {
+          // AGRUPAR PRODUÇÃO POR PRODUTO
+          const prodPorProduto = {};
+          prodPorDia[dia].forEach(p => {
+            if (!prodPorProduto[p.produto]) prodPorProduto[p.produto] = 0;
+            prodPorProduto[p.produto] += p.quantidade;
+          });
+
+          // CALCULAR AGENDADO E DISPONÍVEL
+          for (const produto in prodPorProduto) {
+
+            const produzido = prodPorProduto[produto];
+
             const agSnap = await db.collection("agendamentos")
               .where("userId","==",user.uid)
-              .where("data","==",item.data)
-              .where("produtoNome","==",item.produto)
+              .where("data","==",dia)
+              .where("produtoNome","==",produto)
               .get();
 
             let totalAg = 0;
             agSnap.forEach(a => totalAg += a.data().quantidade || 0);
 
-            const disponivel = item.quantidade - totalAg;
+            const disponivel = produzido - totalAg;
 
             const card = document.createElement("div");
-            card.className = "p-3 bg-white rounded shadow flex justify-between";
+            card.className = "p-3 bg-white rounded shadow";
             card.innerHTML = `
-              <div>
-                <div class="font-semibold">${item.produto}</div>
-                <div>Produzido: ${formatQuantidade(item.quantidade)}</div>
-                <div>Agendado: ${formatQuantidade(totalAg)}</div>
-                <div class="font-bold text-green-600">Disponível: ${formatQuantidade(disponivel)}</div>
+              <div class="font-semibold">${produto}</div>
+              <div>Produzido: ${formatQuantidade(produzido)}</div>
+              <div>Agendado: ${formatQuantidade(totalAg)}</div>
+              <div class="font-bold ${disponivel < 0 ? "text-red-600" : "text-green-600"}">
+                Disponível: ${formatQuantidade(disponivel)}
               </div>
-              <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">
-                Excluir
-              </button>
             `;
             container.appendChild(card);
-          });
+          }
 
           header.onclick = () => container.classList.toggle("hidden");
 
           $list.appendChild(header);
           $list.appendChild(container);
-        });
+        }
       });
-  });
-
-  // ===== excluir produção =====
-  $list.addEventListener("click", async e => {
-    const del = e.target.closest(".btn-del");
-    if (!del) return;
-
-    if (confirm("Excluir esta produção?")) {
-      await db.collection("producao").doc(del.dataset.id).delete();
-    }
   });
 }
