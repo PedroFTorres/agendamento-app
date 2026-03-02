@@ -169,6 +169,19 @@ $form.addEventListener("submit", async e => {
     return;
   }
 
+  if ($form.dataset.editId) {
+  // EDITAR
+  await db.collection("notas").doc($form.dataset.editId).update({
+    titulo,
+    data,
+    clientes: clientesNota,
+    observacaoGeral: texto
+  });
+
+  delete $form.dataset.editId;
+
+} else {
+  // NOVA NOTA
   await db.collection("notas").add({
     userId: user.uid,
     titulo,
@@ -177,6 +190,7 @@ $form.addEventListener("submit", async e => {
     observacaoGeral: texto,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
+}
 
   clientesNota = [];
   $form.reset();
@@ -204,12 +218,23 @@ waitForAuth().then(user => {
         card.className = "bg-yellow-100 p-4 rounded shadow";
 
         card.innerHTML = `
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="font-bold">${n.titulo}</h3>
-            <button class="bg-gray-700 text-white px-3 py-1 rounded btn-print">
-              Imprimir
-            </button>
-          </div>
+  <div class="flex justify-between items-center mb-2">
+    <h3 class="font-bold">${n.titulo}</h3>
+
+    <div class="space-x-2">
+      <button class="bg-blue-600 text-white px-3 py-1 rounded btn-edit" data-id="${doc.id}">
+        Editar
+      </button>
+
+      <button class="bg-red-600 text-white px-3 py-1 rounded btn-del" data-id="${doc.id}">
+        Excluir
+      </button>
+
+      <button class="bg-gray-700 text-white px-3 py-1 rounded btn-print">
+        Imprimir
+      </button>
+    </div>
+  </div>
 
           <p class="text-sm text-gray-600 mb-2">
             📅 ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}
@@ -283,6 +308,33 @@ waitForAuth().then(user => {
         };
 
         $list.appendChild(card);
+        
+        // ===== EDITAR =====
+card.querySelector(".btn-edit").onclick = async () => {
+  const id = doc.id;
+
+  const snapNota = await db.collection("notas").doc(id).get();
+  const nota = snapNota.data();
+
+  // Preencher formulário
+  document.getElementById("nota-titulo").value = nota.titulo;
+  document.getElementById("nota-data").value = nota.data;
+  document.getElementById("nota-texto").value = nota.observacaoGeral || "";
+
+  clientesNota = nota.clientes || [];
+  renderPreview();
+
+  // Marcar modo edição
+  $form.dataset.editId = id;
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+// ===== EXCLUIR =====
+card.querySelector(".btn-del").onclick = async () => {
+  if (!confirm("Excluir esta anotação?")) return;
+  await db.collection("notas").doc(doc.id).delete();
+};
       });
     });
 });
