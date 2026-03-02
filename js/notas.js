@@ -1,10 +1,15 @@
 // ================== BLOCO DE ANOTAÇÕES ==================
 function renderNotas() {
-  pageContent.innerHTML = `
-    <div class="p-4">
-      <h2 class="text-2xl font-bold mb-4">📒 Bloco de Anotações</h2>
+ pageContent.innerHTML = `
+  <div class="p-6 bg-gray-50 min-h-screen">
 
-      <form id="nota-form" class="bg-yellow-50 p-4 rounded shadow space-y-4">
+    <h2 class="text-2xl font-semibold mb-6 text-gray-800">
+      Bloco de Anotações
+    </h2>
+
+    <!-- CARD CRIAR -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border mb-8">
+      <form id="nota-form" class="space-y-4">
 
         <!-- TÍTULO -->
         <input id="nota-titulo"
@@ -46,11 +51,25 @@ function renderNotas() {
         <button class="bg-yellow-600 text-white p-2 rounded w-full">
           Salvar anotação do dia
         </button>
-      </form>
-
-      <div id="notas-list" class="mt-6 space-y-4"></div>
+           </form>
     </div>
-  `;
+
+    <!-- FILTROS -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border mb-6 flex gap-4 items-center">
+      <input id="filtro-busca"
+        placeholder="Buscar por título ou cliente..."
+        class="border p-2 rounded w-full">
+
+      <input type="date"
+        id="filtro-data"
+        class="border p-2 rounded">
+    </div>
+
+    <!-- LISTA -->
+    <div id="notas-list" class="space-y-4"></div>
+
+  </div>
+`;
 
   const $form = document.getElementById("nota-form");
   const $cliente = document.getElementById("nota-cliente");
@@ -205,20 +224,64 @@ waitForAuth().then(user => {
     .orderBy("createdAt", "desc")
     .onSnapshot(snap => {
       $list.innerHTML = "";
+      const termo = document.getElementById("filtro-busca")?.value?.toLowerCase() || "";
+const dataFiltro = document.getElementById("filtro-data")?.value;
 
       if (snap.empty) {
         $list.innerHTML = `<p class="text-gray-500">Nenhuma anotação.</p>`;
         return;
       }
 
-      snap.forEach(doc => {
+      snap.forEach(doc => { 
         const n = doc.data();
+        if (
+  termo &&
+  !n.titulo.toLowerCase().includes(termo) &&
+  !n.clientes.some(c => c.cliente.toLowerCase().includes(termo))
+) return;
+
+if (dataFiltro && n.data !== dataFiltro) return;
 
         const card = document.createElement("div");
-        card.className = "bg-yellow-100 p-4 rounded shadow";
+       card.className = "bg-white rounded-xl shadow-sm border overflow-hidden";
 
         card.innerHTML = `
-  <div class="flex justify-between items-center mb-2">
+  card.innerHTML = `
+  <div class="p-4 cursor-pointer flex justify-between items-center card-header">
+    <div>
+      <h3 class="font-semibold text-gray-800">${n.titulo}</h3>
+      <p class="text-sm text-gray-500">
+        ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}
+        • ${n.clientes.length} cliente(s)
+      </p>
+    </div>
+
+    <div class="flex gap-4 text-sm">
+      <button class="text-blue-600 btn-edit" data-id="${doc.id}">Editar</button>
+      <button class="text-red-600 btn-del" data-id="${doc.id}">Excluir</button>
+      <button class="text-gray-600 btn-print">🖨</button>
+    </div>
+  </div>
+
+  <div class="px-4 pb-4 hidden card-body">
+    ${n.clientes.map(c => `
+      <div class="mb-3">
+        <p class="font-medium text-gray-700">${c.cliente}</p>
+        <ul class="ml-4 list-disc text-sm text-gray-600">
+          ${c.produtos.map(p => `
+            <li>${p.nome}${p.obs ? ` — ${p.obs}` : ""}</li>
+          `).join("")}
+        </ul>
+      </div>
+    `).join("")}
+
+    ${n.observacaoGeral ? `
+      <div class="mt-3 pt-3 border-t text-sm text-gray-600">
+        ${n.observacaoGeral}
+      </div>
+    ` : ""}
+  </div>
+`;
     <h3 class="font-bold">${n.titulo}</h3>
 
     <div class="space-x-2">
@@ -308,6 +371,14 @@ waitForAuth().then(user => {
         };
 
         $list.appendChild(card);
+  
+  const header = card.querySelector(".card-header");
+const body = card.querySelector(".card-body");
+
+header.addEventListener("click", (e) => {
+  if (e.target.tagName === "BUTTON") return;
+  body.classList.toggle("hidden");
+});
         
         // ===== EDITAR =====
 card.querySelector(".btn-edit").onclick = async () => {
