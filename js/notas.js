@@ -246,7 +246,6 @@ if (dataFiltro && n.data !== dataFiltro) return;
        card.className = "bg-white rounded-xl shadow-sm border overflow-hidden";
 
         card.innerHTML = `
-  card.innerHTML = `
   <div class="p-4 cursor-pointer flex justify-between items-center card-header">
     <div>
       <h3 class="font-semibold text-gray-800">${n.titulo}</h3>
