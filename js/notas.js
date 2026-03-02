@@ -281,44 +281,7 @@ if (dataFiltro && n.data !== dataFiltro) return;
     ` : ""}
   </div>
 `;
-    <h3 class="font-bold">${n.titulo}</h3>
-
-    <div class="space-x-2">
-      <button class="bg-blue-600 text-white px-3 py-1 rounded btn-edit" data-id="${doc.id}">
-        Editar
-      </button>
-
-      <button class="bg-red-600 text-white px-3 py-1 rounded btn-del" data-id="${doc.id}">
-        Excluir
-      </button>
-
-      <button class="bg-gray-700 text-white px-3 py-1 rounded btn-print">
-        Imprimir
-      </button>
-    </div>
-  </div>
-
-          <p class="text-sm text-gray-600 mb-2">
-            📅 ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}
-          </p>
-
-          ${n.clientes.map((c, i) => `
-            <div class="mb-2 ${i % 2 === 0 ? "bg-gray-100" : "bg-white"} p-2 rounded">
-              <strong>${c.cliente}</strong>
-              <ul class="ml-4 list-disc">
-                ${c.produtos.map(p => `
-                  <li>
-                    ${p.nome}
-                    ${p.obs ? `— <em>${p.obs}</em>` : ""}
-                  </li>
-                `).join("")}
-              </ul>
-            </div>
-          `).join("")}
-
-          ${n.observacaoGeral ? `<p class="mt-2">${n.observacaoGeral}</p>` : ""}
-        `;
-
+  
         // ===== IMPRESSÃO COM ZEBRA =====
         card.querySelector(".btn-print").onclick = () => {
           const w = window.open("", "_blank");
