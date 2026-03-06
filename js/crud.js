@@ -439,22 +439,23 @@ function renderAgendamentos() {
   const $form       = document.getElementById("agendamento-form");
   const $list       = document.getElementById("ag-list");
 
-  async function loadOptions(coll, select, labelField = "nome") {
-    const user = await waitForAuth();
-    select.innerHTML = `<option value="">Selecione ${coll}</option>`;
-    const snap = await db.collection(coll)
-      .where("userId", "==", user.uid)
-      .orderBy("createdAt", "desc")
-      .get();
-    snap.forEach(doc => {
-      const d = doc.data();
-      const opt = document.createElement("option");
-      opt.value = doc.id;
-      opt.textContent = d[labelField] || "(sem nome)";
-      select.appendChild(opt);
-    });
-  }
+ async function loadOptions(coll, select, labelField = "nome") {
+  const user = await waitForAuth();
+  select.innerHTML = `<option value="">Selecione ${coll}</option>`;
 
+  const snap = await db.collection(coll)
+    .where("userId", "==", user.uid)
+    .orderBy(labelField) // 👈 ordena alfabeticamente
+    .get();
+
+  snap.forEach(doc => {
+    const d = doc.data();
+    const opt = document.createElement("option");
+    opt.value = doc.id;
+    opt.textContent = d[labelField] || "(sem nome)";
+    select.appendChild(opt);
+  });
+}
   loadOptions("clientes", $selCliente);
   loadOptions("representantes", $selRep);
   loadOptions("produtos", $selProd);
