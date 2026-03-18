@@ -1123,13 +1123,7 @@ function renderDashboard() {
           locale: "pt-br",
           // ✅ Registra o clique no dia do calendário
 dateClick: function(info) {
-  // clique simples = resumo
   abrirResumoDoDia(info.dateStr);
-
-  // duplo clique = novo agendamento
-  if (info.jsEvent.detail === 2) {
-    abrirModalAgendamento(info.dateStr);
-  }
 },
 
           height: "auto",
@@ -1296,7 +1290,9 @@ async function abrirResumoDoDia(dataSelecionada) {
 
   let totalGeral = 0;
   const porProduto = {};
-  const porRep = [];
+  const porRep = {};
+
+  const lista = [];
 
   snap.forEach(doc => {
     const d = doc.data();
@@ -1307,53 +1303,91 @@ async function abrirResumoDoDia(dataSelecionada) {
     // Produto
     porProduto[d.produtoNome] = (porProduto[d.produtoNome] || 0) + qtd;
 
-    // Lista detalhada
-    porRep.push(d);
+    // Representante
+    porRep[d.representanteNome || "Sem rep"] =
+      (porRep[d.representanteNome || "Sem rep"] || 0) + qtd;
+
+    lista.push(d);
   });
 
   const modal = document.createElement("div");
   modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
 
   modal.innerHTML = `
-    <div class="bg-white p-6 rounded w-full max-w-2xl space-y-4 max-h-[90vh] overflow-auto">
+    <div class="bg-white p-6 rounded w-full max-w-3xl space-y-4 max-h-[90vh] overflow-auto">
       <h3 class="text-lg font-bold">Resumo do dia ${dataSelecionada}</h3>
 
       <div class="bg-gray-100 p-3 rounded">
         <strong>Total Geral:</strong> ${totalGeral.toLocaleString("pt-BR")}
       </div>
 
-      <div>
-        <h4 class="font-bold">Por Produto:</h4>
-        ${Object.entries(porProduto).map(([prod, qtd]) => `
-          <div>${prod}: ${qtd.toLocaleString("pt-BR")}</div>
-        `).join("")}
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <h4 class="font-bold">Por Produto:</h4>
+          ${Object.entries(porProduto).map(([prod, qtd]) => `
+            <div>${prod}: ${qtd.toLocaleString("pt-BR")}</div>
+          `).join("")}
+        </div>
+
+        <div>
+          <h4 class="font-bold">Por Representante:</h4>
+          ${Object.entries(porRep).map(([rep, qtd]) => `
+            <div>${rep}: ${qtd.toLocaleString("pt-BR")}</div>
+          `).join("")}
+        </div>
       </div>
 
       <div>
         <h4 class="font-bold">Agendamentos:</h4>
-        ${porRep.map(item => `
+        ${lista.map(item => `
           <div class="border-b py-1">
-            ${item.clienteNome} • ${item.produtoNome} • ${item.quantidade.toLocaleString("pt-BR")} 
+            ${item.clienteNome} • ${item.produtoNome} • ${item.quantidade.toLocaleString("pt-BR")}
             <br><small>Rep: ${item.representanteNome || "-"}</small>
           </div>
         `).join("")}
       </div>
 
       <div class="flex justify-between mt-4">
-        <button id="imprimir" class="bg-blue-600 text-white px-3 py-1 rounded">Imprimir</button>
-        <button id="fechar" class="bg-gray-400 text-white px-3 py-1 rounded">Fechar</button>
+        <button id="novo" class="bg-green-600 text-white px-3 py-1 rounded">
+          + Novo Agendamento
+        </button>
+
+        <div class="space-x-2">
+          <button id="imprimir" class="bg-blue-600 text-white px-3 py-1 rounded">
+            Imprimir
+          </button>
+          <button id="fechar" class="bg-gray-400 text-white px-3 py-1 rounded">
+            Fechar
+          </button>
+        </div>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
 
+  // FECHAR
   modal.querySelector("#fechar").onclick = () => modal.remove();
 
+  // NOVO AGENDAMENTO
+  modal.querySelector("#novo").onclick = () => {
+    modal.remove();
+    abrirModalAgendamento(dataSelecionada);
+  };
+
+  // IMPRIMIR
   modal.querySelector("#imprimir").onclick = () => {
-    const conteudo = modal.innerHTML;
     const w = window.open("", "", "width=800,height=600");
-    w.document.write(`<html><body>${conteudo}</body></html>`);
+    w.document.write(`
+      <html>
+        <head>
+          <title>Resumo ${dataSelecionada}</title>
+        </head>
+        <body>
+          ${modal.innerHTML}
+        </body>
+      </html>
+    `);
     w.document.close();
     w.print();
   };
