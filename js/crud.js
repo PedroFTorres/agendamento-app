@@ -1122,10 +1122,9 @@ function renderDashboard() {
           initialView: "dayGridMonth",
           locale: "pt-br",
           // ✅ Registra o clique no dia do calendário
-          dateClick: function(info) {
-            window.dataSelecionada = info.dateStr;
-            console.log("📅 Data selecionada:", window.dataSelecionada);
-          },
+         dateClick: function(info) {
+  abrirModalAgendamento(info.dateStr);
+},
 
           height: "auto",
           headerToolbar: {
@@ -1160,19 +1159,116 @@ function renderDashboard() {
             }
           },
 
-          eventClick: function(info) {
-            const ev = info.event;
-            alert(
-              `Cliente: ${ev.title}\n` +
-              `Representante: ${ev.extendedProps.representante}\n` +
-              `Observação: ${ev.extendedProps.observacao || "—"}`
-            );
-          }
+         eventClick: function(info) {
+  abrirEdicaoAgendamento(info.event.id);
+}
         });
 
         calendar.render();
       });
   });
+}
+async function abrirModalAgendamento(dataSelecionada) {
+  const user = await waitForAuth();
+
+  const clientesSnap = await db.collection("clientes").where("userId","==",user.uid).get();
+  const produtosSnap = await db.collection("produtos").where("userId","==",user.uid).get();
+
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+
+  modal.innerHTML = `
+    <div class="bg-white p-6 rounded w-full max-w-md space-y-3">
+      <h3 class="text-lg font-bold">Novo Agendamento</h3>
+
+      <select id="m-cliente" class="border p-2 w-full"></select>
+      <select id="m-produto" class="border p-2 w-full"></select>
+      <input id="m-qtd" type="number" class="border p-2 w-full" placeholder="Quantidade">
+      
+      <div class="flex justify-end space-x-2">
+        <button id="cancelar" class="bg-gray-400 text-white px-3 py-1 rounded">Cancelar</button>
+        <button id="salvar" class="bg-green-600 text-white px-3 py-1 rounded">Salvar</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const selCliente = modal.querySelector("#m-cliente");
+  const selProduto = modal.querySelector("#m-produto");
+
+  clientesSnap.forEach(doc=>{
+    const opt = document.createElement("option");
+    opt.value = doc.data().nome;
+    opt.textContent = doc.data().nome;
+    selCliente.appendChild(opt);
+  });
+
+  produtosSnap.forEach(doc=>{
+    const opt = document.createElement("option");
+    opt.value = doc.data().nome;
+    opt.textContent = doc.data().nome;
+    selProduto.appendChild(opt);
+  });
+
+  modal.querySelector("#cancelar").onclick = ()=>modal.remove();
+
+  modal.querySelector("#salvar").onclick = async ()=>{
+    const cliente = selCliente.value;
+    const produto = selProduto.value;
+    const qtd = parseInt(modal.querySelector("#m-qtd").value);
+
+    await db.collection("agendamentos").add({
+      userId: user.uid,
+      clienteNome: cliente,
+      produtoNome: produto,
+      quantidade: qtd,
+      data: dataSelecionada,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    modal.remove();
+  };
+}
+async function abrirEdicaoAgendamento(id) {
+  const snap = await db.collection("agendamentos").doc(id).get();
+  const d = snap.data();
+
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+
+  modal.innerHTML = `
+    <div class="bg-white p-6 rounded w-full max-w-md space-y-3">
+      <h3 class="text-lg font-bold">Editar</h3>
+
+      <input id="edit-cliente" class="border p-2 w-full" value="${d.clienteNome}">
+      <input id="edit-produto" class="border p-2 w-full" value="${d.produtoNome}">
+      <input id="edit-qtd" type="number" class="border p-2 w-full" value="${d.quantidade}">
+
+      <div class="flex justify-between">
+        <button id="excluir" class="bg-red-600 text-white px-3 py-1 rounded">Excluir</button>
+        <button id="salvar" class="bg-green-600 text-white px-3 py-1 rounded">Salvar</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  modal.querySelector("#salvar").onclick = async ()=>{
+    await db.collection("agendamentos").doc(id).update({
+      clienteNome: modal.querySelector("#edit-cliente").value,
+      produtoNome: modal.querySelector("#edit-produto").value,
+      quantidade: parseInt(modal.querySelector("#edit-qtd").value)
+    });
+    modal.remove();
+  };
+
+  modal.querySelector("#excluir").onclick = async ()=>{
+    if(confirm("Excluir?")){
+      await db.collection("agendamentos").doc(id).delete();
+      modal.remove();
+    }
+  };
 }
 
 // ================== MENU ==================
