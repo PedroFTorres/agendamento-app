@@ -1173,6 +1173,7 @@ async function abrirModalAgendamento(dataSelecionada) {
 
   const clientesSnap = await db.collection("clientes").where("userId","==",user.uid).get();
   const produtosSnap = await db.collection("produtos").where("userId","==",user.uid).get();
+  const repsSnap = await db.collection("representantes").where("userId","==",user.uid).orderBy("nome").get();
 
   const modal = document.createElement("div");
   modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
@@ -1181,8 +1182,9 @@ async function abrirModalAgendamento(dataSelecionada) {
     <div class="bg-white p-6 rounded w-full max-w-md space-y-3">
       <h3 class="text-lg font-bold">Novo Agendamento</h3>
 
-      <select id="m-cliente" class="border p-2 w-full"></select>
-      <select id="m-produto" class="border p-2 w-full"></select>
+     <select id="m-cliente" class="border p-2 w-full"></select>
+<select id="m-representante" class="border p-2 w-full"></select>
+<select id="m-produto" class="border p-2 w-full"></select>
       <input id="m-qtd" type="number" class="border p-2 w-full" placeholder="Quantidade">
       
       <div class="flex justify-end space-x-2">
@@ -1196,6 +1198,7 @@ async function abrirModalAgendamento(dataSelecionada) {
 
   const selCliente = modal.querySelector("#m-cliente");
   const selProduto = modal.querySelector("#m-produto");
+  const selRep = modal.querySelector("#m-representante");
 
   clientesSnap.forEach(doc=>{
     const opt = document.createElement("option");
@@ -1215,6 +1218,7 @@ async function abrirModalAgendamento(dataSelecionada) {
 
   modal.querySelector("#salvar").onclick = async ()=>{
     const cliente = selCliente.value;
+    const representante = selRep.value;
     const produto = selProduto.value;
     const qtd = parseInt(modal.querySelector("#m-qtd").value);
 
