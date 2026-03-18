@@ -1087,7 +1087,7 @@ function renderDashboard() {
           corIndex++;
           return {
             id: doc.id,
-            title: `${d.clienteNome} • ${d.produtoNome} (${d.quantidade})`,
+            title: `${d.clienteNome.split(" ")[0]} • ${d.produtoNome} (${d.quantidade})`,
             start: d.data,
             backgroundColor: cor,
             borderColor: cor,
