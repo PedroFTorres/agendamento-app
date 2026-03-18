@@ -1339,8 +1339,19 @@ async function abrirResumoDoDia(dataSelecionada) {
 
       <div>
         <h4 class="font-bold">Agendamentos:</h4>
-        ${lista.map(item => `
-          <div class="border-b py-1">
+       ${lista.map((item, i) => `
+  <div class="py-2 px-2 ${i % 2 === 0 ? 'bg-gray-100' : 'bg-white'} rounded">
+    <div class="font-medium">
+      ${item.clienteNome}
+    </div>
+    <div class="text-sm text-gray-600">
+      ${item.produtoNome} • ${item.quantidade.toLocaleString("pt-BR")}
+    </div>
+    <div class="text-xs text-gray-500">
+      Rep: ${item.representanteNome || "-"}
+    </div>
+  </div>
+`).join("")}
             ${item.clienteNome} • ${item.produtoNome} • ${item.quantidade.toLocaleString("pt-BR")}
             <br><small>Rep: ${item.representanteNome || "-"}</small>
           </div>
