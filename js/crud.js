@@ -1123,7 +1123,13 @@ function renderDashboard() {
           locale: "pt-br",
           // ✅ Registra o clique no dia do calendário
 dateClick: function(info) {
+  // clique simples = resumo
   abrirResumoDoDia(info.dateStr);
+
+  // duplo clique = novo agendamento
+  if (info.jsEvent.detail === 2) {
+    abrirModalAgendamento(info.dateStr);
+  }
 },
 
           height: "auto",
