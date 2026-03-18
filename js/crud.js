@@ -1317,20 +1317,41 @@ async function abrirResumoDoDia(dataSelecionada) {
     <div class="bg-white p-6 rounded w-full max-w-3xl space-y-4 max-h-[90vh] overflow-auto">
       <h3 class="text-lg font-bold">Resumo do dia ${dataSelecionada}</h3>
 
-      <div class="bg-gray-100 p-3 rounded">
+      <div class="bg-blue-50 border border-blue-200 p-4 rounded text-center">
+  <div class="text-sm text-gray-600">Total Geral</div>
+  <div class="text-2xl font-bold text-blue-700">
+    ${totalGeral.toLocaleString("pt-BR")}
+  </div>
+</div>
         <strong>Total Geral:</strong> ${totalGeral.toLocaleString("pt-BR")}
       </div>
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <h4 class="font-bold">Por Produto:</h4>
+          <div class="bg-gray-50 p-3 rounded">
+  <h4 class="font-bold mb-2">Por Produto</h4>
+  ${Object.entries(porProduto).map(([prod, qtd]) => `
+    <div class="flex justify-between border-b py-1">
+      <span>${prod}</span>
+      <strong>${qtd.toLocaleString("pt-BR")}</strong>
+    </div>
+  `).join("")}
+</div>
           ${Object.entries(porProduto).map(([prod, qtd]) => `
             <div>${prod}: ${qtd.toLocaleString("pt-BR")}</div>
           `).join("")}
         </div>
 
         <div>
-          <h4 class="font-bold">Por Representante:</h4>
+         <div class="bg-gray-50 p-3 rounded">
+  <h4 class="font-bold mb-2">Por Representante</h4>
+  ${Object.entries(porRep).map(([rep, qtd]) => `
+    <div class="flex justify-between border-b py-1">
+      <span>${rep}</span>
+      <strong>${qtd.toLocaleString("pt-BR")}</strong>
+    </div>
+  `).join("")}
+</div>
           ${Object.entries(porRep).map(([rep, qtd]) => `
             <div>${rep}: ${qtd.toLocaleString("pt-BR")}</div>
           `).join("")}
@@ -1339,7 +1360,7 @@ async function abrirResumoDoDia(dataSelecionada) {
 
       <div>
         <h4 class="font-bold">Agendamentos:</h4>
-       ${lista.map((item, i) => `
+      ${lista.map((item, i) => `
   <div class="py-2 px-2 ${i % 2 === 0 ? 'bg-gray-100' : 'bg-white'} rounded">
     <div class="font-medium">
       ${item.clienteNome}
