@@ -1061,7 +1061,7 @@ async function exportarPDF() {
 function renderDashboard() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Calendário de Agendamentos</h2>
-    <div id="calendar" class="bg-white p-4 rounded shadow"></div>
+   <div id="calendar" class="bg-white p-4 rounded shadow w-full overflow-x-auto"></div>
   `;
 
   waitForAuth().then(user => {
