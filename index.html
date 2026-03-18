@@ -38,6 +38,23 @@
       transition: opacity 0.15s ease;
       box-shadow: 0 2px 8px rgba(0,0,0,0.25); /* sombra estilo Tailwind */
     }
+    /* ===== AJUSTE DO CALENDÁRIO ===== */
+.fc {
+  width: 100% !important;
+}
+
+.fc .fc-daygrid-day-frame {
+  min-height: 120px;
+}
+
+.fc-daygrid-event {
+  white-space: normal !important;
+  font-size: 11px;
+}
+
+.fc .fc-toolbar {
+  flex-wrap: wrap;
+}
   </style>
 </head>
 <body class="min-h-screen flex">
