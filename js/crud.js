@@ -1171,7 +1171,7 @@ function renderDashboard() {
 async function abrirModalAgendamento(dataSelecionada) {
   const user = await waitForAuth();
 
-  const clientesSnap = await db.collection("clientes").where("userId","==",user.uid).get();
+  const clientesSnap = await db.collection("clientes").where("userId","==",user.uid).orderBy("nome").get();
   const produtosSnap = await db.collection("produtos").where("userId","==",user.uid).get();
   const repsSnap = await db.collection("representantes").where("userId","==",user.uid).orderBy("nome").get();
 
@@ -1199,6 +1199,12 @@ async function abrirModalAgendamento(dataSelecionada) {
   const selCliente = modal.querySelector("#m-cliente");
   const selProduto = modal.querySelector("#m-produto");
   const selRep = modal.querySelector("#m-representante");
+  repsSnap.forEach(doc=>{
+  const opt = document.createElement("option");
+  opt.value = doc.data().nome;
+  opt.textContent = doc.data().nome;
+  selRep.appendChild(opt);
+});
 
   clientesSnap.forEach(doc=>{
     const opt = document.createElement("option");
