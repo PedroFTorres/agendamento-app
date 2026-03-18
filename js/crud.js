@@ -1322,9 +1322,6 @@ async function abrirResumoDoDia(dataSelecionada) {
   <div class="text-2xl font-bold text-blue-700">
     ${totalGeral.toLocaleString("pt-BR")}
   </div>
-</div>
-        <strong>Total Geral:</strong> ${totalGeral.toLocaleString("pt-BR")}
-      </div>
 
       <div class="grid grid-cols-2 gap-4">
         <div>
@@ -1360,7 +1357,7 @@ async function abrirResumoDoDia(dataSelecionada) {
 
       <div>
         <h4 class="font-bold">Agendamentos:</h4>
-      ${lista.map((item, i) => `
+    ${lista.map((item, i) => `
   <div class="py-2 px-2 ${i % 2 === 0 ? 'bg-gray-100' : 'bg-white'} rounded">
     <div class="font-medium">
       ${item.clienteNome}
