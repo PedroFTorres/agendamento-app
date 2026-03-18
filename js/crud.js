@@ -1370,10 +1370,7 @@ async function abrirResumoDoDia(dataSelecionada) {
     </div>
   </div>
 `).join("")}
-            ${item.clienteNome} • ${item.produtoNome} • ${item.quantidade.toLocaleString("pt-BR")}
-            <br><small>Rep: ${item.representanteNome || "-"}</small>
-          </div>
-        `).join("")}
+          
       </div>
 
       <div class="flex justify-between mt-4">
