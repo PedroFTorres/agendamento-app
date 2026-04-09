@@ -1518,6 +1518,7 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else if (page === "producao") renderProducao();
     else if (page === "recibo") renderRecibo();
     else if (page === "whatsapp") renderWhatsapp();
+    else if (page === "precos_clientes") renderPrecosClientes();
 
     else renderForm(page);
   });
