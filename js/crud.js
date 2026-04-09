@@ -1002,7 +1002,7 @@ doc.text("Valor", 170, y); // 🔥 posição final
 
     // Quantidade e Data
     doc.text(formatQuantidade(row.qtd), 120, y, { align: "right" });
-    doc.text(formatMoeda(row.valorTotal), 160, y, { align: "right" });
+   doc.text(formatMoeda(row.valorTotal), 200, y, { align: "right" });
 
     // Ajusta Y para próxima linha
     y = Math.max(endY, y) + 6;
