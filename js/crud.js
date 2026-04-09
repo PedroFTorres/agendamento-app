@@ -774,17 +774,33 @@ async function gerarRelatorio() {
   if (repSel)     query = query.where("representanteNome", "==", repSel);
 
   const snap = await query.get();
+  // 🔥 Buscar preços dos produtos
+const produtosSnap = await db.collection("produtos")
+  .where("userId", "==", uid)
+  .get();
+
+const mapaPrecos = {};
+produtosSnap.forEach(doc => {
+  const p = doc.data();
+  mapaPrecos[p.nome] = p.preco || 0;
+});
 
   let totalGeral = 0;
+  let faturamentoPrevisto = 0;
   const porProduto = {};
   const porRep = {};
   const porCli = {};
   const linhasTabela = [];
 
-  snap.forEach(doc => {
-    const d = doc.data();
-    const qtd = d.quantidade || 0;
-    totalGeral += qtd;
+ snap.forEach(doc => {
+  const d = doc.data();
+  const qtd = d.quantidade || 0;
+
+  totalGeral += qtd;
+
+  // 💰 cálculo faturamento
+  const preco = mapaPrecos[d.produtoNome] || 0;
+  faturamentoPrevisto += qtd * preco;
 
     // Totais
     porProduto[d.produtoNome] = (porProduto[d.produtoNome] || 0) + qtd;
@@ -802,7 +818,11 @@ async function gerarRelatorio() {
   });
 
   // Renderiza os totais na tela
-  let html = `<p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p><ul>`;
+ let html = `
+  <p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p>
+  <p><strong>Previsão de Faturamento:</strong> ${formatMoeda(faturamentoPrevisto)}</p>
+  <ul>
+`;
   for (const [prod, qtd] of Object.entries(porProduto)) {
     html += `<li>${prod}: ${formatQuantidade(qtd)}</li>`;
   }
@@ -832,7 +852,15 @@ async function gerarRelatorio() {
   });
 
   // Cache para exportar PDF
-  window.__REL_CACHE__ = { start, end, linhasTabela, totalGeral, porProduto, porRep };
+  window.__REL_CACHE__ = { 
+  start, 
+  end, 
+  linhasTabela, 
+  totalGeral, 
+  faturamentoPrevisto, // 👈 adicionar isso
+  porProduto, 
+  porRep 
+};
 }
 
 // ================== EXPORTAR PDF ==================
@@ -842,7 +870,7 @@ async function exportarPDF() {
     return;
   }
 
-  const { start, end, linhasTabela, totalGeral, porProduto, porRep } = window.__REL_CACHE__;
+  const { start, end, linhasTabela, totalGeral, faturamentoPrevisto, porProduto, porRep } = window.__REL_CACHE__;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
@@ -1033,6 +1061,8 @@ async function exportarPDF() {
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.text(`TOTAL GERAL: ${formatQuantidade(totalGeral)}`, 14, y);
+  y += 8;
+doc.text(`PREVISÃO DE FATURAMENTO: ${formatMoeda(faturamentoPrevisto)}`, 14, y);
 
   y += 12;
 
