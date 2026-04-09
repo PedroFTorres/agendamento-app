@@ -1228,14 +1228,15 @@ async function abrirModalAgendamento(dataSelecionada) {
     const produto = selProduto.value;
     const qtd = parseInt(modal.querySelector("#m-qtd").value);
 
-    await db.collection("agendamentos").add({
-      userId: user.uid,
-      clienteNome: cliente,
-      produtoNome: produto,
-      quantidade: qtd,
-      data: dataSelecionada,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+   await db.collection("agendamentos").add({
+  userId: user.uid,
+  clienteNome: cliente,
+  representanteNome: representante, // ✅ CORREÇÃO AQUI
+  produtoNome: produto,
+  quantidade: qtd,
+  data: dataSelecionada,
+  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+});
 
     modal.remove();
   };
