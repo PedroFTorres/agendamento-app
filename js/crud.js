@@ -980,7 +980,6 @@ async function exportarPDF() {
   doc.text("Cliente", 16, y);
   doc.text("Produto", 70, y);
   doc.text("Qtd", 120, y);
-  doc.text("Data", 140, y);
   doc.text("Valor", 175, y);
 
   y += 6;
@@ -1002,8 +1001,7 @@ async function exportarPDF() {
 
     // Quantidade e Data
     doc.text(formatQuantidade(row.qtd), 120, y, { align: "right" });
-    doc.text(formatDateBR(row.data), 140, y);
-    doc.text(formatMoeda(row.valorTotal), 175, y, { align: "right" });
+    doc.text(formatMoeda(row.valorTotal), 160, y, { align: "right" });
 
     // Ajusta Y para próxima linha
     y = Math.max(endY, y) + 6;
