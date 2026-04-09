@@ -1889,20 +1889,28 @@ function renderPrecosClientes() {
 
   // carregar clientes
   waitForAuth().then(user => {
-    db.collection("clientes")
-      .where("userId","==",user.uid)
-      .orderBy("nome")
-      .get()
-      .then(snap=>{
-        $cliente.innerHTML = `<option value="">Selecione cliente</option>`;
-        snap.forEach(doc=>{
-          const opt = document.createElement("option");
-          opt.value = doc.data().nome;
-          opt.textContent = doc.data().nome;
-          $cliente.appendChild(opt);
-        });
-      });
+   db.collection("clientes")
+  .where("userId","==",user.uid)
+  .get()
+  .then(snap=>{
+    $cliente.innerHTML = `<option value="">Selecione cliente</option>`;
 
+    const lista = [];
+
+    snap.forEach(doc=>{
+      lista.push(doc.data());
+    });
+
+    // 🔥 ordena no JS (garantido)
+    lista.sort((a,b)=> a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    lista.forEach(d=>{
+      const opt = document.createElement("option");
+      opt.value = d.nome;
+      opt.textContent = d.nome;
+      $cliente.appendChild(opt);
+    });
+  });
     db.collection("produtos")
       .where("userId","==",user.uid)
       .get()
