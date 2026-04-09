@@ -977,10 +977,11 @@ async function exportarPDF() {
   // Cabeçalho da tabela
   doc.setFillColor(200, 200, 200);
   doc.rect(14, y - 5, 180, 8, "F");
-  doc.text("Cliente", 16, y);
-  doc.text("Produto", 70, y);
-  doc.text("Qtd", 120, y);
-  doc.text("Valor", 175, y);
+ // CABEÇALHO
+doc.text("Cliente", 14, y);
+doc.text("Produto", 60, y);
+doc.text("Qtd", 120, y);
+doc.text("Valor", 170, y); // 🔥 posição final
 
   y += 6;
 
