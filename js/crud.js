@@ -780,6 +780,18 @@ const produtosSnap = await db.collection("produtos")
   .get();
 
 const mapaPrecos = {};
+// 🔥 preços por cliente
+const precosClientesSnap = await db.collection("precos_clientes")
+  .where("userId", "==", uid)
+  .get();
+
+const mapaPrecosClientes = {};
+
+precosClientesSnap.forEach(doc => {
+  const p = doc.data();
+  const chave = `${p.clienteNome}_${p.produtoNome}`;
+  mapaPrecosClientes[chave] = p.preco;
+});
 produtosSnap.forEach(doc => {
   const p = doc.data();
   mapaPrecos[p.nome] = p.preco || 0;
@@ -798,23 +810,29 @@ produtosSnap.forEach(doc => {
 
   totalGeral += qtd;
 
-  // 💰 cálculo faturamento
-  const preco = mapaPrecos[d.produtoNome] || 0;
-  faturamentoPrevisto += qtd * preco;
+// 💰 preço inteligente
+const precoPadrao = mapaPrecos[d.produtoNome] || 0;
+const precoCliente = mapaPrecosClientes[`${d.clienteNome}_${d.produtoNome}`];
+
+const precoFinal = precoCliente ?? precoPadrao;
+
+const valorTotal = qtd * precoFinal;
+
+faturamentoPrevisto += valorTotal;
 
     // Totais
     porProduto[d.produtoNome] = (porProduto[d.produtoNome] || 0) + qtd;
     porRep[d.representanteNome] = (porRep[d.representanteNome] || 0) + qtd;
     porCli[d.clienteNome] = (porCli[d.clienteNome] || 0) + qtd;
 
-    // Linha detalhada (agora inclui a data do carregamento)
     linhasTabela.push({
-      cliente: d.clienteNome || "-",
-      produto: d.produtoNome || "-",
-      representante: d.representanteNome || "-",
-      qtd: qtd,
-      data: d.data || "-"
-    });
+  cliente: d.clienteNome || "-",
+  produto: d.produtoNome || "-",
+  representante: d.representanteNome || "-",
+  qtd: qtd,
+  data: d.data || "-",
+  valorTotal: valorTotal // 🔥 NOVO
+});
   });
 
   // Renderiza os totais na tela
@@ -962,7 +980,9 @@ async function exportarPDF() {
   doc.text("Cliente", 16, y);
   doc.text("Produto", 70, y);
   doc.text("Qtd", 120, y);
-  doc.text("Data do Carregamento", 140, y);
+  doc.text("Data", 140, y);
+  doc.text("Valor", 175, y);
+
   y += 6;
 
   let rowIndex = 0;
@@ -983,6 +1003,7 @@ async function exportarPDF() {
     // Quantidade e Data
     doc.text(formatQuantidade(row.qtd), 120, y, { align: "right" });
     doc.text(formatDateBR(row.data), 140, y);
+    doc.text(formatMoeda(row.valorTotal), 175, y, { align: "right" });
 
     // Ajusta Y para próxima linha
     y = Math.max(endY, y) + 6;
