@@ -1242,19 +1242,38 @@ async function abrirModalAgendamento(dataSelecionada) {
   };
 }
 async function abrirEdicaoAgendamento(id) {
+  const user = await waitForAuth();
+
   const snap = await db.collection("agendamentos").doc(id).get();
   const d = snap.data();
+
+  const clientesSnap = await db.collection("clientes")
+    .where("userId","==",user.uid)
+    .orderBy("nome")
+    .get();
+
+  const produtosSnap = await db.collection("produtos")
+    .where("userId","==",user.uid)
+    .get();
+
+  const repsSnap = await db.collection("representantes")
+    .where("userId","==",user.uid)
+    .orderBy("nome")
+    .get();
 
   const modal = document.createElement("div");
   modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
 
   modal.innerHTML = `
     <div class="bg-white p-6 rounded w-full max-w-md space-y-3">
-      <h3 class="text-lg font-bold">Editar</h3>
+      <h3 class="text-lg font-bold">Editar Agendamento</h3>
 
-      <input id="edit-cliente" class="border p-2 w-full" value="${d.clienteNome}">
-      <input id="edit-produto" class="border p-2 w-full" value="${d.produtoNome}">
-      <input id="edit-qtd" type="number" class="border p-2 w-full" value="${d.quantidade}">
+      <select id="edit-cliente" class="border p-2 w-full"></select>
+      <select id="edit-representante" class="border p-2 w-full"></select>
+      <select id="edit-produto" class="border p-2 w-full"></select>
+
+      <input id="edit-data" type="date" class="border p-2 w-full">
+      <input id="edit-qtd" type="number" class="border p-2 w-full">
 
       <div class="flex justify-between">
         <button id="excluir" class="bg-red-600 text-white px-3 py-1 rounded">Excluir</button>
@@ -1265,17 +1284,57 @@ async function abrirEdicaoAgendamento(id) {
 
   document.body.appendChild(modal);
 
-  modal.querySelector("#salvar").onclick = async ()=>{
+  const selCliente = modal.querySelector("#edit-cliente");
+  const selProduto = modal.querySelector("#edit-produto");
+  const selRep = modal.querySelector("#edit-representante");
+
+  // CLIENTES
+  clientesSnap.forEach(doc => {
+    const opt = document.createElement("option");
+    opt.value = doc.data().nome;
+    opt.textContent = doc.data().nome;
+    if (doc.data().nome === d.clienteNome) opt.selected = true;
+    selCliente.appendChild(opt);
+  });
+
+  // REPRESENTANTES
+  repsSnap.forEach(doc => {
+    const opt = document.createElement("option");
+    opt.value = doc.data().nome;
+    opt.textContent = doc.data().nome;
+    if (doc.data().nome === d.representanteNome) opt.selected = true;
+    selRep.appendChild(opt);
+  });
+
+  // PRODUTOS
+  produtosSnap.forEach(doc => {
+    const opt = document.createElement("option");
+    opt.value = doc.data().nome;
+    opt.textContent = doc.data().nome;
+    if (doc.data().nome === d.produtoNome) opt.selected = true;
+    selProduto.appendChild(opt);
+  });
+
+  // Preenche outros campos
+  modal.querySelector("#edit-qtd").value = d.quantidade || 0;
+  modal.querySelector("#edit-data").value = d.data || "";
+
+  // SALVAR
+  modal.querySelector("#salvar").onclick = async () => {
     await db.collection("agendamentos").doc(id).update({
-      clienteNome: modal.querySelector("#edit-cliente").value,
-      produtoNome: modal.querySelector("#edit-produto").value,
-      quantidade: parseInt(modal.querySelector("#edit-qtd").value)
+      clienteNome: selCliente.value,
+      representanteNome: selRep.value,
+      produtoNome: selProduto.value,
+      quantidade: parseInt(modal.querySelector("#edit-qtd").value) || 0,
+      data: modal.querySelector("#edit-data").value
     });
+
     modal.remove();
   };
 
-  modal.querySelector("#excluir").onclick = async ()=>{
-    if(confirm("Excluir?")){
+  // EXCLUIR
+  modal.querySelector("#excluir").onclick = async () => {
+    if (confirm("Excluir agendamento?")) {
       await db.collection("agendamentos").doc(id).delete();
       modal.remove();
     }
