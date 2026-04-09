@@ -1529,6 +1529,10 @@ async function carregarRepresentantes($select, valorAtual = "") {
 
 // Procura qualquer campo de "representante" no DOM e converte para <select>
 function enhanceRepresentanteCampos(root = document) {
+  // ❌ NÃO aplicar na tela de cadastro de representantes
+if (document.getElementById("representantes-nome")) {
+  return;
+}
   // 1) matches por id/name comuns
   const candidatosDiretos = Array.from(root.querySelectorAll(
     "#cliente-representante, #novo-rep, #cad-rep, [name='representante']"
