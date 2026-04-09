@@ -1975,7 +1975,6 @@ function renderPrecosClientes() {
   waitForAuth().then(user=>{
     db.collection("precos_clientes")
       .where("userId","==",user.uid)
-      .orderBy("createdAt","desc")
       .onSnapshot(snap=>{
         $list.innerHTML = "";
 
