@@ -1955,7 +1955,7 @@ function renderPrecosClientes() {
     const produto = $produto.value;
     const preco = parseFloat(document.getElementById("pc-preco").value);
 
-    if (!cliente || !produto || !preco) {
+    if (!cliente || !produto || isNaN(preco)) {
       alert("Preencha tudo!");
       return;
     }
@@ -1974,7 +1974,7 @@ function renderPrecosClientes() {
   // listar
   waitForAuth().then(user=>{
     db.collection("precos_clientes")
-      .where("userId","==",user.uid)
+  .onSnapshot(snap=>{
       .onSnapshot(snap=>{
         $list.innerHTML = "";
 
@@ -1988,7 +1988,7 @@ function renderPrecosClientes() {
             <div>
               <strong>${d.clienteNome}</strong> → ${d.produtoNome}
               <div class="text-sm text-gray-500">
-                ${formatMoeda(d.preco)}
+                ${formatMoeda(d.preco || 0)}
               </div>
             </div>
             <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">
