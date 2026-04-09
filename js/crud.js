@@ -1865,3 +1865,121 @@ document.addEventListener("DOMContentLoaded", ()=>{
   aplicarVinculoClienteRep();
   __obsVinc.observe(document.body, { childList:true, subtree:true });
 });
+
+function renderPrecosClientes() {
+  pageContent.innerHTML = `
+    <h2 class="text-xl font-bold mb-4">Preços por Cliente</h2>
+
+    <form id="form-preco" class="bg-white p-4 rounded shadow space-y-3">
+      <select id="pc-cliente" class="border p-2 w-full"></select>
+      <select id="pc-produto" class="border p-2 w-full"></select>
+      <input id="pc-preco" type="number" step="0.0001" class="border p-2 w-full" placeholder="Preço">
+
+      <button class="bg-blue-600 text-white p-2 rounded w-full">Salvar</button>
+    </form>
+
+    <ul id="pc-list" class="mt-4 space-y-2"></ul>
+  `;
+
+  const $cliente = document.getElementById("pc-cliente");
+  const $produto = document.getElementById("pc-produto");
+  const $form = document.getElementById("form-preco");
+  const $list = document.getElementById("pc-list");
+
+  // carregar clientes
+  waitForAuth().then(user => {
+    db.collection("clientes")
+      .where("userId","==",user.uid)
+      .orderBy("nome")
+      .get()
+      .then(snap=>{
+        $cliente.innerHTML = `<option value="">Selecione cliente</option>`;
+        snap.forEach(doc=>{
+          const opt = document.createElement("option");
+          opt.value = doc.data().nome;
+          opt.textContent = doc.data().nome;
+          $cliente.appendChild(opt);
+        });
+      });
+
+    db.collection("produtos")
+      .where("userId","==",user.uid)
+      .get()
+      .then(snap=>{
+        $produto.innerHTML = `<option value="">Selecione produto</option>`;
+        snap.forEach(doc=>{
+          const opt = document.createElement("option");
+          opt.value = doc.data().nome;
+          opt.textContent = doc.data().nome;
+          $produto.appendChild(opt);
+        });
+      });
+  });
+
+  // salvar preço
+  $form.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+
+    const user = await waitForAuth();
+
+    const cliente = $cliente.value;
+    const produto = $produto.value;
+    const preco = parseFloat(document.getElementById("pc-preco").value);
+
+    if (!cliente || !produto || !preco) {
+      alert("Preencha tudo!");
+      return;
+    }
+
+    await db.collection("precos_clientes").add({
+      userId: user.uid,
+      clienteNome: cliente,
+      produtoNome: produto,
+      preco,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    $form.reset();
+  });
+
+  // listar
+  waitForAuth().then(user=>{
+    db.collection("precos_clientes")
+      .where("userId","==",user.uid)
+      .orderBy("createdAt","desc")
+      .onSnapshot(snap=>{
+        $list.innerHTML = "";
+
+        snap.forEach(doc=>{
+          const d = doc.data();
+
+          const li = document.createElement("li");
+          li.className = "p-2 bg-white rounded shadow flex justify-between";
+
+          li.innerHTML = `
+            <div>
+              <strong>${d.clienteNome}</strong> → ${d.produtoNome}
+              <div class="text-sm text-gray-500">
+                ${formatMoeda(d.preco)}
+              </div>
+            </div>
+            <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">
+              Excluir
+            </button>
+          `;
+
+          $list.appendChild(li);
+        });
+      });
+  });
+
+  // excluir
+  $list.addEventListener("click", async e=>{
+    if (e.target.classList.contains("btn-del")) {
+      const id = e.target.dataset.id;
+      if (confirm("Excluir?")) {
+        await db.collection("precos_clientes").doc(id).delete();
+      }
+    }
+  });
+}
