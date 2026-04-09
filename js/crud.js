@@ -1971,35 +1971,33 @@ function renderPrecosClientes() {
     $form.reset();
   });
 
-  // listar
-  waitForAuth().then(user=>{
-    db.collection("precos_clientes")
-  .onSnapshot(snap=>{
-      .onSnapshot(snap=>{
-        $list.innerHTML = "";
+ waitForAuth().then(user=>{
+  db.collection("precos_clientes")
+    .onSnapshot(snap=>{
+      $list.innerHTML = "";
 
-        snap.forEach(doc=>{
-          const d = doc.data();
+      snap.forEach(doc=>{
+        const d = doc.data();
 
-          const li = document.createElement("li");
-          li.className = "p-2 bg-white rounded shadow flex justify-between";
+        const li = document.createElement("li");
+        li.className = "p-2 bg-white rounded shadow flex justify-between";
 
-          li.innerHTML = `
-            <div>
-              <strong>${d.clienteNome}</strong> → ${d.produtoNome}
-              <div class="text-sm text-gray-500">
-                ${formatMoeda(d.preco || 0)}
-              </div>
+        li.innerHTML = `
+          <div>
+            <strong>${d.clienteNome}</strong> → ${d.produtoNome}
+            <div class="text-sm text-gray-500">
+              ${formatMoeda(d.preco || 0)}
             </div>
-            <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">
-              Excluir
-            </button>
-          `;
+          </div>
+          <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">
+            Excluir
+          </button>
+        `;
 
-          $list.appendChild(li);
-        });
+        $list.appendChild(li);
       });
-  });
+    });
+});
 
   // excluir
   $list.addEventListener("click", async e=>{
