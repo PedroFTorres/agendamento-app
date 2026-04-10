@@ -1977,10 +1977,44 @@ function renderPrecosClientes() {
     .onSnapshot(snap=>{
       $list.innerHTML = "";
 
-      snap.forEach(doc=>{
-        const d = doc.data();
+      $list.innerHTML = "";
 
-        const li = document.createElement("li");
+const mapa = {};
+
+snap.forEach(doc=>{
+  const d = doc.data();
+
+  if (!mapa[d.clienteNome]) {
+    mapa[d.clienteNome] = [];
+  }
+
+  mapa[d.clienteNome].push({
+    id: doc.id,
+    produto: d.produtoNome,
+    preco: d.preco
+  });
+});
+
+// 🔥 render agrupado por cliente
+Object.entries(mapa).forEach(([cliente, itens])=>{
+
+  const box = document.createElement("div");
+  box.className = "bg-white p-3 rounded shadow";
+
+  let html = `<div class="font-bold mb-2">${cliente}</div>`;
+
+  itens.forEach(item=>{
+    html += `
+      <div class="flex justify-between border-b py-1">
+        <span>${item.produto}</span>
+        <span>${formatMoeda(item.preco)}</span>
+      </div>
+    `;
+  });
+
+  box.innerHTML = html;
+  $list.appendChild(box);
+});
         li.className = "p-2 bg-white rounded shadow flex justify-between";
 
         li.innerHTML = `
