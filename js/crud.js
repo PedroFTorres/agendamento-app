@@ -2015,24 +2015,9 @@ Object.entries(mapa).forEach(([cliente, itens])=>{
   box.innerHTML = html;
   $list.appendChild(box);
 });
-        li.className = "p-2 bg-white rounded shadow flex justify-between";
-
-        li.innerHTML = `
-          <div>
-            <strong>${d.clienteNome}</strong> → ${d.produtoNome}
-            <div class="text-sm text-gray-500">
-              ${formatMoeda(d.preco || 0)}
-            </div>
-          </div>
-          <button data-id="${doc.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">
-            Excluir
-          </button>
-        `;
-
-        $list.appendChild(li);
+        
       });
     });
-});
 
   // excluir
   $list.addEventListener("click", async e=>{
