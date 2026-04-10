@@ -1973,6 +1973,7 @@ function renderPrecosClientes() {
 
  waitForAuth().then(user=>{
   db.collection("precos_clientes")
+    .where("userId", "==", user.uid) // 🔥 CORREÇÃO
     .onSnapshot(snap=>{
       $list.innerHTML = "";
 
