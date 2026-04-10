@@ -2004,13 +2004,26 @@ Object.entries(mapa).forEach(([cliente, itens])=>{
   let html = `<div class="font-bold mb-2">${cliente}</div>`;
 
   itens.forEach(item=>{
-    html += `
-      <div class="flex justify-between border-b py-1">
-        <span>${item.produto}</span>
+  html += `
+    <div class="flex justify-between items-center border-b py-1">
+      
+      <span>${item.produto}</span>
+
+      <div class="flex gap-2 items-center">
         <span>${formatMoeda(item.preco)}</span>
+
+        <button data-id="${item.id}" class="bg-yellow-500 text-white px-2 py-1 rounded btn-edit">
+          Editar
+        </button>
+
+        <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">
+          Excluir
+        </button>
       </div>
-    `;
-  });
+
+    </div>
+  `;
+});
 
   box.innerHTML = html;
   $list.appendChild(box);
@@ -2019,13 +2032,28 @@ Object.entries(mapa).forEach(([cliente, itens])=>{
       });
     });
 
-  // excluir
   $list.addEventListener("click", async e=>{
-    if (e.target.classList.contains("btn-del")) {
-      const id = e.target.dataset.id;
-      if (confirm("Excluir?")) {
-        await db.collection("precos_clientes").doc(id).delete();
-      }
+
+  const id = e.target.dataset.id;
+  if (!id) return;
+
+  // EXCLUIR
+  if (e.target.classList.contains("btn-del")) {
+    if (confirm("Excluir?")) {
+      await db.collection("precos_clientes").doc(id).delete();
     }
-  });
+  }
+
+  // EDITAR
+  if (e.target.classList.contains("btn-edit")) {
+    const novoPreco = prompt("Novo preço:");
+
+    if (novoPreco && !isNaN(parseFloat(novoPreco))) {
+      await db.collection("precos_clientes").doc(id).update({
+        preco: parseFloat(novoPreco)
+      });
+    }
+  }
+
+});
 }
