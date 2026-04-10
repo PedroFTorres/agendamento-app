@@ -1957,7 +1957,8 @@ function renderPrecosClientes() {
 
     const cliente = $cliente.value;
     const produto = $produto.value;
-    const preco = parseFloat(document.getElementById("pc-preco").value);
+    const valorInput = document.getElementById("pc-preco").value.replace(",", ".");
+const preco = parseFloat(valorInput);
 
     if (!cliente || !produto || isNaN(preco)) {
       alert("Preencha tudo!");
@@ -2048,16 +2049,19 @@ Object.entries(mapa).forEach(([cliente, itens])=>{
     }
   }
 
-  // EDITAR
-  if (e.target.classList.contains("btn-edit")) {
-    const novoPreco = prompt("Novo preço:");
+ if (e.target.classList.contains("btn-edit")) {
+  let novoPreco = prompt("Novo preço (ex: 0,700):");
 
-    if (novoPreco && !isNaN(parseFloat(novoPreco))) {
-      await db.collection("precos_clientes").doc(id).update({
-        preco: parseFloat(novoPreco)
-      });
-    }
+  if (novoPreco) {
+    novoPreco = novoPreco.replace(",", ".");
   }
+
+  if (novoPreco && !isNaN(parseFloat(novoPreco))) {
+    await db.collection("precos_clientes").doc(id).update({
+      preco: parseFloat(novoPreco)
+    });
+  }
+}
 
 });
 }
