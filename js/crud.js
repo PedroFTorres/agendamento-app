@@ -20,7 +20,10 @@ function formatQuantidade(num) {
 }
 function formatMoeda(num) {
   return Number(num || 0).toLocaleString("pt-BR", {
-    style: "currency", currency: "BRL", minimumFractionDigits: 2
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3
   });
 }
 function formatPrecoProduto(num) {
