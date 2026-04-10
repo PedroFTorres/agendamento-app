@@ -294,7 +294,7 @@ if (type === "clientes") {
               <div class="grid grid-cols-1 gap-3">
                 <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome do Produto">
                 <input id="edit-categoria" class="border p-2 rounded" value="${d.categoria || ""}" placeholder="Categoria">
-                <input id="edit-preco" type="number" step="0.01" class="border p-2 rounded" value="${d.preco || 0}" placeholder="Preço">
+                <input id="edit-preco" type="number" step="0.0001" class="border p-2 rounded" value="${d.preco || 0}" placeholder="Preço">
               </div>
               <div class="flex justify-end space-x-3 mt-4">
                 <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
@@ -309,7 +309,8 @@ if (type === "clientes") {
           modal.querySelector("#btn-save").addEventListener("click", async () => {
             const nome = modal.querySelector("#edit-nome").value.trim();
             const categoria = modal.querySelector("#edit-categoria").value.trim();
-            const preco = parseFloat(modal.querySelector("#edit-preco").value) || 0;
+           const valor = modal.querySelector("#edit-preco").value.replace(",", ".");
+           const preco = valor ? parseFloat(valor) : d.preco;
 
             await db.collection(type).doc(id).update({ nome, categoria, preco });
             modal.remove();
