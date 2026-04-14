@@ -521,17 +521,18 @@ function renderAgendamentos() {
     return `${d}/${m}`;
   }
 
-  // Listagem agrupada (com disponibilidade por produto/dia)
-  waitForAuth().then(user => {
-    db.collection("agendamentos")
- let query = db.collection("agendamentos")
-  .where("userId", "==", user.uid);
+ waitForAuth().then(user => {
 
-if (!IS_ADMIN) {
-  query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
-}
-      .orderBy("data", "asc")
-      .onSnapshot(snap => {
+  let query = db.collection("agendamentos")
+    .where("userId", "==", user.uid);
+
+  if (!IS_ADMIN) {
+    query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
+  }
+
+  query
+    .orderBy("data", "asc")
+    .onSnapshot(snap => {
         (async () => {
           $list.innerHTML = "";
 
@@ -1147,10 +1148,14 @@ function renderDashboard() {
   `;
 
   waitForAuth().then(user => {
-   db.collection("agendamentos")
-  .where("userId", "==", user.uid)
-  .where("representanteNome", "==", REPRESENTANTE_ATUAL)
-      .onSnapshot(snap => {
+   let query = db.collection("agendamentos")
+  .where("userId", "==", user.uid);
+
+if (!IS_ADMIN) {
+  query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
+}
+
+query.onSnapshot(snap => {
         // Paleta de cores para eventos
         const cores = [
           "#f87171", // vermelho
