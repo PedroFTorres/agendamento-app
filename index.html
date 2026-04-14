@@ -57,9 +57,9 @@
 }
   </style>
 </head>
-<body class="min-h-screen flex">
+<body class="min-h-screen md:flex">
   <!-- Sidebar -->
-  <aside class="sidebar w-64 bg-white shadow-md p-4">
+  <aside id="sidebar" class="sidebar w-64 bg-white shadow-md p-4 hidden md:block">
     <h2 class="text-xl font-bold mb-6">Menu</h2>
     <ul class="space-y-2">
       <li><button data-page="dashboard" class="menu-item w-full text-left p-2 rounded hover:bg-gray-200">Dashboard</button></li>
@@ -79,10 +79,16 @@
 
   <!-- Main -->
   <main class="flex-1 p-6">
-    <header class="mb-4">
-      <h1 class="text-2xl font-bold">Dashboard</h1>
-      <p class="text-sm text-gray-500">Use o menu à esquerda para navegar.</p>
-    </header>
+   <header class="mb-4">
+
+  <!-- BOTÃO MENU (CELULAR) -->
+  <button onclick="toggleMenu()" class="md:hidden mb-2 bg-blue-600 text-white px-3 py-2 rounded">
+    ☰ Menu
+  </button>
+
+  <h1 class="text-2xl font-bold">Dashboard</h1>
+  <p class="text-sm text-gray-500">Use o menu à esquerda para navegar.</p>
+</header>
 
     <!-- Conteúdo dinâmico -->
     <div id="page-content" class="space-y-4">
@@ -113,6 +119,7 @@
   <script src="js/crud.js"></script>
   <script src="js/producao.js"></script>
   <script src="js/recibo.js"></script>
-  
+  <script>function toggleMenu() {const menu = document.getElementById("sidebar");menu.classList.toggle("hidden");}</script>
+    
 </body>
 </html>
