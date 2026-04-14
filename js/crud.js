@@ -2,6 +2,7 @@
 const pageContent = document.getElementById("page-content");
 
 let REPRESENTANTE_ATUAL = null;
+let IS_ADMIN = true;
 
 async function carregarRepresentanteLogado() {
   const user = await waitForAuth();
@@ -13,8 +14,9 @@ async function carregarRepresentanteLogado() {
 
   if (!snap.empty) {
     REPRESENTANTE_ATUAL = snap.docs[0].data().nome;
+    IS_ADMIN = false;
   } else {
-    alert("⚠️ Este usuário não está vinculado a um representante.");
+    IS_ADMIN = true;
   }
 }
 
@@ -522,8 +524,12 @@ function renderAgendamentos() {
   // Listagem agrupada (com disponibilidade por produto/dia)
   waitForAuth().then(user => {
     db.collection("agendamentos")
-  .where("userId", "==", user.uid)
-  .where("representanteNome", "==", REPRESENTANTE_ATUAL)
+ let query = db.collection("agendamentos")
+  .where("userId", "==", user.uid);
+
+if (!IS_ADMIN) {
+  query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
+}
       .orderBy("data", "asc")
       .onSnapshot(snap => {
         (async () => {
