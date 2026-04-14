@@ -1536,15 +1536,20 @@ async function abrirResumoDoDia(dataSelecionada) {
 document.querySelectorAll(".menu-item").forEach(btn => {
   btn.addEventListener("click", () => {
     const page = btn.dataset.page;
+
     if (page === "agendamentos") renderAgendamentos();
     else if (page === "relatorios") renderRelatorios();
     else if (page === "dashboard") renderDashboard();
     else if (page === "producao") renderProducao();
     else if (page === "recibo") renderRecibo();
     else if (page === "whatsapp") renderWhatsapp();
-    else if (page === "precos_clientes") renderPrecosClientes();
-
     else renderForm(page);
+
+    // 👇 ISSO AQUI QUE RESOLVE SEU PROBLEMA
+    const menu = document.getElementById("sidebar");
+    if (window.innerWidth < 768) {
+      menu.classList.add("-translate-x-full");
+    }
   });
 });
 // ====== PATCH GLOBAL: transformar "Representante" em <select> com lista do Firestore ======
