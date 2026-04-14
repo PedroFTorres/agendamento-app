@@ -59,7 +59,7 @@
 </head>
 <body class="min-h-screen md:flex">
   <!-- Sidebar -->
-  <aside id="sidebar" class="sidebar w-64 bg-white shadow-md p-4 hidden md:block">
+  <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white shadow-md p-4 transform -translate-x-full transition-transform duration-300 z-50 md:relative md:translate-x-0">
     <h2 class="text-xl font-bold mb-6">Menu</h2>
     <ul class="space-y-2">
       <li><button data-page="dashboard" class="menu-item w-full text-left p-2 rounded hover:bg-gray-200">Dashboard</button></li>
@@ -119,7 +119,7 @@
   <script src="js/crud.js"></script>
   <script src="js/producao.js"></script>
   <script src="js/recibo.js"></script>
-  <script>function toggleMenu() {const menu = document.getElementById("sidebar");menu.classList.toggle("hidden");}</script>
+  <script>function toggleMenu() {const menu = document.getElementById("sidebar");menu.classList.toggle("-translate-x-full");}</script>
     
 </body>
 </html>
