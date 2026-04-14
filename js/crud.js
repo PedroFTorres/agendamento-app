@@ -18,7 +18,7 @@ async function carregarRepresentanteLogado() {
   }
 }
 
-await carregarRepresentanteLogado();
+carregarRepresentanteLogado();
 
 function toast(msg) {
   try { alert(msg); } catch (_) { console.log(msg); }
