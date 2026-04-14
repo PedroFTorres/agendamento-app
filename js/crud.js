@@ -2,35 +2,31 @@
 const pageContent = document.getElementById("page-content");
 
 let REPRESENTANTE_ATUAL = null;
-let IS_ADMIN = false;
+let PERFIL = null;
 
-async function carregarRepresentanteLogado() {
+async function carregarUsuario() {
   const user = await waitForAuth();
 
-  // 👑 SE FOR VOCÊ → ADMIN
-  if (user.email === "pedrofernandot@gmail.com") {
-    IS_ADMIN = true;
-    REPRESENTANTE_ATUAL = null;
-    console.log("ADMIN LOGADO");
-    return;
-  }
-
-  // 👷 SENÃO → REPRESENTANTE
-  const snap = await db.collection("representantes")
+  const snap = await db.collection("usuarios")
     .where("uid", "==", user.uid)
     .limit(1)
     .get();
 
   if (!snap.empty) {
-    REPRESENTANTE_ATUAL = snap.docs[0].data().nome;
-    IS_ADMIN = false;
-    console.log("REP:", REPRESENTANTE_ATUAL);
+    const dados = snap.docs[0].data();
+
+    REPRESENTANTE_ATUAL = dados.nome;
+    PERFIL = dados.perfil;
+
+    console.log("Perfil:", PERFIL);
+    console.log("Nome:", REPRESENTANTE_ATUAL);
+
   } else {
-    alert("⚠️ Usuário não vinculado a representante");
+    alert("Usuário não cadastrado");
   }
 }
 
-carregarRepresentanteLogado();
+carregarUsuario();
 
 function toast(msg) {
   try { alert(msg); } catch (_) { console.log(msg); }
@@ -570,13 +566,11 @@ function renderAgendamentos() {
 
  waitForAuth().then(user => {
 
-  let query = db.collection("agendamentos")
-    .where("userId", "==", user.uid);
+  let query = db.collection("agendamentos");
 
-  if (!IS_ADMIN) {
-    query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
-  }
-
+if (PERFIL === "representante") {
+  query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
+}
   query
     .orderBy("data", "asc")
     .onSnapshot(snap => {
@@ -1198,7 +1192,7 @@ function renderDashboard() {
    let query = db.collection("agendamentos")
   .where("userId", "==", user.uid);
 
-if (!IS_ADMIN) {
+if (PERFIL === "representante") {
   query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
 }
 
