@@ -1,12 +1,24 @@
 // ======================= UTIL =========================
 const pageContent = document.getElementById("page-content");
 
-let REPRESENTANTE_ATUAL = localStorage.getItem("repNome") || "";
+let REPRESENTANTE_ATUAL = null;
 
-if (!REPRESENTANTE_ATUAL) {
-  REPRESENTANTE_ATUAL = prompt("Digite seu nome (representante):");
-  localStorage.setItem("repNome", REPRESENTANTE_ATUAL);
+async function carregarRepresentanteLogado() {
+  const user = await waitForAuth();
+
+  const snap = await db.collection("representantes")
+    .where("uid", "==", user.uid)
+    .limit(1)
+    .get();
+
+  if (!snap.empty) {
+    REPRESENTANTE_ATUAL = snap.docs[0].data().nome;
+  } else {
+    alert("⚠️ Este usuário não está vinculado a um representante.");
+  }
 }
+
+carregarRepresentanteLogado();
 
 function toast(msg) {
   try { alert(msg); } catch (_) { console.log(msg); }
@@ -368,6 +380,8 @@ function renderForm(type) {
       payload.representante = document.getElementById("clientes-rep").value.trim();
     } else if (type === "representantes") {
       payload.nome = document.getElementById("representantes-nome").value.trim();
+payload.email = auth.currentUser.email;
+payload.uid = auth.currentUser.uid;
     } else if (type === "produtos") {
       payload.nome = document.getElementById("produtos-nome").value.trim();
       payload.preco = parseFloat(document.getElementById("produtos-preco").value)||0;
@@ -484,7 +498,7 @@ function renderAgendamentos() {
     await db.collection("agendamentos").add({
       userId: user.uid,
       clienteNome,
-      representanteNome: repNome,
+      representanteNome: REPRESENTANTE_ATUAL,
       produtoNome: prodNome,
       data,
       quantidade,
@@ -508,7 +522,8 @@ function renderAgendamentos() {
   // Listagem agrupada (com disponibilidade por produto/dia)
   waitForAuth().then(user => {
     db.collection("agendamentos")
-      .where("userId", "==", user.uid)
+  .where("userId", "==", user.uid)
+  .where("representanteNome", "==", REPRESENTANTE_ATUAL)
       .orderBy("data", "asc")
       .onSnapshot(snap => {
         (async () => {
@@ -1126,8 +1141,9 @@ function renderDashboard() {
   `;
 
   waitForAuth().then(user => {
-    db.collection("agendamentos")
-      .where("userId", "==", user.uid)
+   db.collection("agendamentos")
+  .where("userId", "==", user.uid)
+  .where("representanteNome", "==", REPRESENTANTE_ATUAL)
       .onSnapshot(snap => {
         // Paleta de cores para eventos
         const cores = [
