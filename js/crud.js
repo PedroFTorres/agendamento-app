@@ -1,6 +1,13 @@
 // ======================= UTIL =========================
 const pageContent = document.getElementById("page-content");
 
+let REPRESENTANTE_ATUAL = localStorage.getItem("repNome") || "";
+
+if (!REPRESENTANTE_ATUAL) {
+  REPRESENTANTE_ATUAL = prompt("Digite seu nome (representante):");
+  localStorage.setItem("repNome", REPRESENTANTE_ATUAL);
+}
+
 function toast(msg) {
   try { alert(msg); } catch (_) { console.log(msg); }
 }
