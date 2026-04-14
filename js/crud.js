@@ -84,6 +84,8 @@ function formHTML(type) {
     return `
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <input id="representantes-nome" class="border p-2 rounded" placeholder="Nome do representante" required>
+<input id="representantes-email" class="border p-2 rounded" placeholder="Email do representante" required>
+<input id="representantes-senha" class="border p-2 rounded" placeholder="Senha inicial" required>
       </div>
       <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
     `;
@@ -392,8 +394,18 @@ function renderForm(type) {
       payload.representante = document.getElementById("clientes-rep").value.trim();
     } else if (type === "representantes") {
       payload.nome = document.getElementById("representantes-nome").value.trim();
-payload.email = auth.currentUser.email;
-payload.uid = auth.currentUser.uid;
+const nome = document.getElementById("representantes-nome").value.trim();
+const email = document.getElementById("representantes-email").value.trim();
+const senha = document.getElementById("representantes-senha").value.trim();
+
+payload.nome = nome;
+payload.email = email;
+
+// 🔥 CRIA LOGIN NO FIREBASE
+const cred = await firebase.auth().createUserWithEmailAndPassword(email, senha);
+
+// 🔥 PEGA UID GERADO
+payload.uid = cred.user.uid;
     } else if (type === "produtos") {
       payload.nome = document.getElementById("produtos-nome").value.trim();
       payload.preco = parseFloat(document.getElementById("produtos-preco").value)||0;
