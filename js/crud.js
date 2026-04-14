@@ -2,11 +2,20 @@
 const pageContent = document.getElementById("page-content");
 
 let REPRESENTANTE_ATUAL = null;
-let IS_ADMIN = true;
+let IS_ADMIN = false;
 
 async function carregarRepresentanteLogado() {
   const user = await waitForAuth();
 
+  // 👑 SE FOR VOCÊ → ADMIN
+  if (user.email === "pedrofernandot@gmail.com") {
+    IS_ADMIN = true;
+    REPRESENTANTE_ATUAL = null;
+    console.log("ADMIN LOGADO");
+    return;
+  }
+
+  // 👷 SENÃO → REPRESENTANTE
   const snap = await db.collection("representantes")
     .where("uid", "==", user.uid)
     .limit(1)
@@ -15,8 +24,9 @@ async function carregarRepresentanteLogado() {
   if (!snap.empty) {
     REPRESENTANTE_ATUAL = snap.docs[0].data().nome;
     IS_ADMIN = false;
+    console.log("REP:", REPRESENTANTE_ATUAL);
   } else {
-    IS_ADMIN = true;
+    alert("⚠️ Usuário não vinculado a representante");
   }
 }
 
