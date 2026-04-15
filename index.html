@@ -59,9 +59,7 @@
   </style>
 </head>
 <body class="min-h-screen md:flex">
-  <div id="usuario-logado" style="padding:10px; background:#f5f5f5; font-weight:bold;">
-  Carregando usuário...
-</div>
+ 
 
   <!-- Sidebar -->
   <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white shadow-md p-4 transform -translate-x-full transition-transform duration-300 z-50 md:relative md:translate-x-0">
@@ -83,7 +81,24 @@
 
   <!-- Main -->
   <main class="flex-1 p-6">
-   <header class="mb-4">
+   <header class="mb-4 flex justify-between items-center">
+
+  <!-- ESQUERDA -->
+  <div>
+    <button onclick="toggleMenu()" class="md:hidden mb-2 bg-blue-600 text-white px-3 py-2 rounded">
+      ☰ Menu
+    </button>
+
+    <h1 class="text-2xl font-bold">Dashboard</h1>
+    <p class="text-sm text-gray-500">Use o menu à esquerda para navegar.</p>
+  </div>
+
+  <!-- DIREITA (USUÁRIO) -->
+  <div id="usuario-logado" class="text-sm font-semibold text-gray-700">
+    Carregando usuário...
+  </div>
+
+</header>
 
   <!-- BOTÃO MENU (CELULAR) -->
   <button onclick="toggleMenu()" class="md:hidden mb-2 bg-blue-600 text-white px-3 py-2 rounded">
