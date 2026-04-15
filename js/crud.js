@@ -66,7 +66,7 @@ function formHTML(type) {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
         <input id="clientes-nome" class="border p-2 rounded" placeholder="Nome do cliente" required>
         <input id="clientes-whatsapp" class="border p-2 rounded" placeholder="WhatsApp (ex: 98991234567)">
-        <input id="clientes-rep" class="border p-2 rounded" placeholder="Representante (opcional)">
+        
       </div>
       <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
 
@@ -412,7 +412,7 @@ function renderForm(type) {
     if (type === "clientes") {
       payload.nome = document.getElementById("clientes-nome").value.trim();
       payload.whatsapp = document.getElementById("clientes-whatsapp").value.trim();
-      payload.representante = document.getElementById("clientes-rep").value.trim();
+      
     } else if (type === "representantes") {
       payload.nome = document.getElementById("representantes-nome").value.trim();
 const nome = document.getElementById("representantes-nome").value.trim();
@@ -1851,8 +1851,7 @@ document.addEventListener("DOMContentLoaded", () => {
   aplicarVinculoClienteRepresentante(document);
   obsAutoRepRobusto.observe(document.body, { childList: true, subtree: true });
 });
-// ====== VÍNCULO: ao escolher CLIENTE, preencher/bloquear REPRESENTANTE (ID ou Nome) ======
-console.log("🤝 Patch: cliente → representante (suporta value=id ou value=nome)");
+
 
 function _norm(t){ return (t||"").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu,"").trim(); }
 
