@@ -1819,9 +1819,7 @@ function renderPedidos() {
       $cliente?.appendChild(opt);
     });
 
-    const prodSnap = await db.collection("produtos")
-      .where("userId", "==", user.uid)
-      .get();
+    const prodSnap = await db.collection("produtos").get();
 
     prodSnap.forEach(doc => {
       const opt = document.createElement("option");
