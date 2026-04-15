@@ -372,10 +372,12 @@ function renderForm(type) {
     let payload = { userId: uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
 
     if (type === "clientes") {
-      payload.nome = document.getElementById("clientes-nome").value.trim();
-      payload.whatsapp = document.getElementById("clientes-whatsapp").value.trim();
-      
-    } else if (type === "representantes") {
+  payload.nome = document.getElementById("clientes-nome").value.trim();
+  payload.whatsapp = document.getElementById("clientes-whatsapp").value.trim();
+
+  payload.vinculadoPor = REPRESENTANTE_ATUAL; // 👈 ADICIONE ISSO
+}
+    else if (type === "representantes") {
       payload.nome = document.getElementById("representantes-nome").value.trim();
 const nome = document.getElementById("representantes-nome").value.trim();
 const email = document.getElementById("representantes-email").value.trim();
