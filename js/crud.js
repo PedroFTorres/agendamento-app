@@ -159,8 +159,7 @@ if (type === "clientes") {
           <input id="novo-nome" class="border p-2 rounded" placeholder="Nome" required>
           <input id="novo-whats" class="border p-2 rounded" placeholder="WhatsApp">
         
-            <option value="">Carregando representantes...</option>
-          </select>
+            
         </div>
         <div class="flex justify-end space-x-3 mt-4">
           <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
@@ -192,7 +191,7 @@ if (type === "clientes") {
         userId: user.uid,
         nome,
         whatsapp,
-        representante,
+        vinculadoPor: REPRESENTANTE_ATUAL,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
@@ -211,8 +210,7 @@ if (type === "clientes") {
           <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome">
           <input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp">
           
-            <option value="">Carregando representantes...</option>
-          </select>
+           
         </div>
         <div class="flex justify-end space-x-3 mt-4">
           <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
@@ -226,8 +224,6 @@ if (type === "clientes") {
     const $whats = modal.querySelector("#edit-whats");
     const $rep = modal.querySelector("#edit-rep");
 
-    // Carrega lista de representantes e seleciona o atual
-    carregarRepresentantesSelect($rep, d.representante);
 
     modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
 
@@ -775,22 +771,13 @@ async function carregarFiltrosRelatorio() {
 
   const cliSnap = await db.collection("clientes").where("userId", "==", uid).get();
   const selCli = document.getElementById("rel-cliente");
+
   cliSnap.forEach(doc => {
     const d = doc.data();
     const opt = document.createElement("option");
     opt.value = d.nome;
     opt.textContent = d.nome;
     selCli.appendChild(opt);
-  });
-
-
-  const selRep = document.getElementById("rel-rep");
-  repSnap.forEach(doc => {
-    const d = doc.data();
-    const opt = document.createElement("option");
-    opt.value = d.nome;
-    opt.textContent = d.nome;
-    selRep.appendChild(opt);
   });
 }
 
@@ -1318,7 +1305,7 @@ async function abrirModalAgendamento(dataSelecionada) {
    await db.collection("agendamentos").add({
   userId: user.uid,
   clienteNome: cliente,
-  representanteNome: REPRESENTANTE_ATUAL
+  representanteNome: REPRESENTANTE_ATUAL,
   produtoNome: produto,
   quantidade: qtd,
   data: dataSelecionada,
@@ -1400,7 +1387,7 @@ async function abrirEdicaoAgendamento(id) {
   modal.querySelector("#salvar").onclick = async () => {
     await db.collection("agendamentos").doc(id).update({
       clienteNome: selCliente.value,
-      representanteNome: REPRESENTANTE_ATUAL
+      representanteNome: REPRESENTANTE_ATUAL,
       produtoNome: selProduto.value,
       quantidade: parseInt(modal.querySelector("#edit-qtd").value) || 0,
       data: modal.querySelector("#edit-data").value
