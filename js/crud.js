@@ -371,11 +371,23 @@ function renderForm(type) {
     const uid = user.uid;
     let payload = { userId: uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
 
-    if (type === "clientes") {
+   if (type === "clientes") {
   payload.nome = document.getElementById("clientes-nome").value.trim();
   payload.whatsapp = document.getElementById("clientes-whatsapp").value.trim();
 
-  payload.vinculadoPor = REPRESENTANTE_ATUAL; // 👈 ADICIONE ISSO
+  payload.vinculadoPor = REPRESENTANTE_ATUAL;
+}
+
+// 🔒 BLOQUEIO
+if (type === "clientes") {
+  const snap = await db.collection("clientes")
+    .where("nome", "==", payload.nome)
+    .get();
+
+  if (!snap.empty) {
+    alert("❌ Este cliente já está vinculado a outro usuário.");
+    return;
+  }
 }
     else if (type === "representantes") {
       payload.nome = document.getElementById("representantes-nome").value.trim();
