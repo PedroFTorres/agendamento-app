@@ -66,6 +66,9 @@ function formHTML(type) {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
         <input id="clientes-nome" class="border p-2 rounded" placeholder="Nome do cliente" required>
         <input id="clientes-whatsapp" class="border p-2 rounded" placeholder="WhatsApp (ex: 98991234567)">
+        <input id="clientes-cnpj" class="border p-2 rounded" placeholder="CNPJ">
+<input id="clientes-ie" class="border p-2 rounded" placeholder="Inscrição Estadual">
+<input id="clientes-cep" class="border p-2 rounded" placeholder="CEP">
         
       </div>
       <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
@@ -408,6 +411,9 @@ function renderForm(type) {
    if (type === "clientes") {
   payload.nome = document.getElementById("clientes-nome").value.trim();
   payload.whatsapp = document.getElementById("clientes-whatsapp").value.trim();
+  payload.cnpj = document.getElementById("clientes-cnpj").value.trim();
+  payload.ie = document.getElementById("clientes-ie").value.trim();
+  payload.cep = document.getElementById("clientes-cep").value.trim();
 
   payload.vinculadoPor = REPRESENTANTE_ATUAL;
 }
