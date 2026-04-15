@@ -416,13 +416,34 @@ function renderForm(type) {
   payload.cep = document.getElementById("clientes-cep").value.trim();
 
   payload.vinculadoPor = REPRESENTANTE_ATUAL;
+
+  // 🔒 VALIDAÇÃO (AQUI É O PONTO CERTO)
+  if (PERFIL === "representante") {
+    if (
+      !payload.nome ||
+      !payload.whatsapp ||
+      !payload.cnpj ||
+      !payload.ie ||
+      !payload.cep
+    ) {
+      alert("Preencha todos os campos obrigatórios!");
+      return;
+    }
+  }
 }
 
 // 🔒 BLOQUEIO
 if (type === "clientes") {
   const snap = await db.collection("clientes")
     .where("nome", "==", payload.nome)
+    .where("userId", "==", uid)
     .get();
+
+  if (!snap.empty) {
+    alert("❌ Este cliente já está vinculado a outro usuário.");
+    return;
+  }
+}
 
   if (!snap.empty) {
     alert("❌ Este cliente já está vinculado a outro usuário.");
