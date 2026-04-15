@@ -1810,9 +1810,7 @@ function renderPedidos() {
   // 🔹 CARREGAR CLIENTES E PRODUTOS
   waitForAuth().then(async user => {
 
-    const cliSnap = await db.collection("clientes")
-      .where("userId", "==", user.uid)
-      .get();
+    const cliSnap = await db.collection("clientes").get();
 
     cliSnap.forEach(doc => {
       const opt = document.createElement("option");
