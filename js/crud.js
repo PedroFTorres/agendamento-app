@@ -1593,7 +1593,8 @@ document.querySelectorAll(".menu-item").forEach(btn => {
   btn.addEventListener("click", () => {
     const page = btn.dataset.page;
 
-    if (page === "agendamentos") renderAgendamentos();
+   if (page === "agendamentos") renderAgendamentos();
+    else if (page === "pedidos") renderPedidos();
     else if (page === "relatorios") renderRelatorios();
     else if (page === "dashboard") renderDashboard();
     else if (page === "producao") renderProducao();
@@ -1782,4 +1783,114 @@ Object.entries(mapa).forEach(([cliente, itens])=>{
 }
 
 });
+}
+
+function renderPedidos() {
+  pageContent.innerHTML = `
+    <h2 class="text-xl font-bold mb-4">Pedidos</h2>
+
+    ${PERFIL === "representante" ? `
+    <div class="bg-white p-4 rounded shadow mb-4 space-y-2">
+      <select id="p-cliente" class="border p-2 w-full"></select>
+      <select id="p-produto" class="border p-2 w-full"></select>
+      <input id="p-qtd" type="number" class="border p-2 w-full" placeholder="Quantidade">
+      <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">
+        Enviar Pedido
+      </button>
+    </div>
+    ` : ""}
+
+    <div id="lista-pedidos" class="space-y-2"></div>
+  `;
+
+  const $cliente = document.getElementById("p-cliente");
+  const $produto = document.getElementById("p-produto");
+  const lista = document.getElementById("lista-pedidos");
+
+  // 🔹 CARREGAR CLIENTES E PRODUTOS
+  waitForAuth().then(async user => {
+
+    const cliSnap = await db.collection("clientes")
+      .where("userId", "==", user.uid)
+      .get();
+
+    cliSnap.forEach(doc => {
+      const opt = document.createElement("option");
+      opt.value = doc.data().nome;
+      opt.textContent = doc.data().nome;
+      $cliente?.appendChild(opt);
+    });
+
+    const prodSnap = await db.collection("produtos")
+      .where("userId", "==", user.uid)
+      .get();
+
+    prodSnap.forEach(doc => {
+      const opt = document.createElement("option");
+      opt.value = doc.data().nome;
+      opt.textContent = doc.data().nome;
+      $produto?.appendChild(opt);
+    });
+
+  });
+
+  // 🔹 CRIAR PEDIDO
+  document.getElementById("btn-pedido")?.addEventListener("click", async () => {
+    const user = await waitForAuth();
+
+    const cliente = document.getElementById("p-cliente").value;
+    const produto = document.getElementById("p-produto").value;
+    const quantidade = parseInt(document.getElementById("p-qtd").value);
+
+    if (!cliente || !produto || !quantidade) {
+      alert("Preencha tudo!");
+      return;
+    }
+
+    await db.collection("pedidos").add({
+      userId: user.uid,
+      clienteNome: cliente,
+      produtoNome: produto,
+      quantidade,
+      representanteNome: REPRESENTANTE_ATUAL,
+      status: "pendente",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("Pedido enviado!");
+  });
+
+  // 🔹 LISTAR PEDIDOS
+  waitForAuth().then(user => {
+
+    let query = db.collection("pedidos");
+
+    if (PERFIL === "representante") {
+      query = query.where("userId", "==", user.uid);
+    }
+
+    query.orderBy("createdAt", "desc")
+      .onSnapshot(snap => {
+
+        lista.innerHTML = "";
+
+        snap.forEach(doc => {
+          const p = doc.data();
+
+          lista.innerHTML += `
+            <div class="bg-white p-3 rounded shadow">
+              <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
+              ${p.representanteNome} - ${p.status}
+
+              ${PERFIL === "admin" && p.status === "pendente" ? `
+                <button onclick="aprovarPedido('${doc.id}')" class="bg-green-600 text-white px-2 py-1 ml-2">Aprovar</button>
+                <button onclick="cancelarPedido('${doc.id}')" class="bg-red-600 text-white px-2 py-1 ml-2">Cancelar</button>
+              ` : ""}
+            </div>
+          `;
+        });
+
+      });
+
+  });
 }
