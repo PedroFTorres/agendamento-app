@@ -1275,11 +1275,7 @@ async function abrirModalAgendamento(dataSelecionada) {
 
   const selCliente = modal.querySelector("#m-cliente");
   const selProduto = modal.querySelector("#m-produto");
-  const opt = document.createElement("option");
-  opt.value = doc.data().nome;
-  opt.textContent = doc.data().nome;
-  selRep.appendChild(opt);
-});
+  
 
   clientesSnap.forEach(doc=>{
     const opt = document.createElement("option");
