@@ -838,13 +838,12 @@ async function gerarRelatorio() {
   const start = document.getElementById("rel-start").value;
   const end   = document.getElementById("rel-end").value;
   const clienteSel = document.getElementById("rel-cliente").value;
-  const repSel     = document.getElementById("rel-rep").value;
+ 
 
   let query = db.collection("agendamentos").where("userId", "==", uid);
   if (start) query = query.where("data", ">=", start);
   if (end)   query = query.where("data", "<=", end);
   if (clienteSel) query = query.where("clienteNome", "==", clienteSel);
-  if (repSel)     query = query.where("representanteNome", "==", repSel);
 
   const snap = await query.get();
   // 🔥 Buscar preços dos produtos
