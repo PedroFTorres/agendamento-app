@@ -211,6 +211,9 @@ if (type === "clientes") {
         <div class="grid grid-cols-1 gap-3">
           <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome">
           <input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp">
+          ${PERFIL === "admin" ? `
+<select id="edit-user" class="border p-2 rounded"></select>
+` : ""}
           
            
         </div>
@@ -224,7 +227,25 @@ if (type === "clientes") {
 
     const $nome = modal.querySelector("#edit-nome");
     const $whats = modal.querySelector("#edit-whats");
-    const $rep = modal.querySelector("#edit-rep");
+   let $user = null;
+
+if (PERFIL === "admin") {
+  $user = modal.querySelector("#edit-user");
+
+  const usersSnap = await db.collection("usuarios").get();
+
+  usersSnap.forEach(doc => {
+    const u = doc.data();
+
+    const opt = document.createElement("option");
+    opt.value = u.uid;
+    opt.textContent = u.nome + " (" + u.perfil + ")";
+
+    if (u.uid === d.userId) opt.selected = true;
+
+    $user.appendChild(opt);
+  });
+}
 
 
     modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
@@ -234,11 +255,24 @@ if (type === "clientes") {
       const whatsapp = $whats.value.trim();
       
 
-      await db.collection(type).doc(id).update({
-        nome,
-        whatsapp,
-       
-      });
+     const updateData = {
+  nome,
+  whatsapp
+};
+
+if (PERFIL === "admin" && $user) {
+  updateData.userId = $user.value;
+
+  const userSnap = await db.collection("usuarios")
+    .where("uid", "==", $user.value)
+    .get();
+
+  if (!userSnap.empty) {
+    updateData.vinculadoPor = userSnap.docs[0].data().nome;
+  }
+}
+
+await db.collection(type).doc(id).update(updateData);
 
       modal.remove();
     });
