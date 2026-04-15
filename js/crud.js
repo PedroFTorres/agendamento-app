@@ -392,6 +392,7 @@ function renderForm(type) {
   searchInput.addEventListener("input", () => {
     const termo = searchInput.value.toLowerCase();
     const items = list.querySelectorAll("li");
+    const list = document.getElementById(`${type}-list`);
     items.forEach(li => {
       const txt = li.textContent.toLowerCase();
       li.style.display = txt.includes(termo) ? "" : "none";
@@ -815,10 +816,11 @@ function renderRelatorios() {
           </select>
         </div>
         <div>
-          <label class="text-sm text-gray-600">Representante</label>
-            <option value="">Todos</option>
-          </select>
-        </div>
+  <label class="text-sm text-gray-600">Representante</label>
+  <select id="rel-representante" class="border p-2 rounded w-full">
+    <option value="">Todos</option>
+  </select>
+</div>
       </div>
       <button id="rel-filtrar" class="bg-blue-600 text-white p-2 rounded w-full">Filtrar</button>
       <button id="rel-pdf" class="bg-green-600 text-white p-2 rounded w-full">Exportar PDF</button>
