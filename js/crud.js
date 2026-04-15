@@ -107,7 +107,9 @@ function listItem(type, id, data) {
   let main = "";
   if (type === "clientes") {
     main = `<div class="font-semibold">${data.nome || "—"}</div>
-            <div class="text-sm text-gray-500">WhatsApp: ${data.whatsapp || "—"} • Rep: ${data.representante || "—"}</div>`;
+        <div class="text-sm text-gray-500">
+          WhatsApp: ${data.whatsapp || "—"} • Vinculado a: ${data.vinculadoPor || "—"}
+        </div>`;
   } else if (type === "representantes") {
     main = `<div class="font-semibold">${data.nome || "—"}</div>`;
   } else if (type === "produtos") {
@@ -235,7 +237,7 @@ if (type === "clientes") {
       await db.collection(type).doc(id).update({
         nome,
         whatsapp,
-        representante
+       
       });
 
       modal.remove();
