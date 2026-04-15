@@ -490,7 +490,6 @@ function renderAgendamentos() {
     <form id="agendamento-form" class="bg-white p-4 rounded shadow mb-4 space-y-3">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
         <select id="ag-cliente" class="border p-2 rounded w-full"></select>
-        <select id="ag-representante" class="border p-2 rounded w-full"></select>
         <select id="ag-produto" class="border p-2 rounded w-full"></select>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -527,14 +526,14 @@ function renderAgendamentos() {
   });
 }
   loadOptions("clientes", $selCliente);
-  loadOptions("representantes", $selRep);
+  
   loadOptions("produtos", $selProd);
 
   $form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const user = await waitForAuth();
     const clienteNome = $selCliente.selectedOptions[0]?.textContent || "";
-    const repNome     = $selRep.selectedOptions[0]?.textContent || "";
+    const repNome = REPRESENTANTE_ATUAL;
     const prodNome    = $selProd.selectedOptions[0]?.textContent || "";
     const data        = document.getElementById("ag-data").value;
     const quantidade  = parseInt(document.getElementById("ag-qtd").value);
