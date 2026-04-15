@@ -1807,16 +1807,16 @@ function renderPedidos() {
   const $produto = document.getElementById("p-produto");
   const lista = document.getElementById("lista-pedidos");
 
-  // 🔹 CARREGAR CLIENTES E PRODUTOS
   waitForAuth().then(async user => {
 
-   let cliQuery = db.collection("clientes");
+    // 🔒 CLIENTES (CORRETO)
+    let cliQuery = db.collection("clientes");
 
-if (PERFIL === "representante") {
-  cliQuery = cliQuery.where("userId", "==", user.uid);
-}
+    if (PERFIL === "representante") {
+      cliQuery = cliQuery.where("userId", "==", user.uid);
+    }
 
-const cliSnap = await cliQuery.get();
+    const cliSnap = await cliQuery.get();
 
     cliSnap.forEach(doc => {
       const opt = document.createElement("option");
@@ -1825,6 +1825,7 @@ const cliSnap = await cliQuery.get();
       $cliente?.appendChild(opt);
     });
 
+    // 🌎 PRODUTOS (GLOBAL)
     const prodSnap = await db.collection("produtos").get();
 
     prodSnap.forEach(doc => {
@@ -1836,7 +1837,7 @@ const cliSnap = await cliQuery.get();
 
   });
 
-  // 🔹 CRIAR PEDIDO
+  // 🚀 CRIAR PEDIDO + VALIDAÇÃO EXTRA
   document.getElementById("btn-pedido")?.addEventListener("click", async () => {
     const user = await waitForAuth();
 
@@ -1847,6 +1848,19 @@ const cliSnap = await cliQuery.get();
     if (!cliente || !produto || !quantidade) {
       alert("Preencha tudo!");
       return;
+    }
+
+    // 🔒 VALIDAÇÃO EXTRA (IMPORTANTÍSSIMO)
+    if (PERFIL === "representante") {
+      const clienteValido = await db.collection("clientes")
+        .where("nome", "==", cliente)
+        .where("userId", "==", user.uid)
+        .get();
+
+      if (clienteValido.empty) {
+        alert("❌ Este cliente não pertence a você.");
+        return;
+      }
     }
 
     await db.collection("pedidos").add({
@@ -1862,7 +1876,7 @@ const cliSnap = await cliQuery.get();
     alert("Pedido enviado!");
   });
 
-  // 🔹 LISTAR PEDIDOS
+  // 📋 LISTAR PEDIDOS
   waitForAuth().then(user => {
 
     let query = db.collection("pedidos");
