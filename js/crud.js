@@ -147,41 +147,7 @@ function bindBasicActions(container) {
 
 // ================== CLIENTES ==================
 if (type === "clientes") {
-  // --- Função auxiliar: carregar lista de representantes ---
-  async function carregarRepresentantesSelect($select, valorAtual = "") {
-    try {
-      const user = await waitForAuth();
-
-      // Agora que o índice foi criado, podemos ordenar alfabeticamente
-      const snap = await db.collection("representantes")
-        .where("userId", "==", user.uid)
-        .orderBy("nome")
-        .get();
-
-      $select.innerHTML = `<option value="">Selecione o representante</option>`;
-      snap.forEach(doc => {
-        const rep = doc.data();
-        const opt = document.createElement("option");
-        opt.value = rep.nome;
-        opt.textContent = rep.nome;
-        $select.appendChild(opt);
-      });
-
-      if (valorAtual) $select.value = valorAtual;
-
-      if (snap.empty) {
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "⚠️ Nenhum representante cadastrado";
-        opt.disabled = true;
-        $select.appendChild(opt);
-      }
-    } catch (err) {
-      console.error("Erro ao carregar representantes:", err);
-      $select.innerHTML = `<option value="">Erro ao carregar representantes</option>`;
-    }
-  }
-
+ 
   // --- Modal de CADASTRAR NOVO CLIENTE ---
   if (!id) {
     const modal = document.createElement("div");
@@ -192,7 +158,7 @@ if (type === "clientes") {
         <div class="grid grid-cols-1 gap-3">
           <input id="novo-nome" class="border p-2 rounded" placeholder="Nome" required>
           <input id="novo-whats" class="border p-2 rounded" placeholder="WhatsApp">
-          <select id="novo-rep" class="border p-2 rounded">
+        
             <option value="">Carregando representantes...</option>
           </select>
         </div>
@@ -208,15 +174,13 @@ if (type === "clientes") {
     const $whats = modal.querySelector("#novo-whats");
     const $rep = modal.querySelector("#novo-rep");
 
-    // Carrega lista de representantes
-    carregarRepresentantesSelect($rep);
-
+   
     modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
 
     modal.querySelector("#btn-save").addEventListener("click", async () => {
       const nome = $nome.value.trim();
       const whatsapp = $whats.value.trim();
-      const representante = $rep.value.trim();
+      
       const user = await waitForAuth();
 
       if (!nome) {
@@ -246,7 +210,7 @@ if (type === "clientes") {
         <div class="grid grid-cols-1 gap-3">
           <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome">
           <input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp">
-          <select id="edit-rep" class="border p-2 rounded">
+          
             <option value="">Carregando representantes...</option>
           </select>
         </div>
@@ -270,7 +234,7 @@ if (type === "clientes") {
     modal.querySelector("#btn-save").addEventListener("click", async () => {
       const nome = $nome.value.trim();
       const whatsapp = $whats.value.trim();
-      const representante = $rep.value.trim();
+      
 
       await db.collection(type).doc(id).update({
         nome,
@@ -779,7 +743,6 @@ function renderRelatorios() {
         </div>
         <div>
           <label class="text-sm text-gray-600">Representante</label>
-          <select id="rel-rep" class="border p-2 rounded w-full">
             <option value="">Todos</option>
           </select>
         </div>
@@ -820,7 +783,7 @@ async function carregarFiltrosRelatorio() {
     selCli.appendChild(opt);
   });
 
-  const repSnap = await db.collection("representantes").where("userId", "==", uid).get();
+
   const selRep = document.getElementById("rel-rep");
   repSnap.forEach(doc => {
     const d = doc.data();
@@ -1301,7 +1264,6 @@ async function abrirModalAgendamento(dataSelecionada) {
 
   const clientesSnap = await db.collection("clientes").where("userId","==",user.uid).orderBy("nome").get();
   const produtosSnap = await db.collection("produtos").where("userId","==",user.uid).get();
-  const repsSnap = await db.collection("representantes").where("userId","==",user.uid).orderBy("nome").get();
 
   const modal = document.createElement("div");
   modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
@@ -1326,8 +1288,6 @@ async function abrirModalAgendamento(dataSelecionada) {
 
   const selCliente = modal.querySelector("#m-cliente");
   const selProduto = modal.querySelector("#m-produto");
-  const selRep = modal.querySelector("#m-representante");
-  repsSnap.forEach(doc=>{
   const opt = document.createElement("option");
   opt.value = doc.data().nome;
   opt.textContent = doc.data().nome;
@@ -1352,14 +1312,13 @@ async function abrirModalAgendamento(dataSelecionada) {
 
   modal.querySelector("#salvar").onclick = async ()=>{
     const cliente = selCliente.value;
-    const representante = selRep.value;
     const produto = selProduto.value;
     const qtd = parseInt(modal.querySelector("#m-qtd").value);
 
    await db.collection("agendamentos").add({
   userId: user.uid,
   clienteNome: cliente,
-  representanteNome: representante, // ✅ CORREÇÃO AQUI
+  representanteNome: REPRESENTANTE_ATUAL
   produtoNome: produto,
   quantidade: qtd,
   data: dataSelecionada,
@@ -1384,10 +1343,7 @@ async function abrirEdicaoAgendamento(id) {
     .where("userId","==",user.uid)
     .get();
 
-  const repsSnap = await db.collection("representantes")
-    .where("userId","==",user.uid)
-    .orderBy("nome")
-    .get();
+ 
 
   const modal = document.createElement("div");
   modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
@@ -1414,7 +1370,7 @@ async function abrirEdicaoAgendamento(id) {
 
   const selCliente = modal.querySelector("#edit-cliente");
   const selProduto = modal.querySelector("#edit-produto");
-  const selRep = modal.querySelector("#edit-representante");
+  
 
   // CLIENTES
   clientesSnap.forEach(doc => {
@@ -1425,14 +1381,7 @@ async function abrirEdicaoAgendamento(id) {
     selCliente.appendChild(opt);
   });
 
-  // REPRESENTANTES
-  repsSnap.forEach(doc => {
-    const opt = document.createElement("option");
-    opt.value = doc.data().nome;
-    opt.textContent = doc.data().nome;
-    if (doc.data().nome === d.representanteNome) opt.selected = true;
-    selRep.appendChild(opt);
-  });
+  
 
   // PRODUTOS
   produtosSnap.forEach(doc => {
@@ -1451,7 +1400,7 @@ async function abrirEdicaoAgendamento(id) {
   modal.querySelector("#salvar").onclick = async () => {
     await db.collection("agendamentos").doc(id).update({
       clienteNome: selCliente.value,
-      representanteNome: selRep.value,
+      representanteNome: REPRESENTANTE_ATUAL
       produtoNome: selProduto.value,
       quantidade: parseInt(modal.querySelector("#edit-qtd").value) || 0,
       data: modal.querySelector("#edit-data").value
@@ -1625,348 +1574,6 @@ document.querySelectorAll(".menu-item").forEach(btn => {
       menu.classList.add("-translate-x-full");
     }
   });
-});
-// ====== PATCH GLOBAL: transformar "Representante" em <select> com lista do Firestore ======
-console.log("🧩 Patch select de representantes (global) ativo");
-
-async function carregarRepresentantes($select, valorAtual = "") {
-  try {
-    const user = await waitForAuth();
-    const snap = await db.collection("representantes")
-      .where("userId", "==", user.uid)
-      .orderBy("nome")
-      .get();
-
-    $select.innerHTML = `<option value="">Selecione o representante</option>`;
-    snap.forEach(doc => {
-      const rep = doc.data() || {};
-      const opt = document.createElement("option");
-      opt.value = rep.nome || "";
-      opt.textContent = rep.nome || "(sem nome)";
-      $select.appendChild(opt);
-    });
-
-    if (valorAtual) $select.value = valorAtual;
-
-    if (snap.empty) {
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "⚠️ Nenhum representante cadastrado";
-      opt.disabled = true;
-      $select.appendChild(opt);
-    }
-  } catch (e) {
-    console.error("Erro ao carregar representantes:", e);
-    $select.innerHTML = `<option value="">Erro ao carregar representantes</option>`;
-  }
-}
-
-// Procura qualquer campo de "representante" no DOM e converte para <select>
-function enhanceRepresentanteCampos(root = document) {
-  // ❌ NÃO aplicar na tela de cadastro de representantes
-if (document.getElementById("representantes-nome")) {
-  return;
-}
-  // 1) matches por id/name comuns
-  const candidatosDiretos = Array.from(root.querySelectorAll(
-    "#cliente-representante, #novo-rep, #cad-rep, [name='representante']"
-  ));
-
-  // 2) matches por placeholder que contenha a palavra "representante" (case-insensitive)
-  const candidatosPlaceholder = Array.from(root.querySelectorAll("input[placeholder]"))
-    .filter(el => (el.getAttribute("placeholder") || "").toLowerCase().includes("representante"));
-
-  const campos = [...new Set([...candidatosDiretos, ...candidatosPlaceholder])];
-
-  campos.forEach(async campo => {
-    // evita processar duas vezes
-    if (campo.dataset.repEnhanced === "1") return;
-    campo.dataset.repEnhanced = "1";
-
-    // Se já for select e ainda não populado, apenas carregar opções
-    if (campo.tagName === "SELECT") {
-      await carregarRepresentantes(campo);
-      campo.required = true; // torna obrigatório
-      return;
-    }
-
-    // Só converte inputs (text, search, etc)
-    if (campo.tagName !== "INPUT") return;
-
-    const valorAtual = campo.value || "";
-    const select = document.createElement("select");
-
-    // preserva aparência
-    select.className = campo.className || "border p-2 rounded w-full";
-    select.id = campo.id || "cliente-representante";
-    select.name = campo.name || "representante";
-    select.required = true;
-    select.dataset.repEnhanced = "1";
-    select.innerHTML = `<option value="">Carregando representantes...</option>`;
-
-    // troca no DOM mantendo posição
-    campo.parentNode.replaceChild(select, campo);
-
-    await carregarRepresentantes(select, valorAtual);
-  });
-}
-
-// Observa o DOM para quando a tela de "Clientes" (cadastro) for renderizada dinamicamente
-const obsSelectRep = new MutationObserver(() => enhanceRepresentanteCampos(document));
-document.addEventListener("DOMContentLoaded", () => {
-  enhanceRepresentanteCampos(document);
-  obsSelectRep.observe(document.body, { childList: true, subtree: true });
-});
-// ====== AUTO-PREENCHER + BLOQUEAR REPRESENTANTE NO AGENDAMENTO (robusto) ======
-console.log("🤝 Patch: auto-vincular representante ao escolher cliente (robusto)");
-
-/** Busca um campo por id/name/placeholder/aria-label ou por <label> associado cujo texto contenha qualquer palavra-chave. */
-function encontrarCampoPorRotuloOuAtributos(palavrasChave = [], root = document) {
-  const testStr = (v) => (v || "").toLowerCase();
-  const matchAny = (txt) => palavrasChave.some(k => testStr(txt).includes(k));
-
-  // 1) tentar por input/select com atributos
-  const candidatos = Array.from(root.querySelectorAll("input, select, textarea"));
-  for (const el of candidatos) {
-    const attrs = [
-      el.id, el.name, el.placeholder, el.getAttribute("aria-label"), el.getAttribute("title")
-    ].filter(Boolean).join(" | ");
-    if (matchAny(attrs)) return el;
-  }
-
-  // 2) tentar por <label> cujo texto combine e que aponte para um campo
-  const labels = Array.from(root.querySelectorAll("label[for]"));
-  for (const lb of labels) {
-    if (matchAny(lb.textContent)) {
-      const forId = lb.getAttribute("for");
-      const el = root.getElementById(forId);
-      if (el) return el;
-    }
-  }
-
-  // 3) fallback: procurar elementos próximos de labels sem "for"
-  const looseLabels = Array.from(root.querySelectorAll("label"));
-  for (const lb of looseLabels) {
-    if (matchAny(lb.textContent)) {
-      // tenta campo no mesmo container
-      const el = lb.parentElement && lb.parentElement.querySelector("input, select, textarea");
-      if (el) return el;
-    }
-  }
-
-  return null;
-}
-
-async function obterRepresentanteDoCliente(nomeCliente) {
-  if (!nomeCliente) return "";
-  const user = await waitForAuth();
-  const snap = await db.collection("clientes")
-    .where("userId", "==", user.uid)
-    .where("nome", "==", nomeCliente)
-    .limit(1)
-    .get();
-  if (snap.empty) return "";
-  const cl = snap.docs[0].data() || {};
-  return (cl.representante || "").trim();
-}
-
-// Evita alertas repetidos
-let __alertSemRepMostrado = false;
-
-async function aplicarVinculoClienteRepresentante(root = document) {
-  // Achamos “cliente”
-  const campoCliente = encontrarCampoPorRotuloOuAtributos(
-    ["cliente", "nome do cliente"], root
-  );
-
-  // Achamos “representante”
-  const campoRep = encontrarCampoPorRotuloOuAtributos(
-    ["representante"], root
-  );
-
-  if (!campoCliente || !campoRep) return; // formulário ainda não está visível
-
-  if (campoCliente.dataset.repLinked === "1") return;
-  campoCliente.dataset.repLinked = "1";
-
-  const preencherTravar = (valor) => {
-    if (campoRep.tagName === "SELECT") {
-      // tenta selecionar; se não existir na lista, adiciona
-      const opt = Array.from(campoRep.options).find(o => o.value === valor);
-      if (valor && !opt) {
-        const o = document.createElement("option");
-        o.value = valor;
-        o.textContent = valor;
-        campoRep.appendChild(o);
-      }
-      campoRep.value = valor || "";
-    } else {
-      campoRep.value = valor || "";
-    }
-    if (valor) {
-      campoRep.setAttribute("disabled", "disabled");
-    } else {
-      campoRep.removeAttribute("disabled");
-    }
-  };
-
-  const onChangeCliente = async () => {
-    const nomeCli = (campoCliente.value || "").trim();
-    if (!nomeCli) {
-      preencherTravar("");
-      return;
-    }
-    try {
-      const representante = await obterRepresentanteDoCliente(nomeCli);
-      if (representante) {
-        preencherTravar(representante);
-      } else {
-        preencherTravar("");
-        if (!__alertSemRepMostrado) {
-          __alertSemRepMostrado = true;
-          alert(
-            `⚠️ O cliente "${nomeCli}" não possui representante vinculado.\n` +
-            `Abra o cadastro de clientes e defina um representante antes de concluir o agendamento.`
-          );
-          setTimeout(() => { __alertSemRepMostrado = false; }, 3000);
-        }
-      }
-    } catch (e) {
-      console.error("Erro ao vincular representante:", e);
-    }
-  };
-
-  // Listener e disparo inicial
-  campoCliente.addEventListener("change", onChangeCliente);
-  // dispara uma vez (se já houver cliente pré-selecionado)
-  onChangeCliente();
-}
-
-// Observa o DOM, pois o formulário de agendamento pode ser injetado dinamicamente
-const obsAutoRepRobusto = new MutationObserver(() => {
-  aplicarVinculoClienteRepresentante(document);
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  aplicarVinculoClienteRepresentante(document);
-  obsAutoRepRobusto.observe(document.body, { childList: true, subtree: true });
-});
-
-
-function _norm(t){ return (t||"").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu,"").trim(); }
-
-// Encontra um <select> pelo texto do 1º option
-function _findSelectByFirstOptionContains(possiveis){
-  const all = Array.from(document.querySelectorAll("select"));
-  const keys = possiveis.map(_norm);
-  for(const sel of all){
-    const first = sel.options && sel.options[0] ? _norm(sel.options[0].textContent || sel.options[0].label || "") : "";
-    if(keys.some(k => first.includes(k))) return sel;
-  }
-  return null;
-}
-
-let __alertSemRepOnce = false;
-
-async function _getClienteDadosPorIdOuNome(user, idValue, displayName){
-  // 1) tentar por ID
-  if (idValue) {
-    try {
-      const doc = await db.collection("clientes").doc(idValue).get();
-      if (doc.exists) {
-        const d = doc.data() || {};
-        // Confirma que é do mesmo usuário
-        if (!d.userId || d.userId === user.uid) {
-          return d;
-        }
-      }
-    } catch(e){ console.debug("Lookup por ID falhou/ignorado:", e); }
-  }
-  // 2) fallback por nome
-  if (displayName) {
-    const q = await db.collection("clientes")
-      .where("userId","==",user.uid)
-      .where("nome","==",displayName)
-      .limit(1)
-      .get();
-    if (!q.empty) return q.docs[0].data() || {};
-  }
-  return null;
-}
-
-function _selecionarOuCriarOption(sel, valor){
-  if(!sel) return;
-  if(!valor){
-    sel.value = "";
-    return;
-  }
-  const byVal  = Array.from(sel.options).find(o => _norm(o.value) === _norm(valor));
-  const byText = Array.from(sel.options).find(o => _norm(o.textContent) === _norm(valor));
-  const opt = byVal || byText;
-  if(opt){
-    sel.value = opt.value;
-  }else{
-    const o = document.createElement("option");
-    o.value = valor;
-    o.textContent = valor;
-    sel.appendChild(o);
-    sel.value = valor;
-  }
-}
-
-async function aplicarVinculoClienteRep(){
-  const selCliente = _findSelectByFirstOptionContains(["selecione clientes","selecionar clientes","clientes"]);
-  const selRep     = _findSelectByFirstOptionContains(["selecione representantes","selecionar representantes","representantes"]);
-  if(!selCliente || !selRep) return;
-
-  if(selCliente.dataset.vincRep === "1") return;
-  selCliente.dataset.vincRep = "1";
-
-  const handle = async ()=>{
-    const selectedIndex = selCliente.selectedIndex >= 0 ? selCliente.selectedIndex : -1;
-    const valueIdOrName = selectedIndex >= 0 ? (selCliente.options[selectedIndex].value || "").trim() : (selCliente.value||"").trim();
-    const displayName   = selectedIndex >= 0 ? (selCliente.options[selectedIndex].textContent || "").trim() : (selCliente.value||"").trim();
-
-    if(!valueIdOrName && !displayName){
-      selRep.removeAttribute("disabled");
-      selRep.title = "";
-      _selecionarOuCriarOption(selRep, "");
-      return;
-    }
-
-    try{
-      const user = await waitForAuth();
-      const cliente = await _getClienteDadosPorIdOuNome(user, valueIdOrName, displayName);
-
-      if (cliente && cliente.representante) {
-        const rep = (cliente.representante || "").trim();
-        _selecionarOuCriarOption(selRep, rep);
-        selRep.setAttribute("disabled","disabled");
-        selRep.title = "Vinculado automaticamente ao cliente";
-      } else {
-        _selecionarOuCriarOption(selRep, "");
-        selRep.removeAttribute("disabled");
-        selRep.title = "";
-        if(!__alertSemRepOnce){
-          __alertSemRepOnce = true;
-          alert(`⚠️ O cliente "${displayName}" não possui representante vinculado.\nAbra o cadastro de clientes e defina um representante antes de concluir o agendamento.`);
-          setTimeout(()=>{ __alertSemRepOnce = false; }, 3000);
-        }
-      }
-    }catch(e){
-      console.error("Erro ao vincular representante (ID/Nome):", e);
-    }
-  };
-
-  selCliente.addEventListener("change", handle);
-  // dispara uma vez se já houver cliente selecionado
-  handle();
-}
-
-const __obsVinc = new MutationObserver(()=>aplicarVinculoClienteRep());
-document.addEventListener("DOMContentLoaded", ()=>{
-  aplicarVinculoClienteRep();
-  __obsVinc.observe(document.body, { childList:true, subtree:true });
 });
 
 function renderPrecosClientes() {
