@@ -493,29 +493,6 @@ if (type === "clientes") {
   });
 }
   
-  // 🔒 CNPJ
-  cnpjInput?.addEventListener("input", (e) => {
-    let v = e.target.value.replace(/\D/g, "");
-    v = v.replace(/^(\d{2})(\d)/, "$1.$2");
-    v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
-    v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
-    v = v.replace(/(\d{4})(\d)/, "$1-$2");
-    e.target.value = v;
-  });
-
-  // 🔒 CEP
-  cepInput?.addEventListener("input", (e) => {
-    let v = e.target.value.replace(/\D/g, "");
-    v = v.replace(/^(\d{5})(\d)/, "$1-$2");
-    e.target.value = v;
-  });
-
-  // 🔒 IE
-  ieInput?.addEventListener("input", (e) => {
-    e.target.value = e.target.value.replace(/\D/g, "");
-  });
-}
- 
 
   const list = document.getElementById(`${type}-list`);
 
