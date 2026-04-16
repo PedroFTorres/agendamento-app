@@ -488,7 +488,7 @@ payload.uid = cred.user.uid;
     form.reset();
     toast("Salvo com sucesso!");
   });
-
+ }
   waitForAuth().then(user => {
     db.collection(type)
       .where("userId", "==", user.uid)
