@@ -2050,8 +2050,9 @@ function renderPedidos() {
               ${p.representanteNome} - ${p.status}
 
               ${PERFIL === "admin" && p.status === "pendente" ? `
-                <button onclick="aprovarPedido('${doc.id}')" class="bg-green-600 text-white px-2 py-1 ml-2">Aprovar</button>
-                <button onclick="cancelarPedido('${doc.id}')" class="bg-red-600 text-white px-2 py-1 ml-2">Cancelar</button>
+               <button onclick="this.disabled=true; aprovarPedido('${doc.id}', this)" class="bg-green-600 text-white px-2 py-1 ml-2">Aprovar</button>
+               <button onclick="this.disabled=true; cancelarPedido('${doc.id}', this)" class="bg-red-600 text-white px-2 py-1 ml-2">Cancelar</button>
+               
               ` : ""}
             </div>
           `;
