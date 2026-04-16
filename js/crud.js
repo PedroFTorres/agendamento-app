@@ -543,7 +543,9 @@ if (type === "clientes") {
     return;
   }
 }
-    else if (type === "representantes") {
+    }
+
+if (type === "representantes") {
       payload.nome = document.getElementById("representantes-nome").value.trim();
 const nome = document.getElementById("representantes-nome").value.trim();
 const email = document.getElementById("representantes-email").value.trim();
