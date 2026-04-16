@@ -401,10 +401,33 @@ const items = list.querySelectorAll("li");
 }
 
   const form = document.getElementById(`${type}-form`);
- if (type === "clientes") {
+if (type === "clientes") {
   const cnpjInput = document.getElementById("clientes-cnpj");
   const cepInput = document.getElementById("clientes-cep");
+  const ieInput = document.getElementById("clientes-ie");
 
+  // 🔒 CNPJ (somente números + máscara)
+  cnpjInput?.addEventListener("input", (e) => {
+    let v = e.target.value.replace(/\D/g, ""); // remove tudo que não é número
+    v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+    v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+    v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+    v = v.replace(/(\d{4})(\d)/, "$1-$2");
+    e.target.value = v;
+  });
+
+  // 🔒 CEP (somente números + máscara)
+  cepInput?.addEventListener("input", (e) => {
+    let v = e.target.value.replace(/\D/g, ""); // remove letras
+    v = v.replace(/^(\d{5})(\d)/, "$1-$2");
+    e.target.value = v;
+  });
+
+  // 🔒 INSCRIÇÃO ESTADUAL (SÓ NÚMERO)
+  ieInput?.addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/\D/g, "");
+  });
+}
   cnpjInput?.addEventListener("input", (e) => {
   let v = e.target.value.replace(/\D/g, ""); // 🔒 remove tudo que não é número
   v = v.replace(/^(\d{2})(\d)/, "$1.$2");
