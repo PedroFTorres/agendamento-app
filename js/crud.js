@@ -530,13 +530,6 @@ payload.cnpj = doc;
     return;
   }
 }
-      !payload.cep
-    ) {
-      alert("Preencha todos os campos obrigatórios!");
-      return;
-    }
-  }
-}
 
 // 🔒 BLOQUEIO
 if (type === "clientes") {
