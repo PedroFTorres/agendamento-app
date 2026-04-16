@@ -234,19 +234,21 @@ if (type === "clientes") {
       </div>
     `;
     document.body.appendChild(modal);
-    const cnpjInput = modal.querySelector("#edit-cnpj");
+
+// 👉 CRIA AS VARIÁVEIS AQUI
+const cnpjInput = modal.querySelector("#edit-cnpj");
 const cepInput = modal.querySelector("#edit-cep");
 const ieInput = modal.querySelector("#edit-ie");
-    cnpjInput?.addEventListener("input", (e) => {
+
+// 👉 AGORA SIM pode usar
+cnpjInput?.addEventListener("input", (e) => {
   let v = e.target.value.replace(/\D/g, "");
 
   if (v.length <= 11) {
-    // CPF
     v = v.replace(/^(\d{3})(\d)/, "$1.$2");
     v = v.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
     v = v.replace(/\.(\d{3})(\d)/, ".$1-$2");
   } else {
-    // CNPJ
     v = v.replace(/^(\d{2})(\d)/, "$1.$2");
     v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
     v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
@@ -472,7 +474,7 @@ if (type === "clientes") {
   const cepInput = document.getElementById("clientes-cep");
   const ieInput = document.getElementById("clientes-ie");
 
-  // CPF/CNPJ
+  // CNPJ/CPF
   cnpjInput?.addEventListener("input", (e) => {
     let v = e.target.value.replace(/\D/g, "");
 
