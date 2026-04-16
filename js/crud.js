@@ -421,14 +421,6 @@ const items = list.querySelectorAll("li");
     e.target.value = v;
   });
 
-// 🔒 LIMPEZA FORÇADA (FUNCIONA MESMO COLANDO)
-cnpjInput?.addEventListener("input", (e) => {
-  e.target.value = e.target.value.replace(/\D/g, "");
-});
-
-cepInput?.addEventListener("input", (e) => {
-  e.target.value = e.target.value.replace(/\D/g, "");
-});
   const list = document.getElementById(`${type}-list`);
 
   form.addEventListener("submit", async (e) => {
@@ -445,7 +437,7 @@ cepInput?.addEventListener("input", (e) => {
   payload.cep = document.getElementById("clientes-cep").value.trim();
 
   payload.vinculadoPor = REPRESENTANTE_ATUAL;
-
+   
   // 🔒 VALIDAÇÃO (AQUI É O PONTO CERTO)
   if (PERFIL === "representante") {
     if (
