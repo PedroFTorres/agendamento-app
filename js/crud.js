@@ -1351,25 +1351,28 @@ query.onSnapshot(snap => {
         ];
         let corIndex = 0;
 
-        // Cria eventos coloridos
         const eventos = snap.docs.map(doc => {
-          const d = doc.data();
-          const cor = cores[corIndex % cores.length];
-          corIndex++;
-          return {
-            id: doc.id,
-           const nomeCliente = d.clienteNome ? d.clienteNome.split(" ")[0] : "Sem cliente";
-          title: `${nomeCliente} • ${d.produtoNome || ""} (${d.quantidade || 0})`,
-            start: d.data,
-            backgroundColor: cor,
-            borderColor: cor,
-            textColor: "#000",
-            extendedProps: {
-              representante: d.representanteNome,
-              observacao: d.observacao
-            }
-          };
-        });
+  const d = doc.data();
+  const cor = cores[corIndex % cores.length];
+  corIndex++;
+
+  const nomeCliente = d.clienteNome
+    ? d.clienteNome.split(" ")[0]
+    : "Sem cliente";
+
+  return {
+    id: doc.id,
+    title: `${nomeCliente} • ${d.produtoNome || ""} (${d.quantidade || 0})`,
+    start: d.data,
+    backgroundColor: cor,
+    borderColor: cor,
+    textColor: "#000",
+    extendedProps: {
+      representante: d.representanteNome,
+      observacao: d.observacao
+    }
+  };
+});
         window.agendamentos = snap.docs.map(doc => doc.data());
 
         // Resumo por dia → produtos e quantidades
