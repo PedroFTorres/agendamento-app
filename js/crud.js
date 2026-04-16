@@ -1335,9 +1335,6 @@ function renderDashboard() {
   let query = db.collection("agendamentos");
 
 if (PERFIL === "representante") {
-  query = query.where("userId", "==", user.uid);
-}
-if (PERFIL === "representante") {
   query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
 }
 
@@ -1361,7 +1358,8 @@ query.onSnapshot(snap => {
           corIndex++;
           return {
             id: doc.id,
-            title: `${d.clienteNome.split(" ")[0]} • ${d.produtoNome} (${d.quantidade})`,
+           const nomeCliente = d.clienteNome ? d.clienteNome.split(" ")[0] : "Sem cliente";
+          title: `${nomeCliente} • ${d.produtoNome || ""} (${d.quantidade || 0})`,
             start: d.data,
             backgroundColor: cor,
             borderColor: cor,
