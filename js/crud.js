@@ -2027,17 +2027,25 @@ function renderPedidos() {
     alert("Pedido enviado!");
   });
 
-  // 📋 LISTAR PEDIDOS
-  waitForAuth().then(user => {
+ waitForAuth().then(async user => {
 
-    let query = db.collection("pedidos");
+  // 🔥 GARANTE QUE PERFIL CARREGOU
+  if (!PERFIL) {
+    await carregarUsuario();
+  }
 
-    if (PERFIL === "representante") {
-      query = query.where("userId", "==", user.uid);
-    }
+  console.log("PERFIL carregado:", PERFIL);
 
-    query.orderBy("createdAt", "desc")
-      .onSnapshot(snap => {
+  let query = db.collection("pedidos");
+
+  if (PERFIL === "representante") {
+    query = query.where("userId", "==", user.uid);
+  }
+
+  query.orderBy("createdAt", "desc")
+    .onSnapshot(snap => {
+
+      console.log("Pedidos encontrados:", snap.size);
 
         lista.innerHTML = "";
 
