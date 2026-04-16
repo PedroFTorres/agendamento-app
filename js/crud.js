@@ -505,7 +505,14 @@ if (type === "clientes") {
    if (type === "clientes") {
   payload.nome = document.getElementById("clientes-nome").value.trim();
   payload.whatsapp = document.getElementById("clientes-whatsapp").value.trim();
-  payload.cnpj = document.getElementById("clientes-cnpj").value.trim();
+  let doc = document.getElementById("clientes-cnpj").value.replace(/\D/g, "");
+
+if (doc.length !== 11 && doc.length !== 14) {
+  alert("CPF ou CNPJ inválido");
+  return;
+}
+
+payload.cnpj = doc;
   payload.ie = document.getElementById("clientes-ie").value.trim();
   payload.cep = document.getElementById("clientes-cep").value.trim();
 
