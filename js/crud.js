@@ -534,7 +534,7 @@ payload.cnpj = doc;
 // 🔒 BLOQUEIO
 if (type === "clientes") {
   const snap = await db.collection("clientes")
-    .where("nome", "==", payload.nome)
+    .where("cnpj", "==", payload.cnpj)
     .where("userId", "==", uid)
     .get();
 
