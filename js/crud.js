@@ -213,7 +213,14 @@ if (type === "clientes") {
         <h3 class="text-lg font-bold mb-2">Editar Cliente</h3>
         <div class="grid grid-cols-1 gap-3">
           <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome">
-          <input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp">
+
+<input id="edit-whats" class="border p-2 rounded" value="${d.whatsapp || ""}" placeholder="WhatsApp">
+
+<input id="edit-cnpj" class="border p-2 rounded" value="${d.cnpj || ""}" placeholder="CNPJ">
+
+<input id="edit-ie" class="border p-2 rounded" value="${d.ie || ""}" placeholder="Inscrição Estadual">
+
+<input id="edit-cep" class="border p-2 rounded" value="${d.cep || ""}" placeholder="CEP">
           ${PERFIL === "admin" ? `
 <select id="edit-user" class="border p-2 rounded"></select>
 ` : ""}
@@ -227,6 +234,31 @@ if (type === "clientes") {
       </div>
     `;
     document.body.appendChild(modal);
+    const cnpjInput = modal.querySelector("#edit-cnpj");
+const cepInput = modal.querySelector("#edit-cep");
+const ieInput = modal.querySelector("#edit-ie");
+
+// CNPJ
+cnpjInput?.addEventListener("input", (e) => {
+  let v = e.target.value.replace(/\D/g, "");
+  v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+  v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+  v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+  v = v.replace(/(\d{4})(\d)/, "$1-$2");
+  e.target.value = v;
+});
+
+// CEP
+cepInput?.addEventListener("input", (e) => {
+  let v = e.target.value.replace(/\D/g, "");
+  v = v.replace(/^(\d{5})(\d)/, "$1-$2");
+  e.target.value = v;
+});
+
+// IE
+ieInput?.addEventListener("input", (e) => {
+  e.target.value = e.target.value.replace(/\D/g, "");
+});
 
     const $nome = modal.querySelector("#edit-nome");
     const $whats = modal.querySelector("#edit-whats");
@@ -255,12 +287,25 @@ if (PERFIL === "admin") {
 
     modal.querySelector("#btn-save").addEventListener("click", async () => {
       const nome = $nome.value.trim();
-      const whatsapp = $whats.value.trim();
+const whatsapp = $whats.value.trim();
+const cnpj = modal.querySelector("#edit-cnpj").value.trim();
+const ie = modal.querySelector("#edit-ie").value.trim();
+const cep = modal.querySelector("#edit-cep").value.trim();
+      // 🔒 VALIDAÇÃO
+if (PERFIL === "representante") {
+  if (!nome || !whatsapp || !cnpj || !ie || !cep) {
+    alert("Preencha todos os campos obrigatórios!");
+    return;
+  }
+}
       
 
      const updateData = {
   nome,
-  whatsapp
+  whatsapp,
+  cnpj,
+  ie,
+  cep
 };
 
 if (PERFIL === "admin" && $user) {
