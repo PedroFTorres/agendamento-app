@@ -2041,14 +2041,72 @@ function renderPedidos() {
 
         lista.innerHTML = "";
 
-        snap.forEach(doc => {
-          const p = doc.data();
+if (snap.empty) {
+  lista.innerHTML = `<p class="text-gray-500">Nenhum pedido.</p>`;
+  return;
+}
 
-          lista.innerHTML += `
-            <div class="bg-white p-3 rounded shadow">
-              <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
-              ${p.representanteNome} - ${p.status}
+// 🔥 AGRUPAR POR MÊS
+const pedidosPorMes = {};
 
+snap.forEach(doc => {
+  const p = doc.data();
+  const data = p.createdAt?.toDate?.() || new Date();
+
+  const mes = data.toLocaleString("pt-BR", { month: "long", year: "numeric" });
+
+  if (!pedidosPorMes[mes]) pedidosPorMes[mes] = [];
+
+  pedidosPorMes[mes].push({ id: doc.id, ...p });
+});
+
+// 🔥 RENDERIZAR
+Object.entries(pedidosPorMes).forEach(([mes, pedidos]) => {
+
+  // título do mês
+  const header = document.createElement("div");
+  header.className = "bg-gray-200 p-2 rounded font-bold";
+  header.textContent = mes;
+
+  const container = document.createElement("div");
+  container.className = "space-y-2 mt-2";
+
+  pedidos.forEach(p => {
+
+    const corStatus =
+      p.status === "pendente" ? "orange" :
+      p.status === "aprovado" ? "green" :
+      "red";
+
+    const item = document.createElement("div");
+    item.className = "bg-white p-3 rounded shadow";
+
+    item.innerHTML = `
+      <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
+
+      <span style="color:${corStatus}; font-weight:bold">
+        ${p.status}
+      </span>
+
+      ${p.status === "cancelado" ? `
+        <div style="color:red; font-size:12px;">
+          Motivo: ${p.motivoCancelamento || "não informado"}
+        </div>
+      ` : ""}
+
+      ${p.status === "aprovado" ? `
+        <div style="color:green; font-size:12px;">
+          ✔ Verifique seu calendário
+        </div>
+      ` : ""}
+    `;
+
+    container.appendChild(item);
+  });
+
+  lista.appendChild(header);
+  lista.appendChild(container);
+});
               ${PERFIL === "admin" && p.status === "pendente" ? `
                <button onclick="this.disabled=true; aprovarPedido('${doc.id}', this)" class="bg-green-600 text-white px-2 py-1 ml-2">Aprovar</button>
                <button onclick="this.disabled=true; cancelarPedido('${doc.id}', this)" class="bg-red-600 text-white px-2 py-1 ml-2">Cancelar</button>
