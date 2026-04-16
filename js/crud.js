@@ -570,10 +570,15 @@ payload.uid = cred.user.uid;
   });
  
   waitForAuth().then(user => {
-    db.collection(type)
-      .where("userId", "==", user.uid)
-      .orderBy("createdAt", "desc")
-      .onSnapshot(snap => {
+  let query = db.collection(type);
+
+if (PERFIL === "representante") {
+  query = query.where("userId", "==", user.uid);
+}
+
+query
+  .orderBy("createdAt", "desc")
+  .onSnapshot(snap => {
         list.innerHTML = "";
         if (snap.empty) {
           list.innerHTML = `<li class="text-gray-500">Nenhum registro.</li>`;
@@ -655,8 +660,13 @@ function renderAgendamentos() {
   const user = await waitForAuth();
   select.innerHTML = `<option value="">Selecione ${coll}</option>`;
 
-  const snap = await db.collection(coll)
-    .where("userId", "==", user.uid)
+ let query = db.collection(coll);
+
+if (PERFIL === "representante") {
+  query = query.where("userId", "==", user.uid);
+}
+
+const snap = await query.orderBy(labelField).get();
     .orderBy(labelField) // 👈 ordena alfabeticamente
     .get();
 
@@ -974,7 +984,11 @@ async function gerarRelatorio() {
   const clienteSel = document.getElementById("rel-cliente").value;
  
 
-  let query = db.collection("agendamentos").where("userId", "==", uid);
+ let query = db.collection("agendamentos");
+
+if (PERFIL === "representante") {
+  query = query.where("userId", "==", uid);
+}
   if (start) query = query.where("data", ">=", start);
   if (end)   query = query.where("data", "<=", end);
   if (clienteSel) query = query.where("clienteNome", "==", clienteSel);
@@ -1321,9 +1335,11 @@ function renderDashboard() {
   `;
 
   waitForAuth().then(user => {
-   let query = db.collection("agendamentos")
-  .where("userId", "==", user.uid);
+  let query = db.collection("agendamentos");
 
+if (PERFIL === "representante") {
+  query = query.where("userId", "==", user.uid);
+}
 if (PERFIL === "representante") {
   query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
 }
@@ -1829,8 +1845,13 @@ const preco = parseFloat(valorInput);
   });
 
  waitForAuth().then(user=>{
-  db.collection("precos_clientes")
-    .where("userId", "==", user.uid) // 🔥 CORREÇÃO
+  let query = db.collection("precos_clientes");
+
+if (PERFIL === "representante") {
+  query = query.where("userId","==",user.uid);
+}
+
+query.onSnapshot(...)
     .onSnapshot(snap=>{
       $list.innerHTML = "";
 
