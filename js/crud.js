@@ -21,11 +21,16 @@ async function carregarUsuario() {
     console.log("Perfil:", PERFIL);
     console.log("Nome:", REPRESENTANTE_ATUAL);
 
+    // ✅ MOSTRAR NA TELA
+    const el = document.getElementById("usuario-logado");
+    if (el) {
+      el.textContent = "👤 " + REPRESENTANTE_ATUAL;
+    }
+
   } else {
     alert("Usuário não cadastrado");
   }
 }
-
 carregarUsuario();
 
 function toast(msg) {
