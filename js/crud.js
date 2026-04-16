@@ -2081,25 +2081,37 @@ Object.entries(pedidosPorMes).forEach(([mes, pedidos]) => {
     const item = document.createElement("div");
     item.className = "bg-white p-3 rounded shadow";
 
-    item.innerHTML = `
-      <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
+   item.innerHTML = `
+  <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
 
-      <span style="color:${corStatus}; font-weight:bold">
-        ${p.status}
-      </span>
+  <span style="color:${corStatus}; font-weight:bold">
+    ${p.status}
+  </span>
 
-      ${p.status === "cancelado" ? `
-        <div style="color:red; font-size:12px;">
-          Motivo: ${p.motivoCancelamento || "não informado"}
-        </div>
-      ` : ""}
+  ${p.status === "cancelado" ? `
+    <div style="color:red; font-size:12px;">
+      Motivo: ${p.motivoCancelamento || "não informado"}
+    </div>
+  ` : ""}
 
-      ${p.status === "aprovado" ? `
-        <div style="color:green; font-size:12px;">
-          ✔ Verifique seu calendário
-        </div>
-      ` : ""}
-    `;
+  ${p.status === "aprovado" ? `
+    <div style="color:green; font-size:12px;">
+      ✔ Verifique seu calendário
+    </div>
+  ` : ""}
+
+  ${PERFIL === "admin" && p.status === "pendente" ? `
+    <div class="mt-2">
+      <button onclick="this.disabled=true; aprovarPedido('${p.id}', this)" class="bg-green-600 text-white px-2 py-1 mr-2">
+        Aprovar
+      </button>
+
+      <button onclick="this.disabled=true; cancelarPedido('${p.id}', this)" class="bg-red-600 text-white px-2 py-1">
+        Cancelar
+      </button>
+    </div>
+  ` : ""}
+`;
 
     container.appendChild(item);
   });
@@ -2107,15 +2119,7 @@ Object.entries(pedidosPorMes).forEach(([mes, pedidos]) => {
   lista.appendChild(header);
   lista.appendChild(container);
 });
-              ${PERFIL === "admin" && p.status === "pendente" ? `
-               <button onclick="this.disabled=true; aprovarPedido('${doc.id}', this)" class="bg-green-600 text-white px-2 py-1 ml-2">Aprovar</button>
-               <button onclick="this.disabled=true; cancelarPedido('${doc.id}', this)" class="bg-red-600 text-white px-2 py-1 ml-2">Cancelar</button>
-               
-              ` : ""}
-            </div>
-          `;
-        });
-
+              
       });
 
   });
