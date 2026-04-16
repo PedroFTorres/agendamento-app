@@ -648,7 +648,7 @@ function renderAgendamentos() {
       <button class="bg-blue-600 text-white p-2 rounded w-full mt-2">Salvar</button>
     </form>
     <div id="ag-list" class="space-y-4"></div>
-  `;
+  `;F
 
   const $selCliente = document.getElementById("ag-cliente");
   const $selRep     = document.getElementById("ag-representante");
@@ -667,9 +667,6 @@ if (PERFIL === "representante") {
 }
 
 const snap = await query.orderBy(labelField).get();
-    .orderBy(labelField) // 👈 ordena alfabeticamente
-    .get();
-
   snap.forEach(doc => {
     const d = doc.data();
     const opt = document.createElement("option");
@@ -1851,8 +1848,7 @@ if (PERFIL === "representante") {
   query = query.where("userId","==",user.uid);
 }
 
-query.onSnapshot(...)
-    .onSnapshot(snap=>{
+query.onSnapshot(snap=>{
       $list.innerHTML = "";
 
       $list.innerHTML = "";
