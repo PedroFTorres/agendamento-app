@@ -303,7 +303,7 @@ const ie = modal.querySelector("#edit-ie").value.trim();
 const cep = modal.querySelector("#edit-cep").value.trim();
       // 🔒 VALIDAÇÃO
 if (PERFIL === "representante") {
-  if (!nome || !whatsapp || !cnpj || !ie || !cep) {
+  if (!nome || !whatsapp || !cnpj || !cep) {
     alert("Preencha todos os campos obrigatórios!");
     return;
   }
@@ -524,7 +524,17 @@ payload.cnpj = doc;
       !payload.nome ||
       !payload.whatsapp ||
       !payload.cnpj ||
-      !payload.ie ||
+      if (PERFIL === "representante") {
+  if (
+    !payload.nome ||
+    !payload.whatsapp ||
+    !payload.cnpj ||
+    !payload.cep
+  ) {
+    alert("Preencha os campos obrigatórios!");
+    return;
+  }
+}
       !payload.cep
     ) {
       alert("Preencha todos os campos obrigatórios!");
