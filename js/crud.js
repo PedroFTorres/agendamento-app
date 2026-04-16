@@ -520,11 +520,6 @@ payload.cnpj = doc;
    
   // 🔒 VALIDAÇÃO (AQUI É O PONTO CERTO)
   if (PERFIL === "representante") {
-    if (
-      !payload.nome ||
-      !payload.whatsapp ||
-      !payload.cnpj ||
-      if (PERFIL === "representante") {
   if (
     !payload.nome ||
     !payload.whatsapp ||
