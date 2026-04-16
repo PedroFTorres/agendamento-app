@@ -580,7 +580,18 @@ payload.uid = cred.user.uid;
           return;
         }
         snap.forEach(doc => list.appendChild(listItem(type, doc.id, doc.data())));
-        bindBasicActions(list);
+bindBasicActions(list);
+
+// 🔥 aplicar filtro após renderizar
+if (type === "clientes") {
+  const termo = document.getElementById("clientes-search").value.toLowerCase();
+  const items = list.querySelectorAll("li");
+
+  items.forEach(li => {
+    const txt = li.textContent.toLowerCase();
+    li.style.display = txt.includes(termo) ? "" : "none";
+  });
+}
       });
   });
 
