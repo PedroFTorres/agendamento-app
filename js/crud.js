@@ -492,26 +492,7 @@ if (type === "clientes") {
     e.target.value = e.target.value.replace(/\D/g, "");
   });
 }
-  let v = e.target.value.replace(/\D/g, "");
-
-  if (v.length <= 11) {
-    // CPF
-    v = v.replace(/^(\d{3})(\d)/, "$1.$2");
-    v = v.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
-    v = v.replace(/\.(\d{3})(\d)/, ".$1-$2");
-  } else {
-    // CNPJ
-    v = v.replace(/^(\d{2})(\d)/, "$1.$2");
-    v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
-    v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
-    v = v.replace(/(\d{4})(\d)/, "$1-$2");
-  }
-
-  e.target.value = v;
-});
-  const cepInput = document.getElementById("clientes-cep");
-  const ieInput = document.getElementById("clientes-ie");
-
+  
   // 🔒 CNPJ
   cnpjInput?.addEventListener("input", (e) => {
     let v = e.target.value.replace(/\D/g, "");
