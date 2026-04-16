@@ -234,6 +234,9 @@ if (type === "clientes") {
       </div>
     `;
     document.body.appendChild(modal);
+    const cnpjInput = modal.querySelector("#edit-cnpj");
+const cepInput = modal.querySelector("#edit-cep");
+const ieInput = modal.querySelector("#edit-ie");
     cnpjInput?.addEventListener("input", (e) => {
   let v = e.target.value.replace(/\D/g, "");
 
@@ -464,7 +467,41 @@ const items = list.querySelectorAll("li");
 
   const form = document.getElementById(`${type}-form`);
 if (type === "clientes") {
- cnpjInput?.addEventListener("input", (e) => {
+
+  const cnpjInput = document.getElementById("clientes-cnpj");
+  const cepInput = document.getElementById("clientes-cep");
+  const ieInput = document.getElementById("clientes-ie");
+
+  // CPF/CNPJ
+  cnpjInput?.addEventListener("input", (e) => {
+    let v = e.target.value.replace(/\D/g, "");
+
+    if (v.length <= 11) {
+      v = v.replace(/^(\d{3})(\d)/, "$1.$2");
+      v = v.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
+      v = v.replace(/\.(\d{3})(\d)/, ".$1-$2");
+    } else {
+      v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+      v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+      v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+      v = v.replace(/(\d{4})(\d)/, "$1-$2");
+    }
+
+    e.target.value = v;
+  });
+
+  // CEP
+  cepInput?.addEventListener("input", (e) => {
+    let v = e.target.value.replace(/\D/g, "");
+    v = v.replace(/^(\d{5})(\d)/, "$1-$2");
+    e.target.value = v;
+  });
+
+  // IE
+  ieInput?.addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/\D/g, "");
+  });
+}
   let v = e.target.value.replace(/\D/g, "");
 
   if (v.length <= 11) {
