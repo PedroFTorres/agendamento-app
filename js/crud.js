@@ -2089,8 +2089,12 @@ Object.entries(pedidosPorMes).forEach(([mes, pedidos]) => {
     const item = document.createElement("div");
     item.className = "bg-white p-3 rounded shadow";
 
-   item.innerHTML = `
+ item.innerHTML = `
   <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
+
+  <div style="font-size:12px; color:#555;">
+    Representante: ${p.representanteNome || "não informado"}
+  </div>
 
   <span style="color:${corStatus}; font-weight:bold">
     ${p.status}
