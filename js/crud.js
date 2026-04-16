@@ -1951,12 +1951,24 @@ function renderPedidos() {
     </div>
     ` : ""}
 
-    <div id="lista-pedidos" class="space-y-2"></div>
+  <select id="filtro-mes" class="border p-2 mb-3 rounded w-full">
+  <option value="">Todos os meses</option>
+</select>
+
+<div id="lista-pedidos" class="space-y-2"></div>
+
+<div id="lista-pedidos" class="space-y-2"></div>
   `;
 
   const $cliente = document.getElementById("p-cliente");
   const $produto = document.getElementById("p-produto");
+  const filtroMes = document.getElementById("filtro-mes");
   const lista = document.getElementById("lista-pedidos");
+  if (filtroMes) {
+  filtroMes.onchange = () => {
+    renderPedidos();
+  };
+}
 
   waitForAuth().then(async user => {
 
@@ -2068,9 +2080,20 @@ snap.forEach(doc => {
   pedidosPorMes[mes].push({ id: doc.id, ...p });
 });
 
-// 🔥 RENDERIZAR
+const mesSelecionado = filtroMes.value;
+      // 🔥 preencher select de meses (SIMPLES)
+filtroMes.innerHTML = `<option value="">Todos os meses</option>`;
+
+Object.keys(pedidosPorMes).forEach(mes => {
+  const opt = document.createElement("option");
+  opt.value = mes;
+  opt.textContent = mes;
+  filtroMes.appendChild(opt);
+});
+
 Object.entries(pedidosPorMes).forEach(([mes, pedidos]) => {
 
+  if (mesSelecionado && mes !== mesSelecionado) return;
   // título do mês
   const header = document.createElement("div");
   header.className = "bg-gray-200 p-2 rounded font-bold";
