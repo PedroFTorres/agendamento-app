@@ -1951,36 +1951,53 @@ function renderPedidos() {
     </div>
     ` : ""}
 
-  <select id="filtro-mes" class="border p-2 mb-3 rounded w-full">
-  <option value="">Todos os meses</option>
-</select>
+    <!-- 🔥 CONTROLE DE MÊS -->
+    <div class="flex items-center justify-between mb-3">
+      <button id="mes-anterior" class="px-3 py-1 bg-gray-200 rounded">←</button>
+      <span id="mes-atual" class="font-bold"></span>
+      <button id="mes-proximo" class="px-3 py-1 bg-gray-200 rounded">→</button>
+    </div>
 
-<div id="lista-pedidos" class="space-y-2"></div>
-
-<div id="lista-pedidos" class="space-y-2"></div>
+    <div id="lista-pedidos" class="space-y-2"></div>
   `;
 
   const $cliente = document.getElementById("p-cliente");
   const $produto = document.getElementById("p-produto");
-  const filtroMes = document.getElementById("filtro-mes");
   const lista = document.getElementById("lista-pedidos");
-  if (filtroMes) {
-  filtroMes.onchange = () => {
+
+  // 🔥 CONTROLE DE DATA
+  let dataAtual = new Date();
+
+  const mesAtualEl = document.getElementById("mes-atual");
+  const btnAnt = document.getElementById("mes-anterior");
+  const btnProx = document.getElementById("mes-proximo");
+
+  function formatarMes(data) {
+    return data.toLocaleString("pt-BR", {
+      month: "long",
+      year: "numeric"
+    });
+  }
+
+  btnAnt.onclick = () => {
+    dataAtual.setMonth(dataAtual.getMonth() - 1);
     renderPedidos();
   };
-}
+
+  btnProx.onclick = () => {
+    dataAtual.setMonth(dataAtual.getMonth() + 1);
+    renderPedidos();
+  };
 
   waitForAuth().then(async user => {
 
-    // 🔒 CLIENTES (CORRETO)
+    // CLIENTES
     let cliQuery = db.collection("clientes");
-
     if (PERFIL === "representante") {
       cliQuery = cliQuery.where("userId", "==", user.uid);
     }
 
     const cliSnap = await cliQuery.get();
-
     cliSnap.forEach(doc => {
       const opt = document.createElement("option");
       opt.value = doc.data().nome;
@@ -1988,9 +2005,8 @@ function renderPedidos() {
       $cliente?.appendChild(opt);
     });
 
-    // 🌎 PRODUTOS (GLOBAL)
+    // PRODUTOS
     const prodSnap = await db.collection("produtos").get();
-
     prodSnap.forEach(doc => {
       const opt = document.createElement("option");
       opt.value = doc.data().nome;
@@ -2000,7 +2016,7 @@ function renderPedidos() {
 
   });
 
-  // 🚀 CRIAR PEDIDO + VALIDAÇÃO EXTRA
+  // CRIAR PEDIDO
   document.getElementById("btn-pedido")?.addEventListener("click", async () => {
     const user = await waitForAuth();
 
@@ -2011,19 +2027,6 @@ function renderPedidos() {
     if (!cliente || !produto || !quantidade) {
       alert("Preencha tudo!");
       return;
-    }
-
-    // 🔒 VALIDAÇÃO EXTRA (IMPORTANTÍSSIMO)
-    if (PERFIL === "representante") {
-      const clienteValido = await db.collection("clientes")
-        .where("nome", "==", cliente)
-        .where("userId", "==", user.uid)
-        .get();
-
-      if (clienteValido.empty) {
-        alert("❌ Este cliente não pertence a você.");
-        return;
-      }
     }
 
     await db.collection("pedidos").add({
@@ -2039,122 +2042,83 @@ function renderPedidos() {
     alert("Pedido enviado!");
   });
 
- waitForAuth().then(async user => {
+  waitForAuth().then(async user => {
 
-  // 🔥 GARANTE QUE PERFIL CARREGOU
-  if (!PERFIL) {
-    await carregarUsuario();
-  }
+    if (!PERFIL) {
+      await carregarUsuario();
+    }
 
-  console.log("PERFIL carregado:", PERFIL);
+    let query = db.collection("pedidos");
 
-  let query = db.collection("pedidos");
+    if (PERFIL === "representante") {
+      query = query.where("userId", "==", user.uid);
+    }
 
-  if (PERFIL === "representante") {
-    query = query.where("userId", "==", user.uid);
-  }
-
-  query.orderBy("createdAt", "desc")
-    .onSnapshot(snap => {
-
-      console.log("Pedidos encontrados:", snap.size);
+    query.orderBy("createdAt", "desc")
+      .onSnapshot(snap => {
 
         lista.innerHTML = "";
 
-if (snap.empty) {
-  lista.innerHTML = `<p class="text-gray-500">Nenhum pedido.</p>`;
-  return;
-}
+        if (snap.empty) {
+          lista.innerHTML = `<p class="text-gray-500">Nenhum pedido.</p>`;
+          return;
+        }
 
-// 🔥 AGRUPAR POR MÊS
-const pedidosPorMes = {};
+        const pedidosPorMes = {};
 
-snap.forEach(doc => {
-  const p = doc.data();
-  const data = p.createdAt?.toDate?.() || new Date();
+        snap.forEach(doc => {
+          const p = doc.data();
+          const data = p.createdAt?.toDate?.() || new Date();
 
-  const mes = data.toLocaleString("pt-BR", { month: "long", year: "numeric" });
+          const mes = data.toLocaleString("pt-BR", { month: "long", year: "numeric" });
 
-  if (!pedidosPorMes[mes]) pedidosPorMes[mes] = [];
+          if (!pedidosPorMes[mes]) pedidosPorMes[mes] = [];
+          pedidosPorMes[mes].push({ id: doc.id, ...p });
+        });
 
-  pedidosPorMes[mes].push({ id: doc.id, ...p });
-});
+        const mesSelecionado = formatarMes(dataAtual);
+        mesAtualEl.textContent = mesSelecionado;
 
-const mesSelecionado = filtroMes.value;
-      // 🔥 preencher select de meses (SIMPLES)
-filtroMes.innerHTML = `<option value="">Todos os meses</option>`;
+        Object.entries(pedidosPorMes).forEach(([mes, pedidos]) => {
 
-Object.keys(pedidosPorMes).forEach(mes => {
-  const opt = document.createElement("option");
-  opt.value = mes;
-  opt.textContent = mes;
-  filtroMes.appendChild(opt);
-});
+          if (mes !== mesSelecionado) return;
 
-Object.entries(pedidosPorMes).forEach(([mes, pedidos]) => {
+          const header = document.createElement("div");
+          header.className = "bg-gray-200 p-2 rounded font-bold";
+          header.textContent = mes;
 
-  if (mesSelecionado && mes !== mesSelecionado) return;
-  // título do mês
-  const header = document.createElement("div");
-  header.className = "bg-gray-200 p-2 rounded font-bold";
-  header.textContent = mes;
+          const container = document.createElement("div");
+          container.className = "space-y-2 mt-2";
 
-  const container = document.createElement("div");
-  container.className = "space-y-2 mt-2";
+          pedidos.forEach(p => {
 
-  pedidos.forEach(p => {
+            const corStatus =
+              p.status === "pendente" ? "orange" :
+              p.status === "aprovado" ? "green" :
+              "red";
 
-    const corStatus =
-      p.status === "pendente" ? "orange" :
-      p.status === "aprovado" ? "green" :
-      "red";
+            const item = document.createElement("div");
+            item.className = "bg-white p-3 rounded shadow";
 
-    const item = document.createElement("div");
-    item.className = "bg-white p-3 rounded shadow";
+            item.innerHTML = `
+              <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
 
- item.innerHTML = `
-  <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
+              <div style="font-size:12px; color:#555;">
+                Representante: ${p.representanteNome || "não informado"}
+              </div>
 
-  <div style="font-size:12px; color:#555;">
-    Representante: ${p.representanteNome || "não informado"}
-  </div>
+              <span style="color:${corStatus}; font-weight:bold">
+                ${p.status}
+              </span>
+            `;
 
-  <span style="color:${corStatus}; font-weight:bold">
-    ${p.status}
-  </span>
+            container.appendChild(item);
+          });
 
-  ${p.status === "cancelado" ? `
-    <div style="color:red; font-size:12px;">
-      Motivo: ${p.motivoCancelamento || "não informado"}
-    </div>
-  ` : ""}
+          lista.appendChild(header);
+          lista.appendChild(container);
+        });
 
-  ${p.status === "aprovado" ? `
-    <div style="color:green; font-size:12px;">
-      ✔ Verifique seu calendário
-    </div>
-  ` : ""}
-
-  ${PERFIL === "admin" && p.status === "pendente" ? `
-    <div class="mt-2">
-      <button onclick="this.disabled=true; aprovarPedido('${p.id}', this)" class="bg-green-600 text-white px-2 py-1 mr-2">
-        Aprovar
-      </button>
-
-      <button onclick="this.disabled=true; cancelarPedido('${p.id}', this)" class="bg-red-600 text-white px-2 py-1">
-        Cancelar
-      </button>
-    </div>
-  ` : ""}
-`;
-
-    container.appendChild(item);
-  });
-
-  lista.appendChild(header);
-  lista.appendChild(container);
-});
-              
       });
 
   });
