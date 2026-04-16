@@ -401,6 +401,36 @@ const items = list.querySelectorAll("li");
 }
 
   const form = document.getElementById(`${type}-form`);
+ if (type === "clientes") {
+  const cnpjInput = document.getElementById("clientes-cnpj");
+  const cepInput = document.getElementById("clientes-cep");
+
+  // 🔹 MÁSCARA CNPJ
+  cnpjInput?.addEventListener("input", (e) => {
+    let v = e.target.value.replace(/\D/g, "");
+    v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+    v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+    v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+    v = v.replace(/(\d{4})(\d)/, "$1-$2");
+    e.target.value = v;
+  });
+
+  // 🔹 MÁSCARA CEP
+  cepInput?.addEventListener("input", (e) => {
+    let v = e.target.value.replace(/\D/g, "");
+    v = v.replace(/^(\d{5})(\d)/, "$1-$2");
+    e.target.value = v;
+  });
+
+  // 🔒 BLOQUEAR LETRAS (AQUI É O PASSO 2)
+  cnpjInput?.addEventListener("keypress", (e) => {
+    if (!/[0-9]/.test(e.key)) e.preventDefault();
+  });
+
+  cepInput?.addEventListener("keypress", (e) => {
+    if (!/[0-9]/.test(e.key)) e.preventDefault();
+  });
+}
   const list = document.getElementById(`${type}-list`);
 
   form.addEventListener("submit", async (e) => {
