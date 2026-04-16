@@ -406,9 +406,9 @@ if (type === "clientes") {
   const cepInput = document.getElementById("clientes-cep");
   const ieInput = document.getElementById("clientes-ie");
 
-  // 🔒 CNPJ (somente números + máscara)
+  // 🔒 CNPJ
   cnpjInput?.addEventListener("input", (e) => {
-    let v = e.target.value.replace(/\D/g, ""); // remove tudo que não é número
+    let v = e.target.value.replace(/\D/g, "");
     v = v.replace(/^(\d{2})(\d)/, "$1.$2");
     v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
     v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
@@ -416,14 +416,14 @@ if (type === "clientes") {
     e.target.value = v;
   });
 
-  // 🔒 CEP (somente números + máscara)
+  // 🔒 CEP
   cepInput?.addEventListener("input", (e) => {
-    let v = e.target.value.replace(/\D/g, ""); // remove letras
+    let v = e.target.value.replace(/\D/g, "");
     v = v.replace(/^(\d{5})(\d)/, "$1-$2");
     e.target.value = v;
   });
 
-  // 🔒 INSCRIÇÃO ESTADUAL (SÓ NÚMERO)
+  // 🔒 IE
   ieInput?.addEventListener("input", (e) => {
     e.target.value = e.target.value.replace(/\D/g, "");
   });
