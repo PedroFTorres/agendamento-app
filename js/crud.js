@@ -391,8 +391,8 @@ function renderForm(type) {
   const searchInput = document.getElementById("clientes-search");
   searchInput.addEventListener("input", () => {
     const termo = searchInput.value.toLowerCase();
-    const items = list.querySelectorAll("li");
     const list = document.getElementById(`${type}-list`);
+const items = list.querySelectorAll("li");
     items.forEach(li => {
       const txt = li.textContent.toLowerCase();
       li.style.display = txt.includes(termo) ? "" : "none";
@@ -439,12 +439,6 @@ if (type === "clientes") {
     .where("nome", "==", payload.nome)
     .where("userId", "==", uid)
     .get();
-
-  if (!snap.empty) {
-    alert("❌ Este cliente já está vinculado a outro usuário.");
-    return;
-  }
-}
 
   if (!snap.empty) {
     alert("❌ Este cliente já está vinculado a outro usuário.");
