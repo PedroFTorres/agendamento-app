@@ -2119,20 +2119,69 @@ function renderPedidos() {
             const item = document.createElement("div");
             item.className = "bg-white p-3 rounded shadow";
 
-            item.innerHTML = `
-              <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
+          item.innerHTML = `
+  <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
 
-              <div style="font-size:12px; color:#555;">
-                Representante: ${p.representanteNome || "não informado"}
-              </div>
+  <div style="font-size:12px; color:#555;">
+    Representante: ${p.representanteNome || "não informado"}
+  </div>
 
-              <span style="color:${corStatus}; font-weight:bold">
-                ${p.status}
-              </span>
-            `;
+  <span style="color:${corStatus}; font-weight:bold">
+    ${p.status}
+  </span>
+
+  ${PERFIL === "admin" && p.status === "pendente" ? `
+    <div class="mt-2 space-x-2">
+      <button data-id="${p.id}" class="btn-aprovar bg-green-600 text-white px-2 py-1 rounded">
+        Aprovar
+      </button>
+      <button data-id="${p.id}" class="btn-cancelar bg-red-600 text-white px-2 py-1 rounded">
+        Cancelar
+      </button>
+    </div>
+  ` : ""}
+`;
 
             container.appendChild(item);
           });
+          // BOTÃO APROVAR
+item.querySelector(".btn-aprovar")?.addEventListener("click", async () => {
+  const id = p.id;
+
+  const dataEscolhida = prompt("Informe a data (YYYY-MM-DD):");
+
+  if (!dataEscolhida) return;
+
+  const docRef = db.collection("pedidos").doc(id);
+  const snap = await docRef.get();
+  const pedido = snap.data();
+
+  const user = await waitForAuth();
+
+  // cria agendamento
+  await db.collection("agendamentos").add({
+    userId: pedido.userId,
+    clienteNome: pedido.clienteNome,
+    produtoNome: pedido.produtoNome,
+    quantidade: pedido.quantidade,
+    representanteNome: pedido.representanteNome,
+    criadoPor: pedido.userId, // 🔥 ESSENCIAL
+    data: dataEscolhida,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  // atualiza status
+  await docRef.update({ status: "aprovado" });
+});
+
+// BOTÃO CANCELAR
+item.querySelector(".btn-cancelar")?.addEventListener("click", async () => {
+  if (!confirm("Cancelar pedido?")) return;
+
+  await db.collection("pedidos").doc(p.id).update({
+    status: "cancelado"
+  });
+});
 
           lista.appendChild(header);
           lista.appendChild(container);
