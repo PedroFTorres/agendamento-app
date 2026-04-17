@@ -2144,44 +2144,7 @@ function renderPedidos() {
 
             container.appendChild(item);
           });
-          // BOTÃO APROVAR
-item.querySelector(".btn-aprovar")?.addEventListener("click", async () => {
-  const id = p.id;
-
-  const dataEscolhida = prompt("Informe a data (YYYY-MM-DD):");
-
-  if (!dataEscolhida) return;
-
-  const docRef = db.collection("pedidos").doc(id);
-  const snap = await docRef.get();
-  const pedido = snap.data();
-
-  const user = await waitForAuth();
-
-  // cria agendamento
-  await db.collection("agendamentos").add({
-    userId: pedido.userId,
-    clienteNome: pedido.clienteNome,
-    produtoNome: pedido.produtoNome,
-    quantidade: pedido.quantidade,
-    representanteNome: pedido.representanteNome,
-    criadoPor: pedido.userId, // 🔥 ESSENCIAL
-    data: dataEscolhida,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-
-  // atualiza status
-  await docRef.update({ status: "aprovado" });
-});
-
-// BOTÃO CANCELAR
-item.querySelector(".btn-cancelar")?.addEventListener("click", async () => {
-  if (!confirm("Cancelar pedido?")) return;
-
-  await db.collection("pedidos").doc(p.id).update({
-    status: "cancelado"
-  });
-});
+      
 
           lista.appendChild(header);
           lista.appendChild(container);
