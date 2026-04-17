@@ -2145,19 +2145,14 @@ const btnAprovar = item.querySelector(".btn-aprovar");
 const btnCancelar = item.querySelector(".btn-cancelar");
 
 if (btnAprovar) {
- btnAprovar.addEventListener("click", async (e) => {
-  aprovarPedido(p.id, e.target);
-});
+  btnAprovar.addEventListener("click", async (e) => {
+    aprovarPedido(p.id, e.target);
+  });
 }
 
-btnCancelar.addEventListener("click", async (e) => {
-  cancelarPedido(p.id, e.target);
-});
-    if (!confirm("Cancelar pedido?")) return;
-
-    await db.collection("pedidos").doc(p.id).update({
-      status: "cancelado"
-    });
+if (btnCancelar) {
+  btnCancelar.addEventListener("click", async (e) => {
+    cancelarPedido(p.id, e.target);
   });
 }
             container.appendChild(item);
