@@ -2065,7 +2065,13 @@ inputQtd?.addEventListener("input", (e) => {
     });
 
     // PRODUTOS
-    const prodSnap = await db.collection("produtos").get();
+   let prodQuery = db.collection("produtos");
+
+if (PERFIL === "representante") {
+  prodQuery = prodQuery.where("userId", "==", user.uid);
+}
+
+const prodSnap = await prodQuery.get();
 
 $produto.innerHTML = `<option value="">Selecione produto</option>`; // 🔥 ESSENCIAL
 
