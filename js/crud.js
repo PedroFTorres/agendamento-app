@@ -4,7 +4,7 @@ const pageContent = document.getElementById("page-content");
 let REPRESENTANTE_ATUAL = null;
 let PERFIL = null;
 async function carregarUsuario() {
-  const user = await waitForAuth();f
+  const user = await waitForAuth();
 
   const snap = await db.collection("usuarios")
     .where("uid", "==", user.uid)
