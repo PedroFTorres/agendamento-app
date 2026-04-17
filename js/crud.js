@@ -2145,13 +2145,14 @@ const btnAprovar = item.querySelector(".btn-aprovar");
 const btnCancelar = item.querySelector(".btn-cancelar");
 
 if (btnAprovar) {
- btnAprovar.addEventListener("click", async () => {
-  abrirModalAgendamentoPedido(p);
+ btnAprovar.addEventListener("click", async (e) => {
+  aprovarPedido(p.id, e.target);
 });
 }
 
-if (btnCancelar) {
-  btnCancelar.addEventListener("click", async () => {
+btnCancelar.addEventListener("click", async (e) => {
+  cancelarPedido(p.id, e.target);
+});
     if (!confirm("Cancelar pedido?")) return;
 
     await db.collection("pedidos").doc(p.id).update({
