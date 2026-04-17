@@ -2136,8 +2136,8 @@ function renderPedidos() {
             item.className = "bg-white p-3 rounded shadow";
 
           item.innerHTML = `
-  <b>${p.clienteNome}</b> - ${p.produtoNome} (${p.quantidade})<br>
-
+  <b>${p.clienteNome}</b> - ${p.produtoNome} (${formatQuantidade(p.quantidade)})<br>
+  
   <div style="font-size:12px; color:#555;">
     Representante: ${p.representanteNome || "não informado"}
   </div>
