@@ -698,6 +698,7 @@ const snap = await query.orderBy(labelField).get();
       userId: user.uid,
       clienteNome,
       representanteNome: REPRESENTANTE_ATUAL,
+      criadoPor: user.uid,
       produtoNome: prodNome,
       data,
       quantidade,
@@ -1340,7 +1341,7 @@ function renderDashboard() {
   let query = db.collection("agendamentos");
 
 if (PERFIL === "representante") {
-  query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
+  query = query.where("criadoPor", "==", user.uid);
 }
 
 query.onSnapshot(snap => {
