@@ -1982,6 +1982,15 @@ function renderPedidos() {
       <select id="p-cliente" class="border p-2 w-full"></select>
       <select id="p-produto" class="border p-2 w-full"></select>
       <input id="p-qtd" type="text" class="border p-2 w-full" placeholder="Quantidade">
+
+<select id="p-prazo" class="border p-2 w-full">
+  <option value="">Prazo de pagamento</option>
+  <option value="10 dias">10 dias</option>
+  <option value="15 dias">15 dias</option>
+  <option value="30 dias">30 dias</option>
+  <option value="30/60 dias">30/60 dias</option>
+</select>
+<input id="p-obs" type="text" class="border p-2 w-full" placeholder="Observações (opcional)">
       <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">
         Enviar Pedido
       </button>
@@ -2071,10 +2080,12 @@ inputQtd?.addEventListener("input", (e) => {
 
     const cliente = document.getElementById("p-cliente").value;
     const produto = document.getElementById("p-produto").value;
+    const prazo = document.getElementById("p-prazo").value;
+    const obs = document.getElementById("p-obs").value;
     const valor = document.getElementById("p-qtd").value.replace(/\./g, "");
     const quantidade = parseInt(valor);
 
-    if (!cliente || !produto || !quantidade) {
+    if (!cliente || !produto || !quantidade || !prazo) {
       alert("Preencha tudo!");
       return;
     }
@@ -2083,6 +2094,8 @@ inputQtd?.addEventListener("input", (e) => {
       userId: user.uid,
       clienteNome: cliente,
       produtoNome: produto,
+      prazoPagamento: prazo,
+      observacao: obs,
       quantidade,
       representanteNome: REPRESENTANTE_ATUAL,
       status: "pendente",
