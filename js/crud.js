@@ -1985,6 +1985,7 @@ function renderPedidos() {
 
 <select id="p-prazo" class="border p-2 w-full">
   <option value="">Prazo de pagamento</option>
+  <option value="À vista">À vista</option>
   <option value="10 dias">10 dias</option>
   <option value="15 dias">15 dias</option>
   <option value="30 dias">30 dias</option>
