@@ -2066,12 +2066,15 @@ inputQtd?.addEventListener("input", (e) => {
 
     // PRODUTOS
     const prodSnap = await db.collection("produtos").get();
-    prodSnap.forEach(doc => {
-      const opt = document.createElement("option");
-      opt.value = doc.data().nome;
-      opt.textContent = doc.data().nome;
-      $produto?.appendChild(opt);
-    });
+
+$produto.innerHTML = `<option value="">Selecione produto</option>`; // 🔥 ESSENCIAL
+
+prodSnap.forEach(doc => {
+  const opt = document.createElement("option");
+  opt.value = doc.data().nome;
+  opt.textContent = doc.data().nome;
+  $produto?.appendChild(opt);
+});
 
   });
 
