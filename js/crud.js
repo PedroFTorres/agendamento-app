@@ -2145,26 +2145,9 @@ const btnAprovar = item.querySelector(".btn-aprovar");
 const btnCancelar = item.querySelector(".btn-cancelar");
 
 if (btnAprovar) {
-  btnAprovar.addEventListener("click", async () => {
-    const id = p.id;
-
-    const data = prompt("Digite a data (YYYY-MM-DD)");
-    if (!data) return;
-
-    await db.collection("agendamentos").add({
-      userId: p.userId,
-      clienteNome: p.clienteNome,
-      produtoNome: p.produtoNome,
-      quantidade: p.quantidade,
-      representanteNome: p.representanteNome,
-      data: data,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await db.collection("pedidos").doc(id).update({
-      status: "aprovado"
-    });
-  });
+ btnAprovar.addEventListener("click", async () => {
+  abrirModalAgendamentoPedido(p);
+});
 }
 
 if (btnCancelar) {
