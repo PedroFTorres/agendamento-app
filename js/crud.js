@@ -1979,7 +1979,7 @@ function renderPedidos() {
     <div class="bg-white p-4 rounded shadow mb-4 space-y-2">
       <select id="p-cliente" class="border p-2 w-full"></select>
       <select id="p-produto" class="border p-2 w-full"></select>
-      <input id="p-qtd" type="number" class="border p-2 w-full" placeholder="Quantidade">
+      <input id="p-qtd" type="text" class="border p-2 w-full" placeholder="Quantidade">
       <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">
         Enviar Pedido
       </button>
@@ -1999,6 +1999,18 @@ function renderPedidos() {
   const $cliente = document.getElementById("p-cliente");
   const $produto = document.getElementById("p-produto");
   const lista = document.getElementById("lista-pedidos");
+  const inputQtd = document.getElementById("p-qtd");
+
+inputQtd?.addEventListener("input", (e) => {
+  let v = e.target.value.replace(/\D/g, "");
+
+  if (!v) {
+    e.target.value = "";
+    return;
+  }
+
+  e.target.value = Number(v).toLocaleString("pt-BR");
+});
 
   // 🔥 CONTROLE DE DATA
   let dataAtual = new Date();
@@ -2057,7 +2069,8 @@ function renderPedidos() {
 
     const cliente = document.getElementById("p-cliente").value;
     const produto = document.getElementById("p-produto").value;
-    const quantidade = parseInt(document.getElementById("p-qtd").value);
+    const valor = document.getElementById("p-qtd").value.replace(/\./g, "");
+    const quantidade = parseInt(valor);
 
     if (!cliente || !produto || !quantidade) {
       alert("Preencha tudo!");
