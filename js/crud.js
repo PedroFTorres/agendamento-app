@@ -737,7 +737,7 @@ const snap = await query.orderBy(labelField).get();
   let query = db.collection("agendamentos");
 
 if (PERFIL === "representante") {
-  query = query.where("representanteNome", "==", REPRESENTANTE_ATUAL);
+  query = query.where("criadoPor", "==", user.uid);
 }
   query
     .orderBy("data", "asc")
@@ -1621,10 +1621,14 @@ async function abrirEdicaoAgendamento(id) {
 async function abrirResumoDoDia(dataSelecionada) {
   const user = await waitForAuth();
 
-  const snap = await db.collection("agendamentos")
-    .where("userId", "==", user.uid)
-    .where("data", "==", dataSelecionada)
-    .get();
+ let query = db.collection("agendamentos")
+  .where("data", "==", dataSelecionada);
+
+if (PERFIL === "representante") {
+  query = query.where("criadoPor", "==", user.uid);
+}
+
+const snap = await query.get();
 
   let totalGeral = 0;
   const porProduto = {};
