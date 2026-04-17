@@ -1,5 +1,6 @@
 // ======================= UTIL =========================
 const pageContent = document.getElementById("page-content");
+document.getElementById("sidebar").style.display = "none";
 
 let REPRESENTANTE_ATUAL = null;
 let PERFIL = null;
@@ -19,6 +20,7 @@ async function carregarUsuario() {
 
     console.log("Perfil:", PERFIL);
     console.log("Nome:", REPRESENTANTE_ATUAL);
+    document.getElementById("sidebar").style.display = "block";
 
     // 👤 MOSTRAR NOME
     const el = document.getElementById("usuario-logado");
