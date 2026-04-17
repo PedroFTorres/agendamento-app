@@ -2085,16 +2085,6 @@ prodSnap.forEach(doc => {
   opt.textContent = d.nome;
   $produto.appendChild(opt);
 });
-const prodSnap = await prodQuery.get();
-
-$produto.innerHTML = `<option value="">Selecione produto</option>`; // 🔥 ESSENCIAL
-
-prodSnap.forEach(doc => {
-  const opt = document.createElement("option");
-  opt.value = doc.data().nome;
-  opt.textContent = doc.data().nome;
-  $produto?.appendChild(opt);
-});
 
   });
 
