@@ -66,19 +66,27 @@
     <h2 class="text-xl font-bold mb-6">Menu</h2>
     <ul class="space-y-2">
       
-<li data-perfil="all"><button data-page="dashboard" class="menu-item">Dashboard</button></li>
-<li data-perfil="all"><button data-page="clientes" class="menu-item">Clientes</button></li>
-<li data-perfil="all"><button data-page="pedidos" class="menu-item">Pedidos</button></li>
-<li data-perfil="admin"><button data-page="produtos" class="menu-item">Produtos</button></li>
-<li data-perfil="admin"><button data-page="agendamentos" class="menu-item">Agendamentos</button></li>
-<li data-perfil="admin"><button data-page="relatorios" class="menu-item">Relatórios</button></li>
-<li data-perfil="admin">button data-page="producao" class="menu-item">Produção</button></li>
-<li data-perfil="admin"><button data-page="recibo" class="menu-item">Recibo</button></li>
-<li><a href="#" onclick="renderNotas()" class="flex items-center space-x-2 hover:bg-yellow-100 p-2 rounded"><span>📝</span><span>Bloco de Anotações</span></a></li>
+<ul class="space-y-2">
 
-      </ul>
-    <button id="logout-button" class="mt-6 w-full bg-red-600 text-white p-2 rounded">Sair</button>
-  </aside>
+  <li data-perfil="admin"><button data-page="dashboard" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>📊</span><span>Dashboard</span></button></li>
+
+  <li data-perfil="all"><button data-page="clientes" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>👥</span><span>Clientes</span></button></li>
+
+  <li data-perfil="all"><button data-page="pedidos" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>📦</span><span>Pedidos</span></button></li>
+
+  <li data-perfil="admin"><button data-page="produtos" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>🏷️</span><span>Produtos</span></button></li>
+
+  <li data-perfil="admin"><button data-page="agendamentos" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>📅</span><span>Agendamentos</span></button></li>
+
+  <li data-perfil="admin"><button data-page="relatorios" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>📈</span><span>Relatórios</span></button></li>
+
+  <li data-perfil="admin"><button data-page="producao" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>🏭</span><span>Produção</span></button></li>
+
+  <li data-perfil="admin"><button data-page="recibo" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>🧾</span><span>Recibo</span></button></li>
+
+  <li data-perfil="admin"><a href="#" onclick="renderNotas()" class="flex items-center space-x-2 hover:bg-yellow-100 p-2 rounded"><span>📝</span><span>Bloco de Anotações</span></a></li></ul>
+
+      </ul><button id="logout-button" class="mt-6 w-full bg-red-600 text-white p-2 rounded">Sair</button></aside>
 
   <!-- Main -->
   <main class="flex-1 p-6">
