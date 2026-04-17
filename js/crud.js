@@ -3,9 +3,8 @@ const pageContent = document.getElementById("page-content");
 
 let REPRESENTANTE_ATUAL = null;
 let PERFIL = null;
-
 async function carregarUsuario() {
-  const user = await waitForAuth();
+  const user = await waitForAuth();f
 
   const snap = await db.collection("usuarios")
     .where("uid", "==", user.uid)
@@ -59,7 +58,7 @@ async function waitForAuth() {
 
 // ================== FORMATAÇÕES ==================
 function formatQuantidade(num) {
-  return Number(num || 0).toLocaleString("pt-BR");
+  return Math.floor(Number(num || 0)).toLocaleString("pt-BR");
 }
 function formatMoeda(num) {
   return Number(num || 0).toLocaleString("pt-BR", {
