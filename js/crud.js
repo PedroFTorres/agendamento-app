@@ -63,7 +63,20 @@ function formatPrecoProduto(num) {
     minimumFractionDigits: 4, maximumFractionDigits: 4
   });
 }
+function formatarDataISO(data) {
+  if (!data) return null;
 
+  // já está no formato correto
+  if (data.includes("-") && data.length === 10) return data;
+
+  // formato brasileiro (17/04/2026)
+  if (data.includes("/")) {
+    const [d, m, y] = data.split("/");
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  return data;
+}
 // ================== FORMULÁRIOS ==================
 function formHTML(type) {
   if (type === "clientes") {
@@ -1369,7 +1382,7 @@ query.onSnapshot(snap => {
   return {
     id: doc.id,
     title: `${nomeCliente} • ${d.produtoNome || ""} (${d.quantidade || 0})`,
-    start: d.data,
+    start: formatarDataISO(d.data),
     backgroundColor: cor,
     borderColor: cor,
     textColor: "#000",
