@@ -21,11 +21,22 @@ async function carregarUsuario() {
     console.log("Perfil:", PERFIL);
     console.log("Nome:", REPRESENTANTE_ATUAL);
 
-    // ✅ MOSTRAR NA TELA
+    // 👤 MOSTRAR NOME
     const el = document.getElementById("usuario-logado");
     if (el) {
       el.textContent = "👤 " + REPRESENTANTE_ATUAL;
     }
+
+    // 🔒 CONTROLE DE MENU POR PERFIL
+    document.querySelectorAll("#sidebar li").forEach(item => {
+      const perfilItem = item.getAttribute("data-perfil");
+
+      if (PERFIL === "representante") {
+        if (perfilItem === "admin") {
+          item.style.display = "none";
+        }
+      }
+    });
 
   } else {
     alert("Usuário não cadastrado");
