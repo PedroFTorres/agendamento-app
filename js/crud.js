@@ -1409,8 +1409,10 @@ query.onSnapshot(snap => {
         tooltip.className = "tooltip-custom";
         document.body.appendChild(tooltip);
 
-        const calendarEl = document.getElementById("calendar");
-        calendarEl.innerHTML = "";
+       const calendarEl = document.getElementById("calendar");
+if (!calendarEl) return;
+
+calendarEl.innerHTML = "";
 
         const calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: "dayGridMonth",
