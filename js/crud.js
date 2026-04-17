@@ -2033,7 +2033,7 @@ function renderPedidos() {
       cliQuery = cliQuery.where("userId", "==", user.uid);
     }
 
-    const cliSnap = await cliQuery.get();
+    const cliSnap = await cliQuery.orderBy("nome").get();
     cliSnap.forEach(doc => {
       const opt = document.createElement("option");
       opt.value = doc.data().nome;
