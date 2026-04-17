@@ -64,15 +64,18 @@ async function aprovarPedido(id, btn) {
 
           try {
             // 🔥 cria agendamento
-            await db.collection("agendamentos").add({
-              userId: p.userId,
-              clienteNome: p.clienteNome,
-              produtoNome: p.produtoNome,
-              quantidade: p.quantidade,
-              representanteNome: p.representanteNome,
-              data: dataEscolhida,
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+           await db.collection("agendamentos").add({
+  userId: p.userId,
+  clienteNome: p.clienteNome,
+  produtoNome: p.produtoNome,
+  quantidade: p.quantidade,
+  representanteNome: p.representanteNome,
+
+  criadoPor: p.userId, // 🔥 ESSENCIAL
+
+  data: dataEscolhida,
+  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+});
 
             // 🔥 atualiza pedido
             await db.collection("pedidos").doc(id).update({
