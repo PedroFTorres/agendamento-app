@@ -2067,10 +2067,24 @@ inputQtd?.addEventListener("input", (e) => {
     // PRODUTOS
    let prodQuery = db.collection("produtos");
 
-if (PERFIL === "representante") {
-  prodQuery = prodQuery.where("userId", "==", user.uid);
-}
+const prodSnap = await prodQuery.get();
 
+$produto.innerHTML = `<option value="">Selecione produto</option>`;
+
+// 🔥 filtro inteligente (resolve sem quebrar)
+prodSnap.forEach(doc => {
+  const d = doc.data();
+
+  if (PERFIL === "representante") {
+    // se tem userId e não é dele → bloqueia
+    if (d.userId && d.userId !== user.uid) return;
+  }
+
+  const opt = document.createElement("option");
+  opt.value = d.nome;
+  opt.textContent = d.nome;
+  $produto.appendChild(opt);
+});
 const prodSnap = await prodQuery.get();
 
 $produto.innerHTML = `<option value="">Selecione produto</option>`; // 🔥 ESSENCIAL
