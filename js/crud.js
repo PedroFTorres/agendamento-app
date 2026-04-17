@@ -666,7 +666,7 @@ function renderAgendamentos() {
       <button class="bg-blue-600 text-white p-2 rounded w-full mt-2">Salvar</button>
     </form>
     <div id="ag-list" class="space-y-4"></div>
-  `;F
+  `;
 
   const $selCliente = document.getElementById("ag-cliente");
   const $selRep     = document.getElementById("ag-representante");
