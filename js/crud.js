@@ -2171,3 +2171,89 @@ if (btnCancelar) {
 
   });
 }
+async function abrirModalAgendamentoPedido(p) {
+  const user = await waitForAuth();
+
+  const clientesSnap = await db.collection("clientes")
+    .where("userId","==",user.uid)
+    .orderBy("nome")
+    .get();
+
+  const produtosSnap = await db.collection("produtos")
+    .where("userId","==",user.uid)
+    .get();
+
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+
+  modal.innerHTML = `
+    <div class="bg-white p-6 rounded w-full max-w-md space-y-3">
+      <h3 class="text-lg font-bold">Aprovar Pedido</h3>
+
+      <select id="m-cliente" class="border p-2 w-full"></select>
+      <select id="m-produto" class="border p-2 w-full"></select>
+      <input id="m-data" type="date" class="border p-2 w-full">
+      <input id="m-qtd" type="number" class="border p-2 w-full">
+
+      <div class="flex justify-end space-x-2">
+        <button id="cancelar" class="bg-gray-400 text-white px-3 py-1 rounded">Cancelar</button>
+        <button id="salvar" class="bg-green-600 text-white px-3 py-1 rounded">Salvar</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const selCliente = modal.querySelector("#m-cliente");
+  const selProduto = modal.querySelector("#m-produto");
+
+  clientesSnap.forEach(doc => {
+    const nome = doc.data().nome;
+    const opt = document.createElement("option");
+    opt.value = nome;
+    opt.textContent = nome;
+    if (nome === p.clienteNome) opt.selected = true;
+    selCliente.appendChild(opt);
+  });
+
+  produtosSnap.forEach(doc => {
+    const nome = doc.data().nome;
+    const opt = document.createElement("option");
+    opt.value = nome;
+    opt.textContent = nome;
+    if (nome === p.produtoNome) opt.selected = true;
+    selProduto.appendChild(opt);
+  });
+
+  modal.querySelector("#m-qtd").value = p.quantidade || 0;
+
+  modal.querySelector("#cancelar").onclick = () => modal.remove();
+
+  modal.querySelector("#salvar").onclick = async () => {
+    const cliente = selCliente.value;
+    const produto = selProduto.value;
+    const qtd = parseInt(modal.querySelector("#m-qtd").value);
+    const data = modal.querySelector("#m-data").value;
+
+    if (!data) {
+      alert("Escolha uma data!");
+      return;
+    }
+
+    await db.collection("agendamentos").add({
+      userId: p.userId,
+      clienteNome: cliente,
+      produtoNome: produto,
+      quantidade: qtd,
+      representanteNome: p.representanteNome,
+      data: data,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await db.collection("pedidos").doc(p.id).update({
+      status: "aprovado"
+    });
+
+    modal.remove();
+  };
+}
