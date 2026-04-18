@@ -143,30 +143,69 @@ async function editarPedidoAprovado(id) {
   const doc = await db.collection("pedidos").doc(id).get();
   const p = doc.data();
 
+  // 🔒 só se aprovado
   if (p.status !== "aprovado") {
     alert("Só pode editar pedidos aprovados");
     return;
   }
 
-  // 🔥 pede nova quantidade
+  // 🔧 funções de data (formato BR)
+  function isoParaBR(data) {
+    if (!data) return "";
+    const [y, m, d] = data.split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  function brParaISO(data) {
+    if (!data) return "";
+    const [d, m, y] = data.split("/");
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  // 🔥 nova quantidade
   const novaQtd = prompt("Nova quantidade:", p.quantidade);
   if (!novaQtd) return;
 
-  // 🔥 pede nova data
-  const novaData = prompt("Nova data (YYYY-MM-DD):", p.dataEntrega || "");
-  if (!novaData) return;
+  // 🔥 pegar data atual do agendamento
+  let dataAtual = "";
+
+  if (p.agendamentoId) {
+    const agSnap = await db.collection("agendamentos").doc(p.agendamentoId).get();
+    dataAtual = agSnap.data()?.data || "";
+  }
+
+  // 🔥 mostrar data em formato BR
+  const novaDataBR = prompt(
+    "Nova data (DD/MM/AAAA):",
+    isoParaBR(dataAtual)
+  );
+
+  if (!novaDataBR) return;
+
+  // 🔥 converter para salvar
+  const novaData = brParaISO(novaDataBR);
 
   try {
+
+    // 🔥 1. atualiza pedido
     await db.collection("pedidos").doc(id).update({
       quantidade: Number(novaQtd),
-      dataEntrega: novaData,
       editadoPor: user.uid,
       editadoEm: new Date()
     });
 
+    // 🔥 2. atualiza agendamento
+    if (p.agendamentoId) {
+      await db.collection("agendamentos").doc(p.agendamentoId).update({
+        quantidade: Number(novaQtd),
+        data: novaData
+      });
+    }
+
     alert("Pedido atualizado!");
 
   } catch (e) {
+    console.error(e);
     alert("Erro ao editar pedido");
   }
 }
