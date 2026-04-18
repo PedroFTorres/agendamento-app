@@ -2096,11 +2096,9 @@ const prodSnap = await prodQuery.get();
 
 $produto.innerHTML = `<option value="">Selecione produto</option>`;
 
-// 🔥 CONTROLE DE DUPLICADOS
-const nomes = new Set();
-
-const lista = [];
-const nomes = new Set();
+// lista e controle de duplicados
+const listaProdutos = [];
+const nomesUnicos = new Set();
 
 prodSnap.forEach(doc => {
   const d = doc.data();
@@ -2109,13 +2107,22 @@ prodSnap.forEach(doc => {
 
   const nomeNormalizado = d.nome.trim().toLowerCase();
 
-  if (nomes.has(nomeNormalizado)) return;
+  if (nomesUnicos.has(nomeNormalizado)) return;
 
-  nomes.add(nomeNormalizado);
-
-  lista.push(d.nome);
+  nomesUnicos.add(nomeNormalizado);
+  listaProdutos.push(d.nome);
 });
 
+// ordena
+listaProdutos.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+// monta select
+listaProdutos.forEach(nome => {
+  const opt = document.createElement("option");
+  opt.value = nome;
+  opt.textContent = nome;
+  $produto.appendChild(opt);
+});
 // 🔥 ORDENA
 lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
