@@ -705,13 +705,19 @@ function renderAgendamentos() {
   const user = await waitForAuth();
   select.innerHTML = `<option value="">Selecione ${coll}</option>`;
 
- let query = db.collection(coll);
+ let snap;
 
-if (PERFIL === "representante") {
-  query = query.where("userId", "==", user.uid);
+if (coll === "clientes") {
+  snap = await getClientesFiltrados();
+} else {
+  let query = db.collection(coll);
+
+  if (PERFIL === "representante") {
+    query = query.where("userId", "==", user.uid);
+  }
+
+  snap = await query.orderBy(labelField).get();
 }
-
-const snap = await query.orderBy(labelField).get();
   snap.forEach(doc => {
     const d = doc.data();
     const opt = document.createElement("option");
