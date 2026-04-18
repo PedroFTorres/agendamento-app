@@ -2075,10 +2075,8 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
 prodSnap.forEach(doc => {
   const d = doc.data();
 
-  if (PERFIL === "representante") {
-    // se tem userId e não é dele → bloqueia
-    if (d.userId && d.userId !== user.uid) return;
-  }
+  // 🔥 ignora produto vazio
+  if (!d.nome || d.nome.trim() === "") return;
 
   const opt = document.createElement("option");
   opt.value = d.nome;
