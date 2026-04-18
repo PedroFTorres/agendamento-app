@@ -1500,7 +1500,7 @@ dateClick: function(info) {
 async function abrirModalAgendamento(dataSelecionada) {
   const user = await waitForAuth();
 
-  const clientesSnap = await db.collection("clientes").where("userId","==",user.uid).orderBy("nome").get();
+ const clientesSnap = await getClientesFiltrados();
   const produtosSnap = await db.collection("produtos").where("userId","==",user.uid).get();
 
   const modal = document.createElement("div");
@@ -1568,10 +1568,7 @@ async function abrirEdicaoAgendamento(id) {
   const snap = await db.collection("agendamentos").doc(id).get();
   const d = snap.data();
 
-  const clientesSnap = await db.collection("clientes")
-    .where("userId","==",user.uid)
-    .orderBy("nome")
-    .get();
+  const clientesSnap = await getClientesFiltrados();
 
   const produtosSnap = await db.collection("produtos")
     .where("userId","==",user.uid)
