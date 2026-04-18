@@ -64,19 +64,22 @@ async function aprovarPedido(id, btn) {
 
           try {
             // 🔥 cria agendamento
-           await db.collection("agendamentos").add({
+          const agRef = await db.collection("agendamentos").add({
   userId: p.userId,
   clienteNome: p.clienteNome,
   produtoNome: p.produtoNome,
   quantidade: p.quantidade,
   representanteNome: p.representanteNome,
-
-  criadoPor: p.userId, // 🔥 ESSENCIAL
-
+  criadoPor: p.userId,
   data: dataEscolhida,
   createdAt: firebase.firestore.FieldValue.serverTimestamp()
 });
 
+// 🔥 salva vínculo no pedido
+await db.collection("pedidos").doc(id).update({
+  status: "aprovado",
+  agendamentoId: agRef.id
+});
             // 🔥 atualiza pedido
             await db.collection("pedidos").doc(id).update({
               status: "aprovado"
