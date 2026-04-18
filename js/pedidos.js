@@ -127,3 +127,43 @@ async function cancelarPedido(id, btn) {
     alert("Erro ao cancelar pedido");
   }
 }
+async function editarPedidoAprovado(id) {
+
+  const user = await waitForAuth();
+
+  // 🔒 só admin
+  if (PERFIL !== "admin") {
+    alert("Apenas admin pode editar pedidos aprovados");
+    return;
+  }
+
+  const doc = await db.collection("pedidos").doc(id).get();
+  const p = doc.data();
+
+  if (p.status !== "aprovado") {
+    alert("Só pode editar pedidos aprovados");
+    return;
+  }
+
+  // 🔥 pede nova quantidade
+  const novaQtd = prompt("Nova quantidade:", p.quantidade);
+  if (!novaQtd) return;
+
+  // 🔥 pede nova data
+  const novaData = prompt("Nova data (YYYY-MM-DD):", p.dataEntrega || "");
+  if (!novaData) return;
+
+  try {
+    await db.collection("pedidos").doc(id).update({
+      quantidade: Number(novaQtd),
+      dataEntrega: novaData,
+      editadoPor: user.uid,
+      editadoEm: new Date()
+    });
+
+    alert("Pedido atualizado!");
+
+  } catch (e) {
+    alert("Erro ao editar pedido");
+  }
+}
