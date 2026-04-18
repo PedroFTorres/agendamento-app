@@ -2297,7 +2297,7 @@ lista.forEach(nome => {
     ${p.status}
   </span>
 
-  $${PERFIL === "admin" ? `
+  ${PERFIL === "admin" ? `
   <div class="mt-2 space-x-2">
 
     ${p.status === "pendente" ? `
