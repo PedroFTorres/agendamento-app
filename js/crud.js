@@ -2100,22 +2100,31 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
 // 🔥 CONTROLE DE DUPLICADOS
 const nomes = new Set();
 
+const lista = [];
+const nomes = new Set();
+
 prodSnap.forEach(doc => {
   const d = doc.data();
 
-  // ignora vazio
   if (!d.nome || d.nome.trim() === "") return;
 
   const nomeNormalizado = d.nome.trim().toLowerCase();
 
-  // 🔥 se já adicionou, ignora
   if (nomes.has(nomeNormalizado)) return;
 
   nomes.add(nomeNormalizado);
 
+  lista.push(d.nome);
+});
+
+// 🔥 ORDENA
+lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+// 🔥 MONTA O SELECT
+lista.forEach(nome => {
   const opt = document.createElement("option");
-  opt.value = d.nome;
-  opt.textContent = d.nome;
+  opt.value = nome;
+  opt.textContent = nome;
   $produto.appendChild(opt);
 });
   });
