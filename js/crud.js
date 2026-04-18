@@ -4,6 +4,21 @@ document.getElementById("sidebar").style.display = "none";
 
 let REPRESENTANTE_ATUAL = null;
 let PERFIL = null;
+
+// 🔒 REGRA DE OURO - CLIENTES FILTRADOS
+async function getClientesFiltrados() {
+  const user = await waitForAuth();
+
+  let query = db.collection("clientes");
+
+  // 👉 REPRESENTANTE só vê os dele
+  if (PERFIL === "representante") {
+    query = query.where("userId", "==", user.uid);
+  }
+
+  // 👉 ADMIN vê todos (sem filtro)
+  return await query.get();
+}
 async function carregarUsuario() {
   const user = await waitForAuth();
 
