@@ -83,15 +83,14 @@ function renderNotas() {
   // ================== CARREGAR CLIENTES E PRODUTOS ==================
   waitForAuth().then(user => {
 
-    db.collection("clientes")
-      .where("userId", "==", user.uid)
-      .get()
-      .then(snap => {
-        $cliente.innerHTML = `<option value="">Selecione o cliente</option>`;
-        snap.forEach(doc => {
-          const d = doc.data();
-          $cliente.appendChild(new Option(d.nome, d.nome));
-        });
+   const snap = await getClientesFiltrados();
+
+$cliente.innerHTML = `<option value="">Selecione o cliente</option>`;
+
+snap.forEach(doc => {
+  const d = doc.data();
+  $cliente.appendChild(new Option(d.nome, d.nome));
+});
       });
 
     db.collection("produtos")
