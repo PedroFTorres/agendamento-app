@@ -1658,19 +1658,24 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
 // lista para ordenar
 const lista = [];
 
-prodSnap.forEach(doc => {
+clientesSnap.forEach(doc => {
   const d = doc.data();
 
   if (!d.nome || d.nome.trim() === "") return;
 
-  const nomeNormalizado = d.nome.trim().toLowerCase();
-
-  if (nomes.has(nomeNormalizado)) return;
-  nomes.add(nomeNormalizado);
-
   lista.push(d.nome);
 });
 
+// 🔥 ORDENA AQUI
+lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+// 🔥 MONTA O SELECT ORDENADO
+lista.forEach(nome => {
+  const opt = document.createElement("option");
+  opt.value = nome;
+  opt.textContent = nome;
+  selCliente.appendChild(opt);
+});
 // ordena A-Z
 lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
