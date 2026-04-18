@@ -1622,6 +1622,10 @@ async function abrirEdicaoAgendamento(id) {
 
 const prodSnap = await prodQuery.get();
 
+// ✅ CORREÇÃO AQUI
+const $produto = modal.querySelector("#edit-produto");
+const nomes = new Set();
+
 $produto.innerHTML = `<option value="">Selecione produto</option>`;
 
 // lista para ordenar
@@ -1634,7 +1638,6 @@ prodSnap.forEach(doc => {
 
   const nomeNormalizado = d.nome.trim().toLowerCase();
 
-  // evita duplicado
   if (nomes.has(nomeNormalizado)) return;
   nomes.add(nomeNormalizado);
 
