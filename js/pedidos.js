@@ -204,6 +204,9 @@ async function editarPedidoAprovado(id) {
 
     alert("Pedido atualizado!");
 
+// 🔥 força recarregar calendário/lista
+location.reload();
+    
   } catch (e) {
     console.error(e);
     alert("Erro ao editar pedido");
