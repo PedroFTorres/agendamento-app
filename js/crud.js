@@ -1558,13 +1558,26 @@ async function abrirModalAgendamento(dataSelecionada) {
   const selProduto = modal.querySelector("#m-produto");
   
 
-  clientesSnap.forEach(doc=>{
-    const opt = document.createElement("option");
-    opt.value = doc.data().nome;
-    opt.textContent = doc.data().nome;
-    selCliente.appendChild(opt);
-  });
+ const lista = [];
 
+clientesSnap.forEach(doc => {
+  const d = doc.data();
+
+  if (!d.nome || d.nome.trim() === "") return;
+
+  lista.push(d.nome);
+});
+
+// 🔥 ORDENA AQUI (ESSA É A CHAVE)
+lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+// 🔥 MONTA SELECT ORDENADO
+lista.forEach(nome => {
+  const opt = document.createElement("option");
+  opt.value = nome;
+  opt.textContent = nome;
+  selCliente.appendChild(opt);
+});
   produtosSnap.forEach(doc=>{
     const opt = document.createElement("option");
     opt.value = doc.data().nome;
