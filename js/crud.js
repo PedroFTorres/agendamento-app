@@ -739,7 +739,7 @@ if (coll === "clientes") {
 });
 
 return;
- else {
+} else {
   let query = db.collection(coll);
 
   if (PERFIL === "representante") {
