@@ -718,16 +718,26 @@ if (coll === "clientes") {
   query.onSnapshot(snap => {
     select.innerHTML = `<option value="">Selecione cliente</option>`;
 
-    snap.forEach(doc => {
-      const d = doc.data();
+    const lista = [];
 
-      const opt = document.createElement("option");
-      opt.value = doc.id; // 👈 IMPORTANTE (não usar nome)
-      opt.textContent = d.nome;
-
-      select.appendChild(opt);
-    });
+snap.forEach(doc => {
+  const d = doc.data();
+  lista.push({
+    id: doc.id,
+    nome: d.nome || ""
   });
+});
+
+// 🔥 ORDENA A-Z
+lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+// 🔥 MONTA O SELECT
+lista.forEach(item => {
+  const opt = document.createElement("option");
+  opt.value = item.id;
+  opt.textContent = item.nome;
+  select.appendChild(opt);
+});
 
   return; // ⚠️ IMPORTANTE (para não continuar o código)
 }
