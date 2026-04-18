@@ -167,3 +167,57 @@ async function editarPedidoAprovado(id) {
     alert("Erro ao editar pedido");
   }
 }
+async function excluirPedidoCompleto(id) {
+
+  const user = await waitForAuth();
+
+  // 🔒 só admin
+  if (PERFIL !== "admin") {
+    alert("Apenas admin pode excluir pedidos");
+    return;
+  }
+
+  const ref = db.collection("pedidos").doc(id);
+  const snap = await ref.get();
+
+  if (!snap.exists) {
+    alert("Pedido não encontrado");
+    return;
+  }
+
+  const p = snap.data();
+
+  if (p.status !== "aprovado") {
+    alert("Só é permitido excluir pedidos aprovados");
+    return;
+  }
+
+  if (!confirm("Tem certeza que deseja excluir este pedido e o agendamento?")) return;
+
+  try {
+
+    // 🔥 1. EXCLUI PEDIDO
+    await ref.delete();
+
+    // 🔥 2. EXCLUI AGENDAMENTO (se existir)
+    if (p.agendamentoId) {
+      await db.collection("agendamentos").doc(p.agendamentoId).delete();
+    }
+
+    // 🔥 3. ENVIA NOTIFICAÇÃO
+    await db.collection("notificacoes").add({
+      userId: p.userId, // representante
+      mensagem: `Seu pedido foi excluído pelo administrador.`,
+      tipo: "pedido_excluido",
+      pedidoId: id,
+      criadoEm: new Date(),
+      lido: false
+    });
+
+    alert("Pedido excluído com sucesso!");
+
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao excluir pedido");
+  }
+}
