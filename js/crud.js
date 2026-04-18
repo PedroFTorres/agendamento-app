@@ -706,10 +706,32 @@ function renderAgendamentos() {
   select.innerHTML = `<option value="">Selecione ${coll}</option>`;
 
  let snap;
-
 if (coll === "clientes") {
-  snap = await getClientesFiltrados();
-} else {
+  const user = await waitForAuth();
+
+  let query = db.collection("clientes");
+
+  if (PERFIL === "representante") {
+    query = query.where("userId", "==", user.uid);
+  }
+
+  query.onSnapshot(snap => {
+    select.innerHTML = `<option value="">Selecione cliente</option>`;
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      const opt = document.createElement("option");
+      opt.value = doc.id; // 👈 IMPORTANTE (não usar nome)
+      opt.textContent = d.nome;
+
+      select.appendChild(opt);
+    });
+  });
+
+  return; // ⚠️ IMPORTANTE (para não continuar o código)
+}
+ else {
   let query = db.collection(coll);
 
   if (PERFIL === "representante") {
