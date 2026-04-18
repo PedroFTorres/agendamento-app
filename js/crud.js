@@ -2297,19 +2297,38 @@ lista.forEach(nome => {
     ${p.status}
   </span>
 
-  ${PERFIL === "admin" && p.status === "pendente" ? `
-    <div class="mt-2 space-x-2">
+  $${PERFIL === "admin" ? `
+  <div class="mt-2 space-x-2">
+
+    ${p.status === "pendente" ? `
       <button data-id="${p.id}" class="btn-aprovar bg-green-600 text-white px-2 py-1 rounded">
         Aprovar
       </button>
+
       <button data-id="${p.id}" class="btn-cancelar bg-red-600 text-white px-2 py-1 rounded">
         Cancelar
       </button>
-    </div>
-  ` : ""}
+    ` : ""}
+
+    ${p.status === "aprovado" ? `
+      <button data-id="${p.id}" class="btn-editar bg-blue-600 text-white px-2 py-1 rounded">
+        Editar
+      </button>
+    ` : ""}
+
+  </div>
+` : ""}
 `;
 const btnAprovar = item.querySelector(".btn-aprovar");
 const btnCancelar = item.querySelector(".btn-cancelar");
+
+const btnEditar = item.querySelector(".btn-editar");
+
+if (btnEditar) {
+  btnEditar.addEventListener("click", async (e) => {
+    editarPedidoAprovado(p.id);
+  });
+}
 
 if (btnAprovar) {
   btnAprovar.addEventListener("click", async (e) => {
