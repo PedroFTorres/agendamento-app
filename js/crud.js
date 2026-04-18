@@ -716,31 +716,29 @@ if (coll === "clientes") {
   }
 
   query.onSnapshot(snap => {
-    select.innerHTML = `<option value="">Selecione cliente</option>`;
+  select.innerHTML = `<option value="">Selecione cliente</option>`;
 
-    const lista = [];
+  const lista = [];
 
-snap.forEach(doc => {
-  const d = doc.data();
-  lista.push({
-    id: doc.id,
-    nome: d.nome || ""
+  snap.forEach(doc => {
+    const d = doc.data();
+    lista.push({
+      id: doc.id,
+      nome: d.nome || ""
+    });
+  });
+
+  lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  lista.forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = item.id;
+    opt.textContent = item.nome;
+    select.appendChild(opt);
   });
 });
 
-// 🔥 ORDENA A-Z
-lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-
-// 🔥 MONTA O SELECT
-lista.forEach(item => {
-  const opt = document.createElement("option");
-  opt.value = item.id;
-  opt.textContent = item.nome;
-  select.appendChild(opt);
-});
-
-  return; // ⚠️ IMPORTANTE (para não continuar o código)
-}
+return;
  else {
   let query = db.collection(coll);
 
