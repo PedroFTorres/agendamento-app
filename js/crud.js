@@ -1605,7 +1605,6 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
 
 // lista para ordenar
 const lista = [];
-const nomes = new Set();
 
 prodSnap.forEach(doc => {
   const d = doc.data();
