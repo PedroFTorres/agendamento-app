@@ -1597,14 +1597,40 @@ async function abrirEdicaoAgendamento(id) {
   
 
   // PRODUTOS
-  produtosSnap.forEach(doc => {
-    const opt = document.createElement("option");
-    opt.value = doc.data().nome;
-    opt.textContent = doc.data().nome;
-    if (doc.data().nome === d.produtoNome) opt.selected = true;
-    selProduto.appendChild(opt);
-  });
+  let prodQuery = db.collection("produtos");
 
+const prodSnap = await prodQuery.get();
+
+$produto.innerHTML = `<option value="">Selecione produto</option>`;
+
+// lista para ordenar
+const lista = [];
+const nomes = new Set();
+
+prodSnap.forEach(doc => {
+  const d = doc.data();
+
+  if (!d.nome || d.nome.trim() === "") return;
+
+  const nomeNormalizado = d.nome.trim().toLowerCase();
+
+  // evita duplicado
+  if (nomes.has(nomeNormalizado)) return;
+  nomes.add(nomeNormalizado);
+
+  lista.push(d.nome);
+});
+
+// ordena A-Z
+lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+// monta select
+lista.forEach(nome => {
+  const opt = document.createElement("option");
+  opt.value = nome;
+  opt.textContent = nome;
+  $produto.appendChild(opt);
+});
   // Preenche outros campos
   modal.querySelector("#edit-qtd").value = d.quantidade || 0;
   modal.querySelector("#edit-data").value = d.data || "";
