@@ -2299,6 +2299,12 @@ lista.forEach(nome => {
 
   ${PERFIL === "admin" ? `
   <div class="mt-2 space-x-2">
+  
+  ${PERFIL === "admin" && p.status === "aprovado" ? `
+  <button data-id="${p.id}" class="btn-excluir bg-red-800 text-white px-2 py-1 rounded">
+    Excluir
+  </button>
+` : ""}
 
     ${p.status === "pendente" ? `
       <button data-id="${p.id}" class="btn-aprovar bg-green-600 text-white px-2 py-1 rounded">
@@ -2321,6 +2327,14 @@ lista.forEach(nome => {
 `;
 const btnAprovar = item.querySelector(".btn-aprovar");
 const btnCancelar = item.querySelector(".btn-cancelar");
+            
+const btnExcluir = item.querySelector(".btn-excluir");
+
+if (btnExcluir) {
+  btnExcluir.addEventListener("click", () => {
+    excluirPedidoCompleto(p.id);
+  });
+}
 
 const btnEditar = item.querySelector(".btn-editar");
 
