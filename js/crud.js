@@ -2071,19 +2071,27 @@ const prodSnap = await prodQuery.get();
 
 $produto.innerHTML = `<option value="">Selecione produto</option>`;
 
-// 🔥 filtro inteligente (resolve sem quebrar)
+// 🔥 CONTROLE DE DUPLICADOS
+const nomes = new Set();
+
 prodSnap.forEach(doc => {
   const d = doc.data();
 
-  // 🔥 ignora produto vazio
+  // ignora vazio
   if (!d.nome || d.nome.trim() === "") return;
+
+  const nomeNormalizado = d.nome.trim().toLowerCase();
+
+  // 🔥 se já adicionou, ignora
+  if (nomes.has(nomeNormalizado)) return;
+
+  nomes.add(nomeNormalizado);
 
   const opt = document.createElement("option");
   opt.value = d.nome;
   opt.textContent = d.nome;
   $produto.appendChild(opt);
 });
-
   });
 
   // CRIAR PEDIDO
