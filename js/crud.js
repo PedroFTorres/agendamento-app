@@ -1669,35 +1669,28 @@ const nomes = new Set();
 $produto.innerHTML = `<option value="">Selecione produto</option>`;
 
 // lista para ordenar
-const lista = [];
+const listaProdutos = [];
 
-clientesSnap.forEach(doc => {
+prodSnap.forEach(doc => {
   const d = doc.data();
 
   if (!d.nome || d.nome.trim() === "") return;
 
-  lista.push(d.nome);
+  listaProdutos.push(d.nome);
 });
 
-// 🔥 ORDENA AQUI
-lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+// ordena corretamente
+listaProdutos.sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-// 🔥 MONTA O SELECT ORDENADO
-lista.forEach(nome => {
+// monta select de PRODUTOS
+listaProdutos.forEach(nome => {
   const opt = document.createElement("option");
   opt.value = nome;
   opt.textContent = nome;
-  selCliente.appendChild(opt);
-});
-// ordena A-Z
-lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-// monta select
-lista.forEach(nome => {
-  const opt = document.createElement("option");
-  opt.value = nome;
-  opt.textContent = nome;
-  $produto.appendChild(opt);
+  if (nome === d.produtoNome) opt.selected = true;
+
+  selProduto.appendChild(opt);
 });
   // Preenche outros campos
   modal.querySelector("#edit-qtd").value = d.quantidade || 0;
