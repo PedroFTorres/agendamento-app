@@ -134,7 +134,6 @@ async function editarPedidoAprovado(id) {
 
   const user = await waitForAuth();
 
-  // 🔒 só admin
   if (PERFIL !== "admin") {
     alert("Apenas admin pode editar pedidos aprovados");
     return;
@@ -143,30 +142,12 @@ async function editarPedidoAprovado(id) {
   const doc = await db.collection("pedidos").doc(id).get();
   const p = doc.data();
 
-  // 🔒 só se aprovado
   if (p.status !== "aprovado") {
     alert("Só pode editar pedidos aprovados");
     return;
   }
 
-  // 🔧 funções de data (formato BR)
-  function isoParaBR(data) {
-    if (!data) return "";
-    const [y, m, d] = data.split("-");
-    return `${d}/${m}/${y}`;
-  }
-
-  function brParaISO(data) {
-    if (!data) return "";
-    const [d, m, y] = data.split("/");
-    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-  }
-
-  // 🔥 nova quantidade
-  const novaQtd = prompt("Nova quantidade:", p.quantidade);
-  if (!novaQtd) return;
-
-  // 🔥 pegar data atual do agendamento
+  // 🔥 pega data atual do agendamento
   let dataAtual = "";
 
   if (p.agendamentoId) {
@@ -174,95 +155,72 @@ async function editarPedidoAprovado(id) {
     dataAtual = agSnap.data()?.data || "";
   }
 
-  // 🔥 mostrar data em formato BR
-  const novaDataBR = prompt(
-    "Nova data (DD/MM/AAAA):",
-    isoParaBR(dataAtual)
-  );
+  // 🔥 cria modal
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
 
-  if (!novaDataBR) return;
+  modal.innerHTML = `
+    <div class="bg-white p-4 rounded shadow w-80">
+      <h3 class="text-lg font-bold mb-3">Editar Pedido</h3>
 
-  // 🔥 converter para salvar
-  const novaData = brParaISO(novaDataBR);
+      <label class="block mb-1">Quantidade</label>
+      <input id="edit-qtd" type="number" value="${p.quantidade}" class="w-full border p-2 mb-3"/>
 
-  try {
+      <label class="block mb-1">Data</label>
+      <input id="edit-data" type="date" value="${dataAtual}" class="w-full border p-2 mb-3"/>
 
-    // 🔥 1. atualiza pedido
-    await db.collection("pedidos").doc(id).update({
-      quantidade: Number(novaQtd),
-      editadoPor: user.uid,
-      editadoEm: new Date()
-    });
+      <div class="flex justify-end space-x-2">
+        <button id="cancelar-edit" class="bg-gray-400 text-white px-3 py-1 rounded">
+          Cancelar
+        </button>
+        <button id="salvar-edit" class="bg-blue-600 text-white px-3 py-1 rounded">
+          Salvar
+        </button>
+      </div>
+    </div>
+  `;
 
-    // 🔥 2. atualiza agendamento
-    if (p.agendamentoId) {
-      await db.collection("agendamentos").doc(p.agendamentoId).update({
+  document.body.appendChild(modal);
+
+  // cancelar
+  document.getElementById("cancelar-edit").onclick = () => modal.remove();
+
+  // salvar
+  document.getElementById("salvar-edit").onclick = async () => {
+
+    const novaQtd = document.getElementById("edit-qtd").value;
+    const novaData = document.getElementById("edit-data").value;
+
+    if (!novaQtd || !novaData) {
+      alert("Preencha todos os campos");
+      return;
+    }
+
+    try {
+
+      // 🔥 atualiza pedido
+      await db.collection("pedidos").doc(id).update({
         quantidade: Number(novaQtd),
-        data: novaData
+        editadoPor: user.uid,
+        editadoEm: new Date()
       });
+
+      // 🔥 atualiza agendamento
+      if (p.agendamentoId) {
+        await db.collection("agendamentos").doc(p.agendamentoId).update({
+          quantidade: Number(novaQtd),
+          data: novaData
+        });
+      }
+
+      modal.remove();
+      alert("Pedido atualizado!");
+
+      location.reload();
+
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao editar pedido");
     }
-
-    alert("Pedido atualizado!");
-
-// 🔥 força recarregar calendário/lista
-location.reload();
-    
-  } catch (e) {
-    console.error(e);
-    alert("Erro ao editar pedido");
-  }
-}
-async function excluirPedidoCompleto(id) {
-
-  const user = await waitForAuth();
-
-  // 🔒 só admin
-  if (PERFIL !== "admin") {
-    alert("Apenas admin pode excluir pedidos");
-    return;
-  }
-
-  const ref = db.collection("pedidos").doc(id);
-  const snap = await ref.get();
-
-  if (!snap.exists) {
-    alert("Pedido não encontrado");
-    return;
-  }
-
-  const p = snap.data();
-
-  if (p.status !== "aprovado") {
-    alert("Só é permitido excluir pedidos aprovados");
-    return;
-  }
-
-  if (!confirm("Tem certeza que deseja excluir este pedido e o agendamento?")) return;
-
-  try {
-
-    // 🔥 1. EXCLUI PEDIDO
-    await ref.delete();
-
-    // 🔥 2. EXCLUI AGENDAMENTO (se existir)
-    if (p.agendamentoId) {
-      await db.collection("agendamentos").doc(p.agendamentoId).delete();
-    }
-
-    // 🔥 3. ENVIA NOTIFICAÇÃO
-    await db.collection("notificacoes").add({
-      userId: p.userId, // representante
-      mensagem: `Seu pedido foi excluído pelo administrador.`,
-      tipo: "pedido_excluido",
-      pedidoId: id,
-      criadoEm: new Date(),
-      lido: false
-    });
-
-    alert("Pedido excluído com sucesso!");
-
-  } catch (e) {
-    console.error(e);
-    alert("Erro ao excluir pedido");
-  }
+  };
 }
