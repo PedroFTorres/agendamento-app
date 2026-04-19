@@ -1868,6 +1868,7 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else if (page === "pedidos") renderPedidos();
     else if (page === "relatorios") renderRelatorios();
     else if (page === "dashboard") renderDashboard();
+    else if (page === "notificacoes") renderNotificacoes();
     else if (page === "producao") renderProducao();
     else if (page === "recibo") renderRecibo();
     else if (page === "whatsapp") renderWhatsapp();
