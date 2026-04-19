@@ -88,25 +88,31 @@ async function criarNotificacao(n) {
 function atualizarBadge(userId) {
 
   const badge = document.getElementById("badge-notificacoes");
-  if (!badge) return;
+
+  if (!badge) {
+    console.log("❌ badge não encontrado");
+    return;
+  }
+
+  console.log("👤 buscando notificações para:", userId);
 
   db.collection("notificacoes")
-    .where("userId", "==", PERFIL === "admin" ? "admin" : user.uid)
-    .where("lida", "==", false)
+    .where("userId", "==", userId)
     .onSnapshot(snap => {
 
-      const total = snap.size;
+      const naoLidas = snap.docs.filter(d => !d.data().lida).length;
 
-      if (total > 0) {
+      console.log("🔴 total não lidas:", naoLidas);
+
+      if (naoLidas > 0) {
         badge.classList.remove("hidden");
-        badge.innerText = total;
+        badge.innerText = naoLidas;
       } else {
         badge.classList.add("hidden");
       }
 
     });
 }
-
 
 // 📲 TELA
 function renderNotificacoes() {
