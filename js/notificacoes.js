@@ -44,21 +44,26 @@ async function iniciarNotificacoes() {
         }
 
         // 🔥 ALTERAÇÃO DE DATA
-        if (p.dataAnterior && p.data !== p.dataAnterior) {
-          criarNotificacao({
-            userId: p.userId,
-            texto: `📅 Pedido ${p.codigo} alterado para ${p.data}. Verifique o calendário.`,
-          });
-        }
+       if (p.dataAnterior && p.data !== p.dataAnterior && !p.notificadoData) {
+  criarNotificacao({
+    userId: p.userId,
+    texto: `📅 Pedido ${p.codigo} alterado para ${p.data}. Verifique o calendário.`,
+  });
 
-        // 🔥 ALTERAÇÃO DE QUANTIDADE
-        if (p.qtdAnterior && p.quantidade !== p.qtdAnterior) {
-          criarNotificacao({
-            userId: p.userId,
-            texto: `📦 Pedido ${p.codigo} alterado de ${p.qtdAnterior} para ${p.quantidade}`,
-          });
-        }
+  db.collection("pedidos").doc(change.doc.id).update({
+    notificadoData: true
+  });
+}
+      if (p.qtdAnterior && p.quantidade !== p.qtdAnterior && !p.notificadoQtd) {
+  criarNotificacao({
+    userId: p.userId,
+    texto: `📦 Pedido ${p.codigo} alterado de ${p.qtdAnterior} para ${p.quantidade}`,
+  });
 
+  db.collection("pedidos").doc(change.doc.id).update({
+    notificadoQtd: true
+  });
+}
       }
 
     });
