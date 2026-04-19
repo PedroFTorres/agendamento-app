@@ -7,7 +7,6 @@ async function aprovarPedido(id, btn) {
     const doc = await db.collection("pedidos").doc(id).get();
     const p = doc.data();
 
-    // 🔥 cria modal
     const modal = document.createElement("div");
     modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
 
@@ -26,13 +25,11 @@ async function aprovarPedido(id, btn) {
 
     document.body.appendChild(modal);
 
-    // 🔄 reativa botão se fechar
     document.getElementById("fechar-modal").onclick = () => {
       modal.remove();
       if (btn) btn.disabled = false;
     };
 
-    // 🔥 buscar agendamentos existentes
     const snap = await db.collection("agendamentos").get();
 
     const eventos = snap.docs.map(doc => {
@@ -43,10 +40,8 @@ async function aprovarPedido(id, btn) {
       };
     });
 
-    // 🔒 trava duplo clique
     let clicado = false;
 
-    // 🔥 criar calendário
     const calendar = new FullCalendar.Calendar(
       document.getElementById("calendar-aprovacao"),
       {
@@ -63,26 +58,30 @@ async function aprovarPedido(id, btn) {
           const dataEscolhida = info.dateStr;
 
           try {
-            // 🔥 cria agendamento
-          const agRef = await db.collection("agendamentos").add({
-  userId: p.userId,
-  clienteNome: p.clienteNome,
-  produtoNome: p.produtoNome,
-  quantidade: p.quantidade,
-  representanteNome: p.representanteNome,
-  criadoPor: p.userId,
-  data: dataEscolhida,
-  createdAt: firebase.firestore.FieldValue.serverTimestamp()
-});
 
-// 🔥 salva vínculo no pedido
-await db.collection("pedidos").doc(id).update({
-  status: "aprovado",
-  agendamentoId: agRef.id
-});
-            // 🔥 atualiza pedido
+            const agRef = await db.collection("agendamentos").add({
+              userId: p.userId,
+              clienteNome: p.clienteNome,
+              produtoNome: p.produtoNome,
+              quantidade: p.quantidade,
+              representanteNome: p.representanteNome,
+              criadoPor: p.userId,
+              data: dataEscolhida,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
             await db.collection("pedidos").doc(id).update({
-              status: "aprovado"
+              status: "aprovado",
+              agendamentoId: agRef.id
+            });
+
+            // 🔔 NOVO: MARCAR NOTIFICAÇÃO DO ADMIN COMO LIDA
+            const notifSnap = await db.collection("notificacoes")
+              .where("pedidoId", "==", p.codigo)
+              .get();
+
+            notifSnap.forEach(doc => {
+              doc.ref.update({ lida: true });
             });
 
             alert("Pedido aprovado e agendado!");
@@ -118,9 +117,22 @@ async function cancelarPedido(id, btn) {
   }
 
   try {
+
+    const docPedido = await db.collection("pedidos").doc(id).get();
+    const p = docPedido.data();
+
     await db.collection("pedidos").doc(id).update({
       status: "cancelado",
       motivoCancelamento: motivo
+    });
+
+    // 🔔 NOVO: MARCAR NOTIFICAÇÃO DO ADMIN COMO LIDA
+    const notifSnap = await db.collection("notificacoes")
+      .where("pedidoId", "==", p.codigo)
+      .get();
+
+    notifSnap.forEach(doc => {
+      doc.ref.update({ lida: true });
     });
 
     alert("Pedido cancelado!");
