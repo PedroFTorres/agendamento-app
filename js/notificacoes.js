@@ -13,10 +13,11 @@ async function iniciarNotificacoes() {
     snap.docChanges().forEach(change => {
 
 // 🔒 GARANTE QUE SÓ O DONO RECEBE
-if (p.userId !== user.uid) return;
 
       if (change.type === "modified") {
         const p = change.doc.data();
+
+         if (p.userId !== user.uid) return;
 
         // 🔥 APROVADO
         if (p.status === "aprovado" && !p.notificadoAprovado) {
