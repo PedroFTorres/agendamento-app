@@ -142,7 +142,7 @@ function renderNotificacoes() {
       </div>
 
       <!-- BOTÃO MARCAR COMO LIDA -->
-      ${!n.lida ? `
+      ${n.lida !== true ? `
         <button data-id="${doc.id}" class="btn-lida text-green-600 text-xl">
           ✔️
         </button>
