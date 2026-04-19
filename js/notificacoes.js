@@ -10,6 +10,20 @@ async function iniciarNotificacoes() {
   query.onSnapshot((snap) => {
 
     snap.docChanges().forEach(change => {
+      // 🔔 NOVO PEDIDO PARA ADMIN
+if (change.type === "added") {
+
+  const p = change.doc.data();
+
+  // só admin recebe
+  if (PERFIL !== "admin") return;
+
+  criarNotificacao({
+    userId: "admin",
+    texto: `📥 Novo pedido ${p.codigo || ""} recebido`,
+  });
+
+}
 
       if (change.type === "modified") {
 
