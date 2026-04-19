@@ -85,7 +85,28 @@ async function criarNotificacao(n) {
   });
 }
 
+// 🔴 BADGE DE NOTIFICAÇÕES
+function atualizarBadge(userId) {
 
+  const badge = document.getElementById("badge-notificacoes");
+  if (!badge) return;
+
+  db.collection("notificacoes")
+    .where("userId", "==", userId)
+    .where("lida", "==", false)
+    .onSnapshot(snap => {
+
+      const total = snap.size;
+
+      if (total > 0) {
+        badge.classList.remove("hidden");
+        badge.innerText = total;
+      } else {
+        badge.classList.add("hidden");
+      }
+
+    });
+}
 // 📲 TELA DE NOTIFICAÇÕES
 function renderNotificacoes() {
   pageContent.innerHTML = `
