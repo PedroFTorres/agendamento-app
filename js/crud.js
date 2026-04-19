@@ -2307,8 +2307,7 @@ await db.collection("pedidos").add({
             const item = document.createElement("div");
             item.className = "bg-white p-3 rounded shadow";
 
-          item.innerHTML = `
-  item.innerHTML = `
+  item.innerHTML = `      
   <div style="font-size:12px; color:#666;">
     Pedido: <b>${p.codigo || "-"}</b>
   </div>
