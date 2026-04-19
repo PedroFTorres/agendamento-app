@@ -149,7 +149,22 @@
   <script src="js/producao.js"></script>
   <script src="js/recibo.js"></script>
   <script>function toggleMenu() {const menu = document.getElementById("sidebar");menu.classList.toggle("-translate-x-full");}</script>
-  <script>iniciarNotificacoes();waitForAuth().then(user => {if (PERFIL === "admin") {atualizarBadge("admin"); } else {atualizarBadge(user.uid);}});</script>
+  <script>
+(async () => {
+  await waitForAuth();
+  await carregarUsuario(); // 🔥 GARANTE PERFIL
+
+  iniciarNotificacoes();
+
+  const user = auth.currentUser;
+
+  if (PERFIL === "admin") {
+    atualizarBadge("admin");
+  } else {
+    atualizarBadge(user.uid);
+  }
+})();
+</script>
     
 </body>
 </html>
