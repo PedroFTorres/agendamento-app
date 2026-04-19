@@ -141,7 +141,6 @@ function renderNotificacoes() {
         </div>
       </div>
 
-      <!-- BOTÃO MARCAR COMO LIDA -->
       ${n.lida !== true ? `
         <button data-id="${doc.id}" class="btn-lida text-green-600 text-xl">
           ✔️
@@ -155,7 +154,6 @@ function renderNotificacoes() {
 
   lista.appendChild(item);
 
-  // 🔥 EVENTO DO BOTÃO
   const btn = item.querySelector(".btn-lida");
 
   if (btn) {
@@ -165,10 +163,9 @@ function renderNotificacoes() {
       });
     };
   }
-
 });
 
-    });
+      });
 
   });
 
