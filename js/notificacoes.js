@@ -11,6 +11,10 @@ async function iniciarNotificacoes() {
   query.onSnapshot((snap) => {
 
     snap.docChanges().forEach(change => {
+      const p = change.doc.data();
+
+// 🔒 GARANTE QUE SÓ O DONO RECEBE
+if (p.userId !== user.uid) return;
 
       if (change.type === "modified") {
 
