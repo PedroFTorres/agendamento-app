@@ -126,22 +126,44 @@ function renderNotificacoes() {
         lista.innerHTML = "";
 
         snap.forEach(doc => {
-          const n = doc.data();
+  const n = doc.data();
 
-          const item = document.createElement("div");
-          item.className = "bg-white p-3 rounded shadow";
+  const item = document.createElement("div");
+  item.className = "bg-white p-3 rounded shadow";
 
-          item.innerHTML = `
-            <div>${n.texto}</div>
-            <div style="font-size:12px; color:#666;">
-              ${n.createdAt?.toDate?.().toLocaleString("pt-BR") || ""}
-            </div>
-          `;
+  item.innerHTML = `
+    <div class="flex justify-between items-center">
 
-          lista.appendChild(item);
-        });
+      <div>
+        <div>${n.texto}</div>
+        <div style="font-size:12px; color:#666;">
+          ${n.createdAt?.toDate?.().toLocaleString("pt-BR") || ""}
+        </div>
+      </div>
 
+      <!-- BOTÃO MARCAR COMO LIDA -->
+      ${!n.lida ? `
+        <button data-id="${doc.id}" class="btn-lida text-green-600 text-xl">
+          ✔️
+        </button>
+      ` : `
+        <span class="text-gray-400">✔️</span>
+      `}
+
+    </div>
+  `;
+
+  lista.appendChild(item);
+
+  // 🔥 EVENTO DO BOTÃO
+  const btn = item.querySelector(".btn-lida");
+
+  if (btn) {
+    btn.onclick = () => {
+      db.collection("notificacoes").doc(btn.dataset.id).update({
+        lida: true
       });
+    };
+  }
 
-  });
-}
+});
