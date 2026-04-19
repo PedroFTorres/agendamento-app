@@ -130,8 +130,12 @@ function renderNotificacoes() {
 
           const n = doc.data();
 
-          const item = document.createElement("div");
-          item.className = "bg-white p-3 rounded shadow";
+         const item = document.createElement("div");
+
+// 🔥 COR DIFERENTE PARA LIDA / NÃO LIDA
+item.className = n.lida
+  ? "bg-green-50 p-3 rounded shadow"
+  : "bg-white p-3 rounded shadow";
 
           item.innerHTML = `
             <div class="flex justify-between items-center">
