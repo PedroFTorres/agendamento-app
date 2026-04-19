@@ -3,7 +3,6 @@ async function iniciarNotificacoes() {
 
   let query = db.collection("pedidos");
 
-  // representante só vê os dele
   if (PERFIL === "representante") {
     query = query.where("userId", "==", user.uid);
   }
@@ -16,14 +15,13 @@ async function iniciarNotificacoes() {
 
         const p = change.doc.data();
 
-        // 🔒 garante que só o dono recebe
         if (p.userId !== user.uid) return;
 
-        // 🔥 APROVADO
+        // ✅ APROVADO
         if (p.status === "aprovado" && !p.notificadoAprovado) {
           criarNotificacao({
             userId: p.userId,
-            texto: `✅ Pedido ${p.codigo} foi aprovado para o dia ${p.data || "-"}. Verifique seu calendário.`,
+            texto: `✅ Pedido ${p.codigo} foi aprovado para o dia ${p.data || "-"}.`
           });
 
           db.collection("pedidos").doc(change.doc.id).update({
@@ -31,11 +29,11 @@ async function iniciarNotificacoes() {
           });
         }
 
-        // 🔥 CANCELADO
+        // ❌ CANCELADO
         if (p.status === "cancelado" && !p.notificadoCancelado) {
           criarNotificacao({
             userId: p.userId,
-            texto: `❌ Pedido ${p.codigo} foi cancelado. Motivo: ${p.motivoCancelamento || "não informado"}`,
+            texto: `❌ Pedido ${p.codigo} foi cancelado. Motivo: ${p.motivoCancelamento || "-"}`
           });
 
           db.collection("pedidos").doc(change.doc.id).update({
@@ -43,11 +41,11 @@ async function iniciarNotificacoes() {
           });
         }
 
-        // 🔥 ALTERAÇÃO DE DATA
+        // 📅 DATA
         if (p.dataAnterior && p.data !== p.dataAnterior && !p.notificadoData) {
           criarNotificacao({
             userId: p.userId,
-            texto: `📅 Pedido ${p.codigo} alterado para ${p.data}. Verifique o calendário.`,
+            texto: `📅 Pedido ${p.codigo} alterado para ${p.data}`
           });
 
           db.collection("pedidos").doc(change.doc.id).update({
@@ -55,11 +53,11 @@ async function iniciarNotificacoes() {
           });
         }
 
-        // 🔥 ALTERAÇÃO DE QUANTIDADE
+        // 📦 QUANTIDADE
         if (p.qtdAnterior && p.quantidade !== p.qtdAnterior && !p.notificadoQtd) {
           criarNotificacao({
             userId: p.userId,
-            texto: `📦 Pedido ${p.codigo} alterado de ${p.qtdAnterior} para ${p.quantidade}`,
+            texto: `📦 Pedido ${p.codigo} alterado de ${p.qtdAnterior} para ${p.quantidade}`
           });
 
           db.collection("pedidos").doc(change.doc.id).update({
@@ -85,7 +83,8 @@ async function criarNotificacao(n) {
   });
 }
 
-// 🔴 BADGE DE NOTIFICAÇÕES
+
+// 🔴 BADGE
 function atualizarBadge(userId) {
 
   const badge = document.getElementById("badge-notificacoes");
@@ -107,7 +106,9 @@ function atualizarBadge(userId) {
 
     });
 }
-// 📲 TELA DE NOTIFICAÇÕES
+
+
+// 📲 TELA
 function renderNotificacoes() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Notificações</h2>
@@ -126,53 +127,48 @@ function renderNotificacoes() {
         lista.innerHTML = "";
 
         snap.forEach(doc => {
-  const n = doc.data();
 
-  const item = document.createElement("div");
-  item.className = "bg-white p-3 rounded shadow";
+          const n = doc.data();
 
-  item.innerHTML = `
-    <div class="flex justify-between items-center">
+          const item = document.createElement("div");
+          item.className = "bg-white p-3 rounded shadow";
 
-      <div>
-        <div>${n.texto}</div>
-        <div style="font-size:12px; color:#666;">
-          ${n.createdAt?.toDate?.().toLocaleString("pt-BR") || ""}
-        </div>
-      </div>
+          item.innerHTML = `
+            <div class="flex justify-between items-center">
 
-      ${n.lida === true ? `
-  <span class="text-gray-400">✔️</span>
-` : `
-  <button data-id="${doc.id}" class="btn-lida text-green-600 text-xl">
-    ✔️
-  </button>
-`}
-        <button data-id="${doc.id}" class="btn-lida text-green-600 text-xl">
-          ✔️
-        </button>
-      ` : `
-        <span class="text-gray-400">✔️</span>
-      `}
+              <div>
+                <div>${n.texto}</div>
+                <div style="font-size:12px; color:#666;">
+                  ${n.createdAt?.toDate?.().toLocaleString("pt-BR") || ""}
+                </div>
+              </div>
 
-    </div>
-  `;
+              ${n.lida === true ? `
+                <span class="text-gray-400">✔️</span>
+              ` : `
+                <button data-id="${doc.id}" class="btn-lida text-green-600 text-xl">
+                  ✔️
+                </button>
+              `}
 
-  lista.appendChild(item);
+            </div>
+          `;
 
-  const btn = item.querySelector(".btn-lida");
+          lista.appendChild(item);
 
-  if (btn) {
-    btn.onclick = () => {
-      db.collection("notificacoes").doc(btn.dataset.id).update({
-        lida: true
-      });
-    };
-  }
-});
+          const btn = item.querySelector(".btn-lida");
+
+          if (btn) {
+            btn.onclick = () => {
+              db.collection("notificacoes").doc(btn.dataset.id).update({
+                lida: true
+              });
+            };
+          }
+
+        });
 
       });
 
   });
-
 }
