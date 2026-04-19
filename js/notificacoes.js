@@ -17,8 +17,6 @@ async function iniciarNotificacoes() {
 if (p.userId !== user.uid) return;
 
       if (change.type === "modified") {
-
-        const antes = change.oldIndex !== -1 ? change.doc.metadata : null;
         const p = change.doc.data();
 
         // 🔥 APROVADO
