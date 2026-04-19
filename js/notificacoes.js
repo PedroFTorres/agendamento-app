@@ -144,12 +144,12 @@ function renderNotificacoes() {
               </div>
 
               ${n.lida === true ? `
-                <span class="text-gray-400">✔️</span>
-              ` : `
-                <button data-id="${doc.id}" class="btn-lida text-green-600 text-xl">
-                  ✔️
-                </button>
-              `}
+  <span class="text-green-600 text-xl font-bold">✔️</span>
+` : `
+  <button data-id="${doc.id}" class="btn-lida text-gray-400 text-xl hover:text-green-600">
+    ✔️
+  </button>
+`}
 
             </div>
           `;
