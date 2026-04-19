@@ -91,7 +91,7 @@ function atualizarBadge(userId) {
   if (!badge) return;
 
   db.collection("notificacoes")
-    .where("userId", "==", userId)
+    .where("userId", "==", PERFIL === "admin" ? "admin" : user.uid)
     .where("lida", "==", false)
     .onSnapshot(snap => {
 
