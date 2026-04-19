@@ -12,12 +12,12 @@ async function iniciarNotificacoes() {
 
     snap.docChanges().forEach(change => {
 
-// 🔒 GARANTE QUE SÓ O DONO RECEBE
-
       if (change.type === "modified") {
+
         const p = change.doc.data();
 
-         if (p.userId !== user.uid) return;
+        // 🔒 garante que só o dono recebe
+        if (p.userId !== user.uid) return;
 
         // 🔥 APROVADO
         if (p.status === "aprovado" && !p.notificadoAprovado) {
@@ -44,32 +44,38 @@ async function iniciarNotificacoes() {
         }
 
         // 🔥 ALTERAÇÃO DE DATA
-       if (p.dataAnterior && p.data !== p.dataAnterior && !p.notificadoData) {
-  criarNotificacao({
-    userId: p.userId,
-    texto: `📅 Pedido ${p.codigo} alterado para ${p.data}. Verifique o calendário.`,
-  });
+        if (p.dataAnterior && p.data !== p.dataAnterior && !p.notificadoData) {
+          criarNotificacao({
+            userId: p.userId,
+            texto: `📅 Pedido ${p.codigo} alterado para ${p.data}. Verifique o calendário.`,
+          });
 
-  db.collection("pedidos").doc(change.doc.id).update({
-    notificadoData: true
-  });
-}
-      if (p.qtdAnterior && p.quantidade !== p.qtdAnterior && !p.notificadoQtd) {
-  criarNotificacao({
-    userId: p.userId,
-    texto: `📦 Pedido ${p.codigo} alterado de ${p.qtdAnterior} para ${p.quantidade}`,
-  });
+          db.collection("pedidos").doc(change.doc.id).update({
+            notificadoData: true
+          });
+        }
 
-  db.collection("pedidos").doc(change.doc.id).update({
-    notificadoQtd: true
-  });
-}
+        // 🔥 ALTERAÇÃO DE QUANTIDADE
+        if (p.qtdAnterior && p.quantidade !== p.qtdAnterior && !p.notificadoQtd) {
+          criarNotificacao({
+            userId: p.userId,
+            texto: `📦 Pedido ${p.codigo} alterado de ${p.qtdAnterior} para ${p.quantidade}`,
+          });
+
+          db.collection("pedidos").doc(change.doc.id).update({
+            notificadoQtd: true
+          });
+        }
+
       }
 
     });
 
   });
 }
+
+
+// 🔔 SALVAR NOTIFICAÇÃO
 async function criarNotificacao(n) {
   await db.collection("notificacoes").add({
     userId: n.userId,
@@ -78,6 +84,9 @@ async function criarNotificacao(n) {
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 }
+
+
+// 📲 TELA DE NOTIFICAÇÕES
 function renderNotificacoes() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Notificações</h2>
