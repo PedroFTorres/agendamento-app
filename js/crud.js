@@ -2213,7 +2213,28 @@ lista.forEach(nome => {
       return;
     }
 
-    await db.collection("pedidos").add({
+    const counterRef = db.collection("config").doc("pedidos");
+
+const numeroPedido = await db.runTransaction(async (t) => {
+  const doc = await t.get(counterRef);
+
+  let ultimo = 0;
+
+  if (doc.exists) {
+    ultimo = doc.data().ultimoNumero || 0;
+  }
+
+  const novo = ultimo + 1;
+
+  t.set(counterRef, { ultimoNumero: novo }, { merge: true });
+
+  return novo;
+});
+
+const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
+
+await db.collection("pedidos").add({
+  codigo,
       userId: user.uid,
       clienteNome: cliente,
       produtoNome: produto,
