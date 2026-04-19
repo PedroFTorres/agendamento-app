@@ -2099,6 +2099,11 @@ function renderPedidos() {
   const $cliente = document.getElementById("p-cliente");
   const $produto = document.getElementById("p-produto");
   const lista = document.getElementById("lista-pedidos");
+
+if (!lista) {
+  console.error("❌ lista-pedidos não encontrado");
+  return;
+}
   const inputQtd = document.getElementById("p-qtd");
 
 inputQtd?.addEventListener("input", (e) => {
