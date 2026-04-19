@@ -2246,6 +2246,13 @@ await db.collection("pedidos").add({
       status: "pendente",
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+    await db.collection("notificacoes").add({
+  userId: "admin",
+  pedidoId: codigo, // 🔥 ESSENCIAL
+  texto: `📥 Novo pedido ${codigo} recebido de ${REPRESENTANTE_ATUAL}`,
+  lida: false,
+  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+});
 
     alert("Pedido enviado!");
   });
