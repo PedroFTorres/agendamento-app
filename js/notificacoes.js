@@ -125,60 +125,61 @@ function renderNotificacoes() {
 
   waitForAuth().then(user => {
 
-    db.collection("notificacoes")
-      .where("userId", "==", user.uid)
-      .orderBy("createdAt", "desc")
-      .onSnapshot(snap => {
+  const userId = (PERFIL === "admin") ? "admin" : user.uid;
 
-        lista.innerHTML = "";
+  db.collection("notificacoes")
+    .where("userId", "==", userId)
+    .orderBy("createdAt", "desc")
+    .onSnapshot(snap => {
 
-        snap.forEach(doc => {
+      lista.innerHTML = "";
 
-          const n = doc.data();
+      snap.forEach(doc => {
 
-         const item = document.createElement("div");
+        const n = doc.data();
 
-// 🔥 COR DIFERENTE PARA LIDA / NÃO LIDA
-item.className = n.lida
-  ? "bg-green-50 p-3 rounded shadow"
-  : "bg-white p-3 rounded shadow";
+        const item = document.createElement("div");
 
-          item.innerHTML = `
-            <div class="flex justify-between items-center">
+        // 🔥 cor diferente
+        item.className = n.lida
+          ? "bg-green-50 p-3 rounded shadow"
+          : "bg-white p-3 rounded shadow";
 
-              <div>
-                <div>${n.texto}</div>
-                <div style="font-size:12px; color:#666;">
-                  ${n.createdAt?.toDate?.().toLocaleString("pt-BR") || ""}
-                </div>
+        item.innerHTML = `
+          <div class="flex justify-between items-center">
+
+            <div>
+              <div>${n.texto}</div>
+              <div style="font-size:12px; color:#666;">
+                ${n.createdAt?.toDate?.().toLocaleString("pt-BR") || ""}
               </div>
-
-              ${n.lida === true ? `
-  <span class="text-green-600 text-xl font-bold">✔️</span>
-` : `
-  <button data-id="${doc.id}" class="btn-lida text-gray-400 text-xl hover:text-green-600">
-    ✔️
-  </button>
-`}
-
             </div>
-          `;
 
-          lista.appendChild(item);
+            ${n.lida === true ? `
+              <span class="text-green-600 text-xl font-bold">✔️</span>
+            ` : `
+              <button data-id="${doc.id}" class="btn-lida text-gray-400 text-xl hover:text-green-600">
+                ✔️
+              </button>
+            `}
 
-          const btn = item.querySelector(".btn-lida");
+          </div>
+        `;
 
-          if (btn) {
-            btn.onclick = () => {
-              db.collection("notificacoes").doc(btn.dataset.id).update({
-                lida: true
-              });
-            };
-          }
+        lista.appendChild(item);
 
-        });
+        const btn = item.querySelector(".btn-lida");
+
+        if (btn) {
+          btn.onclick = () => {
+            db.collection("notificacoes").doc(btn.dataset.id).update({
+              lida: true
+            });
+          };
+        }
 
       });
 
-  });
-}
+    });
+
+});
