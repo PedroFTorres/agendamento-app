@@ -20,8 +20,6 @@ async function iniciarNotificacoes() {
 
   if (p.userId !== user.uid) return;
 
-        const p = change.doc.data();
-
         if (p.userId !== user.uid) return;
 
         // ✅ APROVADO
