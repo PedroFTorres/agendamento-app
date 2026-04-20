@@ -81,28 +81,43 @@ function renderNotas() {
   let clientesNota = [];
 
   // ================== CARREGAR CLIENTES E PRODUTOS ==================
-  waitForAuth().then(user => {
+ waitForAuth().then(user => {
 
    const snap = await getClientesFiltrados();
 
-$cliente.innerHTML = `<option value="">Selecione o cliente</option>`;
+   $cliente.innerHTML = `<option value="">Selecione o cliente</option>`;
 
-snap.forEach(doc => {
-  const d = doc.data();
-  $cliente.appendChild(new Option(d.nome, d.nome));
+   snap.forEach(doc => {
+     const d = doc.data();
+     $cliente.appendChild(new Option(d.nome, d.nome));
+   });
 });
-      });
 
-    db.collection("produtos")
-      .where("userId", "==", user.uid)
-      .get()
-      .then(snap => {
-        $produto.innerHTML = `<option value="">Selecione o produto</option>`;
-        snap.forEach(doc => {
-          const d = doc.data();
-          $produto.appendChild(new Option(d.nome, d.nome));
-        });
-      });
+   waitForAuth().then(async user => {
+
+  // CLIENTES
+  const snap = await getClientesFiltrados();
+
+  $cliente.innerHTML = `<option value="">Selecione o cliente</option>`;
+
+  snap.forEach(doc => {
+    const d = doc.data();
+    $cliente.appendChild(new Option(d.nome, d.nome));
+  });
+
+  // PRODUTOS
+  const prodSnap = await db.collection("produtos")
+    .where("userId", "==", user.uid)
+    .get();
+
+  $produto.innerHTML = `<option value="">Selecione o produto</option>`;
+
+  prodSnap.forEach(doc => {
+    const d = doc.data();
+    $produto.appendChild(new Option(d.nome, d.nome));
+  });
+
+});
   });
 
   // ================== VINCULAR PRODUTO AO CLIENTE ==================
