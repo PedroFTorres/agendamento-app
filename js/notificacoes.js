@@ -11,7 +11,14 @@ async function iniciarNotificacoes() {
 
     snap.docChanges().forEach(change => {
 
-      if (change.type === "modified") {
+     if (change.type === "modified") {
+
+  const p = change.doc.data();
+
+  // 🚫 NÃO NOTIFICAR PEDIDO PENDENTE
+  if (p.status === "pendente") return;
+
+  if (p.userId !== user.uid) return;
 
         const p = change.doc.data();
 
