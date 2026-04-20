@@ -169,9 +169,6 @@ async function editarPedidoAprovado(id) {
     return;
   }
 
-  const doc = await db.collection("pedidos").doc(id).get();
-  const p = doc.data();
-
   if (p.status !== "aprovado") {
     alert("Só pode editar pedidos aprovados");
     return;
