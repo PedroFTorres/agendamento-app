@@ -81,44 +81,47 @@ function renderNotas() {
   let clientesNota = [];
 
   // ================== CARREGAR CLIENTES E PRODUTOS ==================
- waitForAuth().then(user => {
+waitForAuth().then(async user => {
 
-   const snap = await getClientesFiltrados();
-
-   $cliente.innerHTML = `<option value="">Selecione o cliente</option>`;
-
-   snap.forEach(doc => {
-     const d = doc.data();
-     $cliente.appendChild(new Option(d.nome, d.nome));
-   });
-});
-
-   waitForAuth().then(async user => {
-
-  // CLIENTES
+  // CLIENTES ORDENADOS
   const snap = await getClientesFiltrados();
 
-  $cliente.innerHTML = `<option value="">Selecione o cliente</option>`;
+  const listaClientes = [];
 
   snap.forEach(doc => {
     const d = doc.data();
-    $cliente.appendChild(new Option(d.nome, d.nome));
+    if (d.nome) listaClientes.push(d.nome);
   });
 
-  // PRODUTOS
+  listaClientes.sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  $cliente.innerHTML = `<option value="">Selecione o cliente</option>`;
+
+  listaClientes.forEach(nome => {
+    $cliente.appendChild(new Option(nome, nome));
+  });
+
+  // PRODUTOS ORDENADOS
   const prodSnap = await db.collection("produtos")
     .where("userId", "==", user.uid)
     .get();
 
-  $produto.innerHTML = `<option value="">Selecione o produto</option>`;
+  const listaProdutos = [];
 
   prodSnap.forEach(doc => {
     const d = doc.data();
-    $produto.appendChild(new Option(d.nome, d.nome));
+    if (d.nome) listaProdutos.push(d.nome);
+  });
+
+  listaProdutos.sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  $produto.innerHTML = `<option value="">Selecione o produto</option>`;
+
+  listaProdutos.forEach(nome => {
+    $produto.appendChild(new Option(nome, nome));
   });
 
 });
-  });
 
   // ================== VINCULAR PRODUTO AO CLIENTE ==================
   document.getElementById("btn-add-produto").onclick = () => {
