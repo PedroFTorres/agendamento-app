@@ -156,16 +156,18 @@ if (PERFIL !== "admin" || user.uid !== p.userId) {
     alert("Erro ao cancelar pedido");
   }
 }
+
 async function editarPedidoAprovado(id) {
+
+  const doc = await db.collection("pedidos").doc(id).get();
+  const p = doc.data();
 
   const user = await waitForAuth();
 
-  iconst user = await waitForAuth();
-
-if (PERFIL !== "admin" || user.uid !== p.userId) {
-  alert("Sem permissão");
-  return;
-}
+  if (PERFIL !== "admin" || user.uid !== p.userId) {
+    alert("Sem permissão");
+    return;
+  }
 
   const doc = await db.collection("pedidos").doc(id).get();
   const p = doc.data();
