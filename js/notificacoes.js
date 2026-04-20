@@ -105,7 +105,14 @@ function atualizarBadge(userId) {
     .where("userId", "==", userId)
     .onSnapshot(snap => {
 
-      const naoLidas = snap.docs.filter(d => !d.data().lida).length;
+      const naoLidas = snap.docs.filter(d => {
+  const n = d.data();
+
+  // 🚫 ignora notificações inválidas
+  if (!n.texto) return false;
+
+  return n.lida === false;
+}).length;
 
       console.log("🔴 total não lidas:", naoLidas);
 
