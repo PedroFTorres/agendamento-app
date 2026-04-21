@@ -1,11 +1,8 @@
 async function iniciarNotificacoes() {
   const user = await waitForAuth();
 
-  let query = db.collection("pedidos");
-
-  if (PERFIL === "representante") {
-    query = query.where("userId", "==", user.uid);
-  }
+  let query = db.collection("pedidos")
+  .where("userId", "==", user.uid);
 
   query.onSnapshot((snap) => {
 
