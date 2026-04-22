@@ -1570,16 +1570,6 @@ clientesSnap.forEach(doc => {
   lista.push(d.nome);
 });
 
-// 🔥 ORDENA AQUI (ESSA É A CHAVE)
-lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-// 🔥 MONTA SELECT ORDENADO
-lista.forEach(nome => {
-  const opt = document.createElement("option");
-  opt.value = nome;
-  opt.textContent = nome;
-  selCliente.appendChild(opt);
-});
   produtosSnap.forEach(doc=>{
     const opt = document.createElement("option");
     opt.value = doc.data().nome;
