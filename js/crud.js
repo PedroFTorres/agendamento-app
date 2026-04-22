@@ -622,26 +622,32 @@ if (PERFIL === "representante") {
 }
 
 query
-  .orderBy("createdAt", "desc")
-  .onSnapshot(snap => {
-        list.innerHTML = "";
-        if (snap.empty) {
-          list.innerHTML = `<li class="text-gray-500">Nenhum registro.</li>`;
-          return;
-        }
-        snap.forEach(doc => list.appendChild(listItem(type, doc.id, doc.data())));
-bindBasicActions(list);
+  .onSnapshot(
+    snap => {
+      list.innerHTML = "";
 
-// 🔥 aplicar filtro após renderizar
-if (type === "clientes") {
-  const termo = document.getElementById("clientes-search").value.toLowerCase();
-  const items = list.querySelectorAll("li");
+      if (snap.empty) {
+        list.innerHTML = `<li class="text-gray-500">Nenhum registro.</li>`;
+        return;
+      }
 
-  items.forEach(li => {
-    const txt = li.textContent.toLowerCase();
-    li.style.display = txt.includes(termo) ? "" : "none";
-  });
-}
+      snap.forEach(doc => list.appendChild(listItem(type, doc.id, doc.data())));
+      bindBasicActions(list);
+
+      if (type === "clientes") {
+        const termo = document.getElementById("clientes-search").value.toLowerCase();
+        const items = list.querySelectorAll("li");
+
+        items.forEach(li => {
+          const txt = li.textContent.toLowerCase();
+          li.style.display = txt.includes(termo) ? "" : "none";
+        });
+      }
+    },
+    err => {
+      console.error("🔥 ERRO SNAP:", err);
+    }
+  );
       });
   });
 
