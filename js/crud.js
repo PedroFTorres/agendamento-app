@@ -1760,14 +1760,14 @@ const snap = await query.get();
     <div class="bg-white p-6 rounded w-full max-w-3xl space-y-4 max-h-[90vh] overflow-auto">
       <h3 class="text-lg font-bold">Resumo do dia ${dataSelecionada}</h3>
 
-     <div class="bg-blue-50 border border-blue-200 p-4 rounded text-center">
+    <div class="bg-blue-50 border border-blue-200 p-4 rounded text-center">
   <div class="text-sm text-gray-600">Total Geral</div>
   <div class="text-2xl font-bold text-blue-700">
     ${totalGeral.toLocaleString("pt-BR")}
   </div>
 </div>
 
-      <div class="grid grid-cols-2 gap-4">
+<div class="grid grid-cols-2 gap-4">
         <div>
           <div class="bg-gray-50 p-3 rounded">
   <h4 class="font-bold mb-2">Por Produto</h4>
