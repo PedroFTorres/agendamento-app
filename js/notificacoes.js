@@ -134,7 +134,7 @@ function renderNotificacoes() {
 
   waitForAuth().then(user => {
 
-  const userId = (PERFIL === "admin") ? "admin" : user.uid;
+ const userId = user.uid;
 
   db.collection("notificacoes")
     .where("userId", "==", userId)
