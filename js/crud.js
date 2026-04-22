@@ -1523,8 +1523,11 @@ dateClick: function(info) {
 }
         });
 
-        calendar.render();
-      });
+       calendar.render();
+},
+err => {
+  console.error("🔥 ERRO NO CALENDÁRIO:", err);
+});
   });
 }
 async function abrirModalAgendamento(dataSelecionada) {
