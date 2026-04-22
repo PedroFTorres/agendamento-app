@@ -6,13 +6,13 @@ async function aprovarPedido(id, btn) {
   try {
     const doc = await db.collection("pedidos").doc(id).get();
     const p = doc.data();
-    const user = await waitForAuth();
+    await waitForAuth();
 
-if (PERFIL !== "admin" || user.uid !== p.userId) {
-  alert("Sem permissão para aprovar");
-  if (btn) btn.disabled = false;
-  return;
-}
+    if (PERFIL !== "admin") {
+      alert("Sem permissão para aprovar");
+      if (btn) btn.disabled = false;
+      return;
+    }
 
     const modal = document.createElement("div");
     modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
@@ -127,13 +127,13 @@ async function cancelarPedido(id, btn) {
 
     const docPedido = await db.collection("pedidos").doc(id).get();
     const p = docPedido.data();
-    const user = await waitForAuth();
+    await waitForAuth();
 
-if (PERFIL !== "admin" || user.uid !== p.userId) {
-  alert("Sem permissão para cancelar");
-  if (btn) btn.disabled = false;
-  return;
-}
+    if (PERFIL !== "admin") {
+      alert("Sem permissão para cancelar");
+      if (btn) btn.disabled = false;
+      return;
+    }
 
     await db.collection("pedidos").doc(id).update({
       status: "cancelado",
@@ -164,7 +164,7 @@ async function editarPedidoAprovado(id) {
 
   const user = await waitForAuth();
 
-  if (PERFIL !== "admin" || user.uid !== p.userId) {
+  if (PERFIL !== "admin") {
     alert("Sem permissão");
     return;
   }
@@ -250,4 +250,38 @@ async function editarPedidoAprovado(id) {
       alert("Erro ao editar pedido");
     }
   };
+}
+
+async function excluirPedidoCompleto(id) {
+  const confirmar = confirm("Deseja excluir este pedido e o agendamento vinculado?");
+  if (!confirmar) return;
+
+  try {
+    await waitForAuth();
+
+    if (PERFIL !== "admin") {
+      alert("Sem permissão para excluir");
+      return;
+    }
+
+    const pedidoRef = db.collection("pedidos").doc(id);
+    const pedidoSnap = await pedidoRef.get();
+
+    if (!pedidoSnap.exists) {
+      alert("Pedido não encontrado");
+      return;
+    }
+
+    const pedido = pedidoSnap.data();
+
+    if (pedido.agendamentoId) {
+      await db.collection("agendamentos").doc(pedido.agendamentoId).delete();
+    }
+
+    await pedidoRef.delete();
+    alert("Pedido excluído com sucesso!");
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao excluir pedido");
+  }
 }
