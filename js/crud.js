@@ -1415,12 +1415,8 @@ function renderDashboard() {
   waitForAuth().then(user => {
  let query = db.collection("agendamentos");
 
-// 🔥 solução segura para admin
 if (PERFIL === "representante") {
   query = query.where("userId", "==", user.uid);
-} else {
-  // ADMIN: só pega docs válidos (evita erro)
-  query = query.where("userId", "!=", null);
 }
 
 query.onSnapshot(snap => {
