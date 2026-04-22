@@ -1419,9 +1419,9 @@ if (PERFIL === "representante") {
   query = db.collection("agendamentos")
     .where("userId", "==", user.uid);
 } else {
-  // 🔥 ADMIN: força uma query válida pro Firestore
+ 
   query = db.collection("agendamentos")
-    .orderBy("createdAt", "desc");
+  .orderBy("__name__");
 }
 
 query.onSnapshot(snap => {
