@@ -1910,30 +1910,34 @@ function renderPrecosClientes() {
   const $form = document.getElementById("form-preco");
   const $list = document.getElementById("pc-list");
 
-  // carregar clientes
-  waitForAuth().then(user => {
-   db.collection("clientes")
-  .where("userId","==",user.uid)
-  .get()
-  .then(snap=>{
-    $cliente.innerHTML = `<option value="">Selecione cliente</option>`;
+ waitForAuth().then(user => {
+
+  let query = db.collection("clientes");
+
+  if (PERFIL === "representante") {
+    query = query.where("userId", "==", user.uid);
+  }
+
+  query.get().then(snap => {
+    $cliente.innerHTML = `<option value="">Selecione Cliente</option>`;
 
     const lista = [];
 
-    snap.forEach(doc=>{
+    snap.forEach(doc => {
       lista.push(doc.data());
     });
 
-    // 🔥 ordena no JS (garantido)
     lista.sort((a,b)=> a.nome.localeCompare(b.nome, 'pt-BR'));
 
-    lista.forEach(d=>{
+    lista.forEach(d => {
       const opt = document.createElement("option");
       opt.value = d.nome;
       opt.textContent = d.nome;
       $cliente.appendChild(opt);
     });
   });
+
+});
     db.collection("produtos")
       .where("userId","==",user.uid)
       .get()
