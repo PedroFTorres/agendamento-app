@@ -774,7 +774,6 @@ return;
       userId: user.uid,
       clienteNome,
       representanteNome: REPRESENTANTE_ATUAL,
-      criadoPor: user.uid,
       produtoNome: prodNome,
       data,
       quantidade,
@@ -1727,7 +1726,7 @@ async function abrirResumoDoDia(dataSelecionada) {
   .where("data", "==", dataSelecionada);
 
 if (PERFIL === "representante") {
-  query = query.where("criadoPor", "==", user.uid);
+  query = query.where("userId", "==", user.uid);
 }
 
 const snap = await query.get();
