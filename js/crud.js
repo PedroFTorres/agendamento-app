@@ -649,7 +649,7 @@ query
     }
   );
       });
-  });
+
 
   // Importação de planilha (clientes)
   if (type === "clientes") {
