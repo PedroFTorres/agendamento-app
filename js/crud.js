@@ -1538,21 +1538,21 @@ async function abrirModalAgendamento(dataSelecionada) {
   const modal = document.createElement("div");
   modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
 
-  modal.innerHTML = `
-    <div class="bg-white p-6 rounded w-full max-w-md space-y-3">
-      <h3 class="text-lg font-bold">Novo Agendamento</h3>
+ modal.innerHTML = `
+  <div class="bg-white p-6 rounded w-full max-w-md space-y-3">
+    <h3 class="text-lg font-bold">Novo Agendamento</h3>
 
-     <select id="m-cliente" class="border p-2 w-full"></select>
-<select id="m-representante" class="border p-2 w-full"></select>
-<select id="m-produto" class="border p-2 w-full"></select>
-      <input id="m-qtd" type="number" class="border p-2 w-full" placeholder="Quantidade">
-      
-      <div class="flex justify-end space-x-2">
-        <button id="cancelar" class="bg-gray-400 text-white px-3 py-1 rounded">Cancelar</button>
-        <button id="salvar" class="bg-green-600 text-white px-3 py-1 rounded">Salvar</button>
-      </div>
+    <select id="m-cliente" class="border p-2 w-full"></select>
+    <select id="m-produto" class="border p-2 w-full"></select>
+
+    <input id="m-qtd" type="number" class="border p-2 w-full" placeholder="Quantidade">
+
+    <div class="flex justify-end space-x-2">
+      <button id="cancelar" class="bg-gray-400 text-white px-3 py-1 rounded">Cancelar</button>
+      <button id="salvar" class="bg-green-600 text-white px-3 py-1 rounded">Salvar</button>
     </div>
-  `;
+  </div>
+`;
 
   document.body.appendChild(modal);
 
