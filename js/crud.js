@@ -1942,7 +1942,6 @@ function renderPrecosClientes() {
           $produto.appendChild(opt);
         });
       });
-  });
 
   // salvar preço
   $form.addEventListener("submit", async (e)=>{
