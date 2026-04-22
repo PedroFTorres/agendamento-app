@@ -1413,10 +1413,15 @@ function renderDashboard() {
   `;
 
   waitForAuth().then(user => {
- let query = db.collection("agendamentos");
+let query;
 
 if (PERFIL === "representante") {
-  query = query.where("userId", "==", user.uid);
+  query = db.collection("agendamentos")
+    .where("userId", "==", user.uid);
+} else {
+  // 🔥 ADMIN: força uma query válida pro Firestore
+  query = db.collection("agendamentos")
+    .orderBy("createdAt", "desc");
 }
 
 query.onSnapshot(snap => {
