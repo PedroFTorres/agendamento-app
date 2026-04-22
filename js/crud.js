@@ -2193,17 +2193,6 @@ listaProdutos.forEach(nome => {
   opt.textContent = nome;
   $produto.appendChild(opt);
 });
-// 🔥 ORDENA
-lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-// 🔥 MONTA O SELECT
-lista.forEach(nome => {
-  const opt = document.createElement("option");
-  opt.value = nome;
-  opt.textContent = nome;
-  $produto.appendChild(opt);
-});
-  });
 
   // CRIAR PEDIDO
   document.getElementById("btn-pedido")?.addEventListener("click", async () => {
