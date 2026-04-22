@@ -2244,7 +2244,7 @@ await db.collection("pedidos").add({
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     await db.collection("notificacoes").add({
-  userId: "admin",
+  userId: "ds7q8HSM1nXuKL4tLSFrTbUalx32",
   pedidoId: codigo, // 🔥 ESSENCIAL
   texto: `📥 Novo pedido ${codigo} recebido de ${REPRESENTANTE_ATUAL}`,
   lida: false,
