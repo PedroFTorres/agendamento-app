@@ -617,12 +617,11 @@ payload.uid = cred.user.uid;
   waitForAuth().then(user => {
   let query = db.collection(type);
 
-if (PERFIL === "representante") {
-  query = query.where("userId", "==", user.uid);
-}
+  if (PERFIL === "representante") {
+    query = query.where("userId", "==", user.uid);
+  }
 
-query
-  .onSnapshot(
+  query.onSnapshot(
     snap => {
       list.innerHTML = "";
 
@@ -633,23 +632,12 @@ query
 
       snap.forEach(doc => list.appendChild(listItem(type, doc.id, doc.data())));
       bindBasicActions(list);
-
-      if (type === "clientes") {
-        const termo = document.getElementById("clientes-search").value.toLowerCase();
-        const items = list.querySelectorAll("li");
-
-        items.forEach(li => {
-          const txt = li.textContent.toLowerCase();
-          li.style.display = txt.includes(termo) ? "" : "none";
-        });
-      }
     },
     err => {
       console.error("🔥 ERRO SNAP:", err);
     }
   );
-      });
-
+});
 
   // Importação de planilha (clientes)
   if (type === "clientes") {
