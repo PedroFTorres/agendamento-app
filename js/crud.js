@@ -1417,7 +1417,7 @@ function renderDashboard() {
   let query = db.collection("agendamentos");
 
 if (PERFIL === "representante") {
-  query = query.where("criadoPor", "==", user.uid);
+ query = query.where("userId", "==", user.uid);
 }
 
 query.onSnapshot(snap => {
