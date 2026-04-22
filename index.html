@@ -156,12 +156,7 @@
   iniciarNotificacoes();
 
   const user = auth.currentUser;
-
-  if (PERFIL === "admin") {
-    atualizarBadge("admin");
-  } else {
-    atualizarBadge(user.uid);
-  }
+atualizarBadge(user.uid);
 })();
 </script>
     
