@@ -1569,6 +1569,16 @@ clientesSnap.forEach(doc => {
 
   lista.push(d.nome);
 });
+  // 🔥 ORDENA
+lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+// 🔥 MONTA SELECT
+lista.forEach(nome => {
+  const opt = document.createElement("option");
+  opt.value = nome;
+  opt.textContent = nome;
+  selCliente.appendChild(opt);
+});
 
   produtosSnap.forEach(doc=>{
     const opt = document.createElement("option");
