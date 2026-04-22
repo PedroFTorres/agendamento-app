@@ -1419,9 +1419,7 @@ if (PERFIL === "representante") {
   query = db.collection("agendamentos")
     .where("userId", "==", user.uid);
 } else {
- 
-  query = db.collection("agendamentos")
-  .orderBy("__name__");
+  query = db.collection("agendamentos"); // ✅ SIMPLES
 }
 
 query.onSnapshot(snap => {
