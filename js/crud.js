@@ -176,6 +176,80 @@ function formHTML(type) {
     <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
   `;
 }
+function bindModalNovoClienteRepresentante() {
+  if (PERFIL !== "representante") return;
+
+  const modal = document.getElementById("modal-cliente");
+  const abrir = document.getElementById("btn-abrir-modal-cliente");
+  const cancelar = document.getElementById("btn-cancelar-modal-cliente");
+  const salvar = document.getElementById("btn-salvar-modal-cliente");
+
+  const mCnpj = document.getElementById("m-clientes-cnpj");
+  const mCep = document.getElementById("m-clientes-cep");
+  const mIe = document.getElementById("m-clientes-ie");
+
+  mCnpj?.addEventListener("input", (e) => {
+    let v = e.target.value.replace(/\D/g, "");
+    if (v.length <= 11) {
+      v = v.replace(/^(\d{3})(\d)/, "$1.$2");
+      v = v.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
+      v = v.replace(/\.(\d{3})(\d)/, ".$1-$2");
+    } else {
+      v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+      v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+      v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+      v = v.replace(/(\d{4})(\d)/, "$1-$2");
+    }
+    e.target.value = v;
+  });
+  mCep?.addEventListener("input", (e) => {
+    let v = e.target.value.replace(/\D/g, "");
+    e.target.value = v.replace(/^(\d{5})(\d)/, "$1-$2");
+  });
+  mIe?.addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/\D/g, "");
+  });
+
+  abrir?.addEventListener("click", () => modal?.classList.remove("hidden"));
+  cancelar?.addEventListener("click", () => modal?.classList.add("hidden"));
+
+  salvar?.addEventListener("click", async () => {
+    const user = await waitForAuth();
+    const payload = {
+      userId: user.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      nome: document.getElementById("m-clientes-nome").value.trim(),
+      whatsapp: document.getElementById("m-clientes-whatsapp").value.trim(),
+      cnpj: document.getElementById("m-clientes-cnpj").value.replace(/\D/g, ""),
+      ie: document.getElementById("m-clientes-ie").value.trim(),
+      cep: document.getElementById("m-clientes-cep").value.trim(),
+      vinculadoPor: REPRESENTANTE_ATUAL
+    };
+
+    if (!payload.nome || !payload.whatsapp || !payload.cnpj || !payload.cep) {
+      alert("Preencha os campos obrigatórios!");
+      return;
+    }
+    if (payload.cnpj.length !== 11 && payload.cnpj.length !== 14) {
+      alert("CPF ou CNPJ inválido");
+      return;
+    }
+
+    const snap = await db.collection("clientes")
+      .where("cnpj", "==", payload.cnpj)
+      .where("userId", "==", user.uid)
+      .get();
+
+    if (!snap.empty) {
+      alert("❌ Este cliente já está vinculado a outro usuário.");
+      return;
+    }
+
+    await db.collection("clientes").add(payload);
+    toast("Cliente salvo com sucesso!");
+    modal?.classList.add("hidden");
+  });
+}
 
 // ================== LISTAGEM ==================
 function listItem(type, id, data) {
@@ -342,79 +416,6 @@ ieInput?.addEventListener("input", (e) => {
   e.target.value = e.target.value.replace(/\D/g, "");
 });
 
-      // Fluxo do representante em modal (sem alterar o fluxo de produtos/admin)
-  if (PERFIL === "representante") {
-    const modal = document.getElementById("modal-cliente");
-    const abrir = document.getElementById("btn-abrir-modal-cliente");
-    const cancelar = document.getElementById("btn-cancelar-modal-cliente");
-    const salvar = document.getElementById("btn-salvar-modal-cliente");
-
-    const mCnpj = document.getElementById("m-clientes-cnpj");
-    const mCep = document.getElementById("m-clientes-cep");
-    const mIe = document.getElementById("m-clientes-ie");
-
-    mCnpj?.addEventListener("input", (e) => {
-      let v = e.target.value.replace(/\D/g, "");
-      if (v.length <= 11) {
-        v = v.replace(/^(\d{3})(\d)/, "$1.$2");
-        v = v.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
-        v = v.replace(/\.(\d{3})(\d)/, ".$1-$2");
-      } else {
-        v = v.replace(/^(\d{2})(\d)/, "$1.$2");
-        v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
-        v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
-        v = v.replace(/(\d{4})(\d)/, "$1-$2");
-      }
-      e.target.value = v;
-    });
-    mCep?.addEventListener("input", (e) => {
-      let v = e.target.value.replace(/\D/g, "");
-      e.target.value = v.replace(/^(\d{5})(\d)/, "$1-$2");
-    });
-    mIe?.addEventListener("input", (e) => {
-      e.target.value = e.target.value.replace(/\D/g, "");
-    });
-
-    abrir?.addEventListener("click", () => modal?.classList.remove("hidden"));
-    cancelar?.addEventListener("click", () => modal?.classList.add("hidden"));
-
-    salvar?.addEventListener("click", async () => {
-      const user = await waitForAuth();
-      const payload = {
-        userId: user.uid,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        nome: document.getElementById("m-clientes-nome").value.trim(),
-        whatsapp: document.getElementById("m-clientes-whatsapp").value.trim(),
-        cnpj: document.getElementById("m-clientes-cnpj").value.replace(/\D/g, ""),
-        ie: document.getElementById("m-clientes-ie").value.trim(),
-        cep: document.getElementById("m-clientes-cep").value.trim(),
-        vinculadoPor: REPRESENTANTE_ATUAL
-      };
-
-      if (!payload.nome || !payload.whatsapp || !payload.cnpj || !payload.cep) {
-        alert("Preencha os campos obrigatórios!");
-        return;
-      }
-      if (payload.cnpj.length !== 11 && payload.cnpj.length !== 14) {
-        alert("CPF ou CNPJ inválido");
-        return;
-      }
-
-      const snap = await db.collection("clientes")
-        .where("cnpj", "==", payload.cnpj)
-        .where("userId", "==", user.uid)
-        .get();
-
-      if (!snap.empty) {
-        alert("❌ Este cliente já está vinculado a outro usuário.");
-        return;
-      }
-
-      await db.collection("clientes").add(payload);
-      toast("Cliente salvo com sucesso!");
-      modal?.classList.add("hidden");
-    });
-  }
 
     const $nome = modal.querySelector("#edit-nome");
     const $whats = modal.querySelector("#edit-whats");
@@ -602,6 +603,9 @@ const items = list.querySelectorAll("li");
 }
 
   const form = document.getElementById(`${type}-form`);
+  if (type === "clientes") {
+    bindModalNovoClienteRepresentante();
+  }
 if (type === "clientes") {
 
   const cnpjInput = document.getElementById("clientes-cnpj");
