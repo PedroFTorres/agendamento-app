@@ -2143,8 +2143,9 @@ inputQtd?.addEventListener("input", (e) => {
     dataAtual.setMonth(dataAtual.getMonth() + 1);
     renderPedidos();
   };
+waitForAuth().then(async user => {
 
-  waitForAuth().then(async user => {
+  if ($cliente && $produto) {
 
     // CLIENTES
     let cliQuery = db.collection("clientes");
@@ -2157,45 +2158,42 @@ inputQtd?.addEventListener("input", (e) => {
       const opt = document.createElement("option");
       opt.value = doc.data().nome;
       opt.textContent = doc.data().nome;
-      $cliente?.appendChild(opt);
+      $cliente.appendChild(opt);
     });
 
     // PRODUTOS
-   let prodQuery = db.collection("produtos");
+    const prodSnap = await db.collection("produtos").get();
 
-const prodSnap = await prodQuery.get();
+    $produto.innerHTML = `<option value="">Selecione produto</option>`;
 
-$produto.innerHTML = `<option value="">Selecione produto</option>`;
+    const listaProdutos = [];
+    const nomesUnicos = new Set();
 
-// lista e controle de duplicados
-const listaProdutos = [];
-const nomesUnicos = new Set();
+    prodSnap.forEach(doc => {
+      const d = doc.data();
 
-prodSnap.forEach(doc => {
-  const d = doc.data();
+      if (!d.nome || d.nome.trim() === "") return;
 
-  if (!d.nome || d.nome.trim() === "") return;
+      const nomeNormalizado = d.nome.trim().toLowerCase();
+      if (nomesUnicos.has(nomeNormalizado)) return;
 
-  const nomeNormalizado = d.nome.trim().toLowerCase();
+      nomesUnicos.add(nomeNormalizado);
+      listaProdutos.push(d.nome);
+    });
 
-  if (nomesUnicos.has(nomeNormalizado)) return;
+    listaProdutos.sort((a, b) => a.localeCompare(b, "pt-BR"));
 
-  nomesUnicos.add(nomeNormalizado);
-  listaProdutos.push(d.nome);
-});
-
-// ordena
-listaProdutos.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-// monta select
-listaProdutos.forEach(nome => {
-  const opt = document.createElement("option");
-  opt.value = nome;
-  opt.textContent = nome;
-  $produto.appendChild(opt);
-});
+    listaProdutos.forEach(nome => {
+      const opt = document.createElement("option");
+      opt.value = nome;
+      opt.textContent = nome;
+      $produto.appendChild(opt);
+    });
+  }
 
   // CRIAR PEDIDO
+  
+
   document.getElementById("btn-pedido")?.addEventListener("click", async () => {
     const user = await waitForAuth();
 
