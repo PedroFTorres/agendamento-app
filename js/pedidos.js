@@ -6,7 +6,7 @@ async function aprovarPedido(id, btn) {
   try {
     const doc = await db.collection("pedidos").doc(id).get();
     const p = doc.data();
-    await waitForAuth();
+    const user = await waitForAuth();
 
       if (PERFIL !== "admin") {
       alert("Sem permissão para aprovar");
@@ -139,7 +139,7 @@ async function cancelarPedido(id, btn) {
 
     const docPedido = await db.collection("pedidos").doc(id).get();
     const p = docPedido.data();
-    await waitForAuth();
+   const user = await waitForAuth();
 
       if (PERFIL !== "admin") {
       alert("Sem permissão para cancelar");
@@ -148,6 +148,7 @@ async function cancelarPedido(id, btn) {
     }
 
     await db.collection("pedidos").doc(id).update({
+      status: "cancelado",
       motivoCancelamento: motivo,
       notificadoCancelado: true
     });
@@ -333,4 +334,3 @@ async function excluirPedidoCompleto(id) {
     alert("Erro ao excluir pedido");
   }
 }
-
