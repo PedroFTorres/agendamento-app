@@ -10,14 +10,14 @@
       min-height: 100vh;
       background-image:
         linear-gradient(rgba(17, 24, 39, 0.38), rgba(17, 24, 39, 0.38)),
-        url("img/capa-whatsapp.jpg");
+        var(--login-bg-url, url("img/logo.png"));
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
     }
   </style>
 </head>
-  <body class="login-bg flex items-center justify-center p-4">
+<body class="login-bg flex items-center justify-center p-4">
   <div class="p-8 rounded-xl shadow-2xl w-full max-w-md" style="background-color: rgba(255,255,255,0.94);">
     <h1 class="text-2xl font-bold text-center mb-6">Agendamento App</h1>
     <form id="login-form" class="space-y-4">
@@ -25,14 +25,14 @@
       <input id="login-password" type="password" placeholder="Senha" required class="w-full border p-2 rounded">
       <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded">Entrar</button>
     </form>
-     <p class="mt-6 text-sm text-gray-500 text-center">
+    <p class="mt-6 text-sm text-gray-500 text-center">
       Acesso restrito a usuários cadastrados pela empresa.
     </p>
   </div>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-     <script>
+  <script>
     (function definirFundoLogin() {
       const candidatos = [
         "img/capa-whatsapp.jpg",
