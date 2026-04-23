@@ -13,20 +13,6 @@ if (document.getElementById("login-form")) {
   });
 }
 
-if (document.getElementById("signup-form")) {
-  document.getElementById("signup-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("signup-email").value;
-    const pass = document.getElementById("signup-password").value;
-    try {
-      await auth.createUserWithEmailAndPassword(email, pass);
-      location.href = "index.html";
-    } catch (err) {
-      alert("Erro no cadastro: " + err.message);
-    }
-  });
-}
-
 if (document.getElementById("logout-button")) {
   document.getElementById("logout-button").addEventListener("click", async () => {
     await auth.signOut();
