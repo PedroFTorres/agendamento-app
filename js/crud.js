@@ -107,6 +107,33 @@ function formatarDataISO(data) {
 // ================== FORMULÁRIOS ==================
 function formHTML(type) {
   if (type === "clientes") {
+   if (PERFIL === "representante") {
+      return `
+        <button id="btn-abrir-modal-cliente" type="button" class="w-full md:w-auto text-white p-2 rounded" style="background-color: #E67E22;">+ Novo Cliente</button>
+
+        <div id="modal-cliente" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 p-0 md:p-4">
+          <div class="bg-white w-full md:max-w-2xl md:mx-auto md:mt-12 rounded-t-2xl md:rounded-xl p-4 md:p-6 max-h-[92vh] overflow-y-auto absolute bottom-0 left-0 right-0 md:static">
+            <h3 class="text-lg font-bold mb-3">Cadastrar Cliente</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input id="m-clientes-nome" class="border p-2 rounded" placeholder="Nome do cliente">
+              <input id="m-clientes-whatsapp" class="border p-2 rounded" placeholder="WhatsApp (ex: 98991234567)">
+              <input id="m-clientes-cnpj" class="border p-2 rounded" placeholder="CNPJ ou CPF">
+              <input id="m-clientes-ie" class="border p-2 rounded" placeholder="Inscrição Estadual">
+              <input id="m-clientes-cep" class="border p-2 rounded md:col-span-2" placeholder="CEP">
+            </div>
+            <div class="flex flex-col-reverse md:flex-row justify-end gap-2 mt-4">
+              <button id="btn-cancelar-modal-cliente" type="button" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+              <button id="btn-salvar-modal-cliente" type="button" class="bg-blue-600 text-white px-4 py-2 rounded">Salvar Cliente</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label class="block text-sm font-medium mb-1">Importar Clientes de Planilha (.xlsx)</label>
+          <input type="file" id="import-clientes" accept=".xlsx" class="border p-2 rounded w-full">
+        </div>
+      `;
+    }
     return `
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
         <input id="clientes-nome" class="border p-2 rounded" placeholder="Nome do cliente" required>
@@ -314,6 +341,80 @@ cepInput?.addEventListener("input", (e) => {
 ieInput?.addEventListener("input", (e) => {
   e.target.value = e.target.value.replace(/\D/g, "");
 });
+
+      // Fluxo do representante em modal (sem alterar o fluxo de produtos/admin)
+  if (PERFIL === "representante") {
+    const modal = document.getElementById("modal-cliente");
+    const abrir = document.getElementById("btn-abrir-modal-cliente");
+    const cancelar = document.getElementById("btn-cancelar-modal-cliente");
+    const salvar = document.getElementById("btn-salvar-modal-cliente");
+
+    const mCnpj = document.getElementById("m-clientes-cnpj");
+    const mCep = document.getElementById("m-clientes-cep");
+    const mIe = document.getElementById("m-clientes-ie");
+
+    mCnpj?.addEventListener("input", (e) => {
+      let v = e.target.value.replace(/\D/g, "");
+      if (v.length <= 11) {
+        v = v.replace(/^(\d{3})(\d)/, "$1.$2");
+        v = v.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
+        v = v.replace(/\.(\d{3})(\d)/, ".$1-$2");
+      } else {
+        v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+        v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+        v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+        v = v.replace(/(\d{4})(\d)/, "$1-$2");
+      }
+      e.target.value = v;
+    });
+    mCep?.addEventListener("input", (e) => {
+      let v = e.target.value.replace(/\D/g, "");
+      e.target.value = v.replace(/^(\d{5})(\d)/, "$1-$2");
+    });
+    mIe?.addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(/\D/g, "");
+    });
+
+    abrir?.addEventListener("click", () => modal?.classList.remove("hidden"));
+    cancelar?.addEventListener("click", () => modal?.classList.add("hidden"));
+
+    salvar?.addEventListener("click", async () => {
+      const user = await waitForAuth();
+      const payload = {
+        userId: user.uid,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        nome: document.getElementById("m-clientes-nome").value.trim(),
+        whatsapp: document.getElementById("m-clientes-whatsapp").value.trim(),
+        cnpj: document.getElementById("m-clientes-cnpj").value.replace(/\D/g, ""),
+        ie: document.getElementById("m-clientes-ie").value.trim(),
+        cep: document.getElementById("m-clientes-cep").value.trim(),
+        vinculadoPor: REPRESENTANTE_ATUAL
+      };
+
+      if (!payload.nome || !payload.whatsapp || !payload.cnpj || !payload.cep) {
+        alert("Preencha os campos obrigatórios!");
+        return;
+      }
+      if (payload.cnpj.length !== 11 && payload.cnpj.length !== 14) {
+        alert("CPF ou CNPJ inválido");
+        return;
+      }
+
+      const snap = await db.collection("clientes")
+        .where("cnpj", "==", payload.cnpj)
+        .where("userId", "==", user.uid)
+        .get();
+
+      if (!snap.empty) {
+        alert("❌ Este cliente já está vinculado a outro usuário.");
+        return;
+      }
+
+      await db.collection("clientes").add(payload);
+      toast("Cliente salvo com sucesso!");
+      modal?.classList.add("hidden");
+    });
+  }
 
     const $nome = modal.querySelector("#edit-nome");
     const $whats = modal.querySelector("#edit-whats");
@@ -540,9 +641,11 @@ if (type === "clientes") {
   
 
   const list = document.getElementById(`${type}-list`);
-
+   
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (type === "clientes" && PERFIL === "representante") return;
+
     const user = await waitForAuth();
     const uid = user.uid;
     let payload = { userId: uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
@@ -2069,23 +2172,27 @@ function renderPedidos() {
     <h2 class="text-xl font-bold mb-4">Pedidos</h2>
 
     ${PERFIL === "representante" ? `
-    <div class="bg-white p-4 rounded shadow mb-4 space-y-2">
-      <select id="p-cliente" class="border p-2 w-full"></select>
-      <select id="p-produto" class="border p-2 w-full"></select>
-      <input id="p-qtd" type="text" class="border p-2 w-full" placeholder="Quantidade">
-
-<select id="p-prazo" class="border p-2 w-full">
-  <option value="">Prazo de pagamento</option>
-  <option value="À vista">À vista</option>
-  <option value="10 dias">10 dias</option>
-  <option value="15 dias">15 dias</option>
-  <option value="30 dias">30 dias</option>
-  <option value="30/60 dias">30/60 dias</option>
-</select>
-<input id="p-obs" type="text" class="border p-2 w-full" placeholder="Observações (opcional)">
-      <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">
-        Enviar Pedido
-      </button>
+   <div class="bg-white p-4 rounded shadow mb-4">
+      <button id="btn-abrir-modal-pedido" type="button" class="w-full md:w-auto text-white p-2 rounded" style="background-color: #E67E22;">+ Novo Pedido</button>
+      <div id="modal-pedido" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 p-0 md:p-4">
+        <div class="bg-white w-full md:max-w-2xl md:mx-auto md:mt-12 rounded-t-2xl md:rounded-xl p-4 md:p-6 max-h-[92vh] overflow-y-auto absolute bottom-0 left-0 right-0 md:static space-y-2">
+          <h3 class="text-lg font-bold mb-2">Novo Pedido</h3>
+          <select id="p-cliente" class="border p-2 w-full"></select>
+          <select id="p-produto" class="border p-2 w-full"></select>
+          <input id="p-qtd" type="text" class="border p-2 w-full" placeholder="Quantidade">
+          <select id="p-prazo" class="border p-2 w-full">
+            <option value="">Prazo de pagamento</option>
+            <option value="À vista">À vista</option>
+            <option value="10 dias">10 dias</option>
+            <option value="15 dias">15 dias</option>
+            <option value="30 dias">30 dias</option>
+            <option value="30/60 dias">30/60 dias</option>
+          </select>
+          <input id="p-obs" type="text" class="border p-2 w-full" placeholder="Observações (opcional)">
+          <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">Enviar Pedido</button>
+          <button id="btn-cancelar-modal-pedido" type="button" class="bg-gray-400 text-white p-2 rounded w-full">Cancelar</button>
+        </div>
+      </div>
     </div>
     ` : ""}
 
@@ -2143,6 +2250,16 @@ inputQtd?.addEventListener("input", (e) => {
     dataAtual.setMonth(dataAtual.getMonth() + 1);
     renderPedidos();
   };
+  if (PERFIL === "representante") {
+  const modalPedido = document.getElementById("modal-pedido");
+  document.getElementById("btn-abrir-modal-pedido")?.addEventListener("click", () => {
+    modalPedido?.classList.remove("hidden");
+  });
+  document.getElementById("btn-cancelar-modal-pedido")?.addEventListener("click", () => {
+    modalPedido?.classList.add("hidden");
+  });
+}
+  
 waitForAuth().then(async user => {
 
   if ($cliente && $produto) {
@@ -2258,6 +2375,9 @@ await db.collection("pedidos").add({
 
     await Promise.all(notifPromises);
     alert("Pedido enviado!");
+    if (PERFIL === "representante") {
+      document.getElementById("modal-pedido")?.classList.add("hidden");
+    }
   });
 
   }
