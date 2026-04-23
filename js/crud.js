@@ -2147,50 +2147,51 @@ waitForAuth().then(async user => {
 
   if ($cliente && $produto) {
 
-    // CLIENTES
-    let cliQuery = db.collection("clientes");
-    if (PERFIL === "representante") {
-      cliQuery = cliQuery.where("userId", "==", user.uid);
-    }
-
-    const cliSnap = await cliQuery.orderBy("nome").get();
-    cliSnap.forEach(doc => {
-      const opt = document.createElement("option");
-      opt.value = doc.data().nome;
-      opt.textContent = doc.data().nome;
-      $cliente.appendChild(opt);
-    });
+     if ($cliente && $produto) {
+      // CLIENTES
+      let cliQuery = db.collection("clientes");
+      if (PERFIL === "representante") {
+        cliQuery = cliQuery.where("userId", "==", user.uid);
+      }
+       const cliSnap = await cliQuery.orderBy("nome").get();
+      cliSnap.forEach(doc => {
+        const opt = document.createElement("option");
+        opt.value = doc.data().nome;
+        opt.textContent = doc.data().nome;
+        $cliente.appendChild(opt);
+      });
 
     // PRODUTOS
-    const prodSnap = await db.collection("produtos").get();
+      const prodSnap = await db.collection("produtos").get();
+$produto.innerHTML = `<option value="">Selecione produto</option>`;
 
-    $produto.innerHTML = `<option value="">Selecione produto</option>`;
+        // lista e controle de duplicados
+      const listaProdutos = [];
+      const nomesUnicos = new Set();
+       
+      prodSnap.forEach(doc => {
+        const d = doc.data();
 
-    const listaProdutos = [];
-    const nomesUnicos = new Set();
+       if (!d.nome || d.nome.trim() === "") return;
+   const nomeNormalizado = d.nome.trim().toLowerCase();
+        if (nomesUnicos.has(nomeNormalizado)) return;
 
-    prodSnap.forEach(doc => {
-      const d = doc.data();
+       nomesUnicos.add(nomeNormalizado);
+        listaProdutos.push(d.nome);
+      });
 
-      if (!d.nome || d.nome.trim() === "") return;
+// ordena
+      listaProdutos.sort((a, b) => a.localeCompare(b, "pt-BR"));
 
-      const nomeNormalizado = d.nome.trim().toLowerCase();
-      if (nomesUnicos.has(nomeNormalizado)) return;
-
-      nomesUnicos.add(nomeNormalizado);
-      listaProdutos.push(d.nome);
-    });
-
-    listaProdutos.sort((a, b) => a.localeCompare(b, "pt-BR"));
-
-    listaProdutos.forEach(nome => {
-      const opt = document.createElement("option");
-      opt.value = nome;
-      opt.textContent = nome;
-      $produto.appendChild(opt);
-    });
-  }
-
+    // monta select
+      listaProdutos.forEach(nome => {
+        const opt = document.createElement("option");
+        opt.value = nome;
+        opt.textContent = nome;
+        $produto.appendChild(opt);
+      });
+    }
+  
   // CRIAR PEDIDO
   
 
@@ -2241,14 +2242,22 @@ await db.collection("pedidos").add({
       status: "pendente",
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    await db.collection("notificacoes").add({
-  userId: "ds7q8HSM1nXuKL4tLSFrTbUalx32",
-  pedidoId: codigo, // 🔥 ESSENCIAL
-  texto: `📥 Novo pedido ${codigo} recebido de ${REPRESENTANTE_ATUAL}`,
-  lida: false,
-  createdAt: firebase.firestore.FieldValue.serverTimestamp()
-});
+     const adminsSnap = await db.collection("usuarios")
+      .where("perfil", "==", "admin")
+      .get();
 
+    const notifPromises = adminsSnap.docs
+      .map(doc => doc.data()?.uid)
+      .filter(Boolean)
+      .map(adminUid => db.collection("notificacoes").add({
+        userId: adminUid,
+        pedidoId: codigo,
+        texto: `📥 Novo pedido ${codigo} recebido de ${REPRESENTANTE_ATUAL}`,
+        lida: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }));
+
+    await Promise.all(notifPromises);
     alert("Pedido enviado!");
   });
 
