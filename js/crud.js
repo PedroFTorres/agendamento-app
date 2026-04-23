@@ -2402,6 +2402,7 @@ if (btnCancelar) {
       }); // fecha onSnapshot
 
     }); // 🔥 FECHA waitForAuth INTERNO
-
-  }); // 🔥 FECHA waitForAuth EXTERNO
+ } // 🔥 FECHA if ($cliente && $produto)
+}); //
+  
 }
