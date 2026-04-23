@@ -2146,8 +2146,6 @@ inputQtd?.addEventListener("input", (e) => {
 waitForAuth().then(async user => {
 
   if ($cliente && $produto) {
-
-     if ($cliente && $produto) {
       // CLIENTES
       let cliQuery = db.collection("clientes");
       if (PERFIL === "representante") {
@@ -2190,11 +2188,9 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
         opt.textContent = nome;
         $produto.appendChild(opt);
       });
-    }
-  
+    
   // CRIAR PEDIDO
   
-
   document.getElementById("btn-pedido")?.addEventListener("click", async () => {
     const user = await waitForAuth();
 
@@ -2261,8 +2257,7 @@ await db.collection("pedidos").add({
     alert("Pedido enviado!");
   });
 
-  waitForAuth().then(async user => {
-
+  }
     if (!PERFIL) {
       await carregarUsuario();
     }
@@ -2400,9 +2395,6 @@ if (btnCancelar) {
                });
 
       }); // fecha onSnapshot
-
-    }); // 🔥 FECHA waitForAuth INTERNO
- } // 🔥 FECHA if ($cliente && $produto)
 }); //
   
 }
