@@ -10,9 +10,9 @@
       min-height: 100vh;
       background-image:
         linear-gradient(rgba(17, 24, 39, 0.38), rgba(17, 24, 39, 0.38)),
-        var(--login-bg-url, url("img/logo.png"));
+        url("img/capa-whatsapp.jpg");
       background-size: cover;
-      background-position: center;
+      background-position: center bottom;
       background-repeat: no-repeat;
     }
   </style>
@@ -32,36 +32,6 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <script>
-    (function definirFundoLogin() {
-      const candidatos = [
-        "img/capa-whatsapp.jpg",
-        "img/capa-whatsapp.jpeg",
-        "img/capa-whatsapp.png",
-        "img/capa.jpg",
-        "img/capa.png",
-        "img/bg-login.jpg",
-        "img/bg-login.png",
-        "img/logo.png"
-      ];
-
-      function tentar(indice) {
-        if (indice >= candidatos.length) return;
-
-        const caminho = candidatos[indice];
-        const img = new Image();
-
-        img.onload = () => {
-          document.body.style.setProperty("--login-bg-url", `url("${caminho}")`);
-        };
-
-        img.onerror = () => tentar(indice + 1);
-        img.src = caminho;
-      }
-
-      tentar(0);
-    })();
-  </script>
   <script src="js/firebase.js"></script>
   <script src="js/auth.js"></script>
 </body>
