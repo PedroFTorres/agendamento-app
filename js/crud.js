@@ -2394,11 +2394,10 @@ if (btnCancelar) {
 }
             container.appendChild(item);
           });
-      
-
+          
           lista.appendChild(header);
           lista.appendChild(container);
-        
+               });
 
       }); // fecha onSnapshot
 
