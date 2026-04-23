@@ -2243,7 +2243,10 @@ await db.collection("pedidos").add({
       .get();
 
     const notifPromises = adminsSnap.docs
-      .map(doc => doc.data()?.uid)
+      .map(doc => {
+        const dados = doc.data() || {};
+        return dados.uid || dados.userId || doc.id;
+      })
       .filter(Boolean)
       .map(adminUid => db.collection("notificacoes").add({
         userId: adminUid,
