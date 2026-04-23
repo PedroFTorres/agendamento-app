@@ -2399,7 +2399,6 @@ if (btnCancelar) {
           lista.appendChild(header);
           lista.appendChild(container);
         
-        });
 
       }); // fecha onSnapshot
 
