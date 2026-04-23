@@ -8,7 +8,7 @@ async function aprovarPedido(id, btn) {
     const p = doc.data();
     await waitForAuth();
 
-    if (PERFIL !== "admin") {
+      if (PERFIL !== "admin") {
       alert("Sem permissão para aprovar");
       if (btn) btn.disabled = false;
       return;
@@ -79,16 +79,28 @@ async function aprovarPedido(id, btn) {
 
             await db.collection("pedidos").doc(id).update({
               status: "aprovado",
-              agendamentoId: agRef.id
+              agendamentoId: agRef.id,
+              data: dataEscolhida,
+              notificadoAprovado: true
             });
 
-            // 🔔 NOVO: MARCAR NOTIFICAÇÃO DO ADMIN COMO LIDA
+            // 🔔 MARCAR NOTIFICAÇÃO DO ADMIN COMO LIDA
             const notifSnap = await db.collection("notificacoes")
               .where("pedidoId", "==", p.codigo)
+              .where("userId", "==", user.uid)
               .get();
 
             notifSnap.forEach(doc => {
               doc.ref.update({ lida: true });
+            });
+            
+            // 🔔 Notificar representante
+            await db.collection("notificacoes").add({
+              userId: p.userId,
+              pedidoId: p.codigo,
+              texto: `✅ Pedido ${p.codigo} foi aprovado para o dia ${dataEscolhida}.`,
+              lida: false,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
             alert("Pedido aprovado e agendado!");
@@ -129,25 +141,36 @@ async function cancelarPedido(id, btn) {
     const p = docPedido.data();
     await waitForAuth();
 
-    if (PERFIL !== "admin") {
+      if (PERFIL !== "admin") {
       alert("Sem permissão para cancelar");
       if (btn) btn.disabled = false;
       return;
     }
 
     await db.collection("pedidos").doc(id).update({
-      status: "cancelado",
-      motivoCancelamento: motivo
+      motivoCancelamento: motivo,
+      notificadoCancelado: true
     });
 
-    // 🔔 NOVO: MARCAR NOTIFICAÇÃO DO ADMIN COMO LIDA
+    // 🔔 MARCAR NOTIFICAÇÃO DO ADMIN COMO LIDA
     const notifSnap = await db.collection("notificacoes")
       .where("pedidoId", "==", p.codigo)
+      .where("userId", "==", user.uid)
       .get();
 
     notifSnap.forEach(doc => {
       doc.ref.update({ lida: true });
     });
+
+    // 🔔 Notificar representante
+    await db.collection("notificacoes").add({
+      userId: p.userId,
+      pedidoId: p.codigo,
+      texto: `❌ Pedido ${p.codigo} foi cancelado. Motivo: ${motivo}`,
+      lida: false,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
 
     alert("Pedido cancelado!");
 
@@ -228,6 +251,11 @@ async function editarPedidoAprovado(id) {
       // 🔥 atualiza pedido
       await db.collection("pedidos").doc(id).update({
         quantidade: Number(novaQtd),
+        qtdAnterior: p.quantidade,
+        dataAnterior: dataAtual,
+        data: novaData,
+        notificadoQtd: true,
+        notificadoData: true,
         editadoPor: user.uid,
         editadoEm: new Date()
       });
@@ -242,6 +270,15 @@ async function editarPedidoAprovado(id) {
 
       modal.remove();
       alert("Pedido atualizado!");
+
+      // 🔔 Notificar representante sobre edição
+      await db.collection("notificacoes").add({
+        userId: p.userId,
+        pedidoId: p.codigo,
+        texto: `📝 Pedido ${p.codigo} atualizado: quantidade ${p.quantidade} → ${Number(novaQtd)}, data ${dataAtual || "-"} → ${novaData}.`,
+        lida: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
 
       location.reload();
 
@@ -279,9 +316,21 @@ async function excluirPedidoCompleto(id) {
     }
 
     await pedidoRef.delete();
+
+    if (pedido.userId) {
+      await db.collection("notificacoes").add({
+        userId: pedido.userId,
+        pedidoId: pedido.codigo,
+        texto: `🗑️ Pedido ${pedido.codigo} foi excluído pelo administrador.`,
+        lida: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
     alert("Pedido excluído com sucesso!");
   } catch (e) {
     console.error(e);
     alert("Erro ao excluir pedido");
   }
 }
+
