@@ -120,6 +120,13 @@ function formHTML(type) {
               <input id="m-clientes-cnpj" class="border p-2 rounded" placeholder="CNPJ ou CPF">
               <input id="m-clientes-ie" class="border p-2 rounded" placeholder="Inscrição Estadual">
               <input id="m-clientes-cep" class="border p-2 rounded md:col-span-2" placeholder="CEP">
+               <p id="m-clientes-cep-help" class="text-xs text-gray-500 md:col-span-2"></p>
+              <input id="m-clientes-endereco" class="border p-2 rounded md:col-span-2 bg-gray-100" placeholder="Endereço (logradouro)" readonly>
+              <input id="m-clientes-numero" class="border p-2 rounded" placeholder="Número">
+              <input id="m-clientes-bairro" class="border p-2 rounded bg-gray-100" placeholder="Bairro" readonly>
+              <input id="m-clientes-cidade" class="border p-2 rounded bg-gray-100" placeholder="Cidade" readonly>
+              <input id="m-clientes-uf" class="border p-2 rounded bg-gray-100" placeholder="UF" maxlength="2" readonly>
+              <input id="m-clientes-complemento" class="border p-2 rounded md:col-span-2 bg-gray-100" placeholder="Complemento (opcional)" readonly>
             </div>
             <div class="flex flex-col-reverse md:flex-row justify-end gap-2 mt-4">
               <button id="btn-cancelar-modal-cliente" type="button" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
@@ -187,6 +194,33 @@ function bindModalNovoClienteRepresentante() {
   const mCnpj = document.getElementById("m-clientes-cnpj");
   const mCep = document.getElementById("m-clientes-cep");
   const mIe = document.getElementById("m-clientes-ie");
+   const mCepHelp = document.getElementById("m-clientes-cep-help");
+  const mEndereco = document.getElementById("m-clientes-endereco");
+  const mNumero = document.getElementById("m-clientes-numero");
+  const mBairro = document.getElementById("m-clientes-bairro");
+  const mCidade = document.getElementById("m-clientes-cidade");
+  const mUf = document.getElementById("m-clientes-uf");
+  const mComplemento = document.getElementById("m-clientes-complemento");
+  let cepExigeEnderecoManual = false;
+
+  const camposEndereco = [mEndereco, mBairro, mCidade, mUf, mComplemento];
+  const limparEndereco = () => {
+    [mEndereco, mNumero, mBairro, mCidade, mUf, mComplemento].forEach(el => {
+      if (el) el.value = "";
+    });
+  };
+  const setMensagemCep = (msg, cor = "text-gray-500") => {
+    if (!mCepHelp) return;
+    mCepHelp.className = `text-xs md:col-span-2 ${cor}`;
+    mCepHelp.textContent = msg;
+  };
+  const setEnderecoManual = (manual) => {
+    camposEndereco.forEach(el => {
+      if (!el) return;
+      el.readOnly = !manual;
+      el.classList.toggle("bg-gray-100", !manual);
+    });
+  };
 
   mCnpj?.addEventListener("input", (e) => {
     let v = e.target.value.replace(/\D/g, "");
@@ -205,14 +239,69 @@ function bindModalNovoClienteRepresentante() {
   mCep?.addEventListener("input", (e) => {
     let v = e.target.value.replace(/\D/g, "");
     e.target.value = v.replace(/^(\d{5})(\d)/, "$1-$2");
+    if (v.length < 8) {
+      cepExigeEnderecoManual = false;
+      limparEndereco();
+      setEnderecoManual(false);
+      setMensagemCep("");
+    }
   });
   mIe?.addEventListener("input", (e) => {
     e.target.value = e.target.value.replace(/\D/g, "");
   });
+   mUf?.addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2);
+  });
+
+  mCep?.addEventListener("blur", async () => {
+    const cepLimpo = (mCep?.value || "").replace(/\D/g, "");
+    if (cepLimpo.length !== 8) return;
+
+    try {
+      setMensagemCep("Buscando endereço pelo CEP...");
+      setEnderecoManual(false);
+      const resp = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const dados = await resp.json();
+
+      if (!resp.ok || dados.erro) {
+        cepExigeEnderecoManual = true;
+        limparEndereco();
+        setEnderecoManual(true);
+        setMensagemCep("CEP não encontrado. Preencha o endereço manualmente.", "text-yellow-600");
+        return;
+      }
+
+      mEndereco.value = dados.logradouro || "";
+      mBairro.value = dados.bairro || "";
+      mCidade.value = dados.localidade || "";
+      mUf.value = (dados.uf || "").toUpperCase();
+      mComplemento.value = dados.complemento || "";
+
+      if (!dados.logradouro) {
+        cepExigeEnderecoManual = true;
+        setEnderecoManual(true);
+        setMensagemCep("CEP geral detectado. Complete o endereço manualmente.", "text-yellow-600");
+      } else {
+        cepExigeEnderecoManual = false;
+        setEnderecoManual(false);
+        setMensagemCep("Endereço carregado automaticamente pelo CEP.", "text-green-600");
+      }
+    } catch (err) {
+      console.error("Erro ao consultar CEP:", err);
+      cepExigeEnderecoManual = true;
+      setEnderecoManual(true);
+      setMensagemCep("Não foi possível consultar o CEP agora. Preencha manualmente.", "text-yellow-600");
+    }
+  });
 
   abrir?.addEventListener("click", () => modal?.classList.remove("hidden"));
-  cancelar?.addEventListener("click", () => modal?.classList.add("hidden"));
-
+ cancelar?.addEventListener("click", () => {
+    modal?.classList.add("hidden");
+    cepExigeEnderecoManual = false;
+    setMensagemCep("");
+    limparEndereco();
+    setEnderecoManual(false);
+  });
   salvar?.addEventListener("click", async () => {
     const user = await waitForAuth();
     const payload = {
@@ -223,11 +312,25 @@ function bindModalNovoClienteRepresentante() {
       cnpj: document.getElementById("m-clientes-cnpj").value.replace(/\D/g, ""),
       ie: document.getElementById("m-clientes-ie").value.trim(),
       cep: document.getElementById("m-clientes-cep").value.trim(),
+       endereco: document.getElementById("m-clientes-endereco").value.trim(),
+      numero: document.getElementById("m-clientes-numero").value.trim(),
+      bairro: document.getElementById("m-clientes-bairro").value.trim(),
+      cidade: document.getElementById("m-clientes-cidade").value.trim(),
+      uf: document.getElementById("m-clientes-uf").value.trim().toUpperCase(),
+      complemento: document.getElementById("m-clientes-complemento").value.trim(),
       vinculadoPor: REPRESENTANTE_ATUAL
     };
 
     if (!payload.nome || !payload.whatsapp || !payload.cnpj || !payload.cep) {
       alert("Preencha os campos obrigatórios!");
+      return;
+    }
+     if (!payload.numero) {
+      alert("Informe o número do endereço.");
+      return;
+    }
+    if (cepExigeEnderecoManual && (!payload.endereco || !payload.bairro || !payload.cidade || !payload.uf)) {
+      alert("Este CEP é geral. Preencha endereço, bairro, cidade e UF manualmente.");
       return;
     }
     if (payload.cnpj.length !== 11 && payload.cnpj.length !== 14) {
@@ -248,6 +351,14 @@ function bindModalNovoClienteRepresentante() {
     await db.collection("clientes").add(payload);
     toast("Cliente salvo com sucesso!");
     modal?.classList.add("hidden");
+    cepExigeEnderecoManual = false;
+    setMensagemCep("");
+    ["m-clientes-nome", "m-clientes-whatsapp", "m-clientes-cnpj", "m-clientes-ie", "m-clientes-cep"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+    limparEndereco();
+    setEnderecoManual(false);
   });
 }
 
