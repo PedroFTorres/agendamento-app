@@ -1691,6 +1691,8 @@ if (!calendarEl) return;
 
 calendarEl.innerHTML = "";
 
+  const representanteSomenteConsulta = PERFIL === "representante";
+  
         const calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: "dayGridMonth",
           locale: "pt-br",
@@ -1703,7 +1705,9 @@ dateClick: function(info) {
           headerToolbar: {
             left: "prev,next today",
             center: "title",
-            right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
+            right: representanteSomenteConsulta
+              ? "dayGridMonth"
+              : "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
           },
           events: eventos,
 
@@ -1732,7 +1736,11 @@ dateClick: function(info) {
             }
           },
 
-         eventClick: function(info) {
+          eventClick: function(info) {
+  if (representanteSomenteConsulta) {
+    abrirResumoDoDia(info.event.startStr?.split("T")[0] || info.event.start);
+    return;
+  }
   abrirEdicaoAgendamento(info.event.id);
 }
         });
@@ -1936,6 +1944,7 @@ listaProdutos.forEach(nome => {
 }
 async function abrirResumoDoDia(dataSelecionada) {
   const user = await waitForAuth();
+  const representanteSomenteConsulta = PERFIL === "representante";
 
  let query = db.collection("agendamentos")
   .where("data", "==", dataSelecionada);
@@ -1973,16 +1982,15 @@ const snap = await query.get();
 
   modal.innerHTML = `
     <div class="bg-white p-6 rounded w-full max-w-3xl space-y-4 max-h-[90vh] overflow-auto">
-      <h3 class="text-lg font-bold">Resumo do dia ${dataSelecionada}</h3>
-
+     <h3 class="text-lg font-bold">${representanteSomenteConsulta ? "Resumo das suas vendas" : "Resumo do dia"} ${dataSelecionada}</h3>
     <div class="bg-blue-50 border border-blue-200 p-4 rounded text-center">
-  <div class="text-sm text-gray-600">Total Geral</div>
+   <div class="text-sm text-gray-600">${representanteSomenteConsulta ? "Total vendido por você" : "Total Geral"}</div>
   <div class="text-2xl font-bold text-blue-700">
     ${totalGeral.toLocaleString("pt-BR")}
   </div>
 </div>
 
-<div class="grid grid-cols-2 gap-4">
+<div class="grid ${representanteSomenteConsulta ? "grid-cols-1" : "grid-cols-2"} gap-4">
         <div>
           <div class="bg-gray-50 p-3 rounded">
   <h4 class="font-bold mb-2">Por Produto</h4>
@@ -1993,13 +2001,11 @@ const snap = await query.get();
     </div>
   `).join("")}
 </div>
-          ${Object.entries(porProduto).map(([prod, qtd]) => `
-            <div>${prod}: ${qtd.toLocaleString("pt-BR")}</div>
-          `).join("")}
-        </div>
-
+          
         <div>
-         <div class="bg-gray-50 p-3 rounded">
+          ${representanteSomenteConsulta ? "" : `
+          <div>
+           <div class="bg-gray-50 p-3 rounded">
   <h4 class="font-bold mb-2">Por Representante</h4>
   ${Object.entries(porRep).map(([rep, qtd]) => `
     <div class="flex justify-between border-b py-1">
@@ -2008,10 +2014,8 @@ const snap = await query.get();
     </div>
   `).join("")}
 </div>
-          ${Object.entries(porRep).map(([rep, qtd]) => `
-            <div>${rep}: ${qtd.toLocaleString("pt-BR")}</div>
-          `).join("")}
-        </div>
+          </div>
+        `}
       </div>
 
       <div>
@@ -2032,15 +2036,19 @@ const snap = await query.get();
           
       </div>
 
-      <div class="flex justify-between mt-4">
-        <button id="novo" class="bg-green-600 text-white px-3 py-1 rounded">
-          + Novo Agendamento
-        </button>
+      <div class="flex ${representanteSomenteConsulta ? "justify-end" : "justify-between"} mt-4">
+        ${representanteSomenteConsulta ? "" : `
+          <button id="novo" class="bg-green-600 text-white px-3 py-1 rounded">
+            + Novo Agendamento
+          </button>
+        `}
 
         <div class="space-x-2">
-          <button id="imprimir" class="bg-blue-600 text-white px-3 py-1 rounded">
-            Imprimir
-          </button>
+          ${representanteSomenteConsulta ? "" : `
+            <button id="imprimir" class="bg-blue-600 text-white px-3 py-1 rounded">
+              Imprimir
+            </button>
+          `}
           <button id="fechar" class="bg-gray-400 text-white px-3 py-1 rounded">
             Fechar
           </button>
@@ -2054,28 +2062,30 @@ const snap = await query.get();
   // FECHAR
   modal.querySelector("#fechar").onclick = () => modal.remove();
 
-  // NOVO AGENDAMENTO
-  modal.querySelector("#novo").onclick = () => {
-    modal.remove();
-    abrirModalAgendamento(dataSelecionada);
-  };
+ if (!representanteSomenteConsulta) {
+    // NOVO AGENDAMENTO
+    modal.querySelector("#novo").onclick = () => {
+      modal.remove();
+      abrirModalAgendamento(dataSelecionada);
+    };
 
   // IMPRIMIR
-  modal.querySelector("#imprimir").onclick = () => {
-    const w = window.open("", "", "width=800,height=600");
-    w.document.write(`
-      <html>
-        <head>
-          <title>Resumo ${dataSelecionada}</title>
-        </head>
-        <body>
-          ${modal.innerHTML}
-        </body>
-      </html>
-    `);
-    w.document.close();
-    w.print();
-  };
+    modal.querySelector("#imprimir").onclick = () => {
+      const w = window.open("", "", "width=800,height=600");
+      w.document.write(`
+        <html>
+          <head>
+            <title>Resumo ${dataSelecionada}</title>
+          </head>
+          <body>
+            ${modal.innerHTML}
+          </body>
+        </html>
+      `);
+      w.document.close();
+      w.print();
+    };
+  }
 }
 // ================== MENU ==================
 document.querySelectorAll(".menu-item").forEach(btn => {
