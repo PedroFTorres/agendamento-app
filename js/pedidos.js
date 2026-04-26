@@ -1,3 +1,102 @@
+unction escapeHtml(texto) {
+  return String(texto ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatarDataPedido(valor) {
+  if (!valor) return "-";
+  if (typeof valor?.toDate === "function") {
+    return valor.toDate().toLocaleDateString("pt-BR");
+  }
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return "-";
+  return data.toLocaleDateString("pt-BR");
+}
+
+function imprimirPedidoPdf(pedido) {
+  const { jsPDF } = window.jspdf || {};
+
+  if (!jsPDF) {
+    alert("Biblioteca de PDF não encontrada.");
+    return;
+  }
+
+  const doc = new jsPDF();
+  const emissao = formatarDataPedido(pedido.createdAt);
+  const prazo = formatarDataPedido(pedido.data);
+  const quantidade = typeof formatQuantidade === "function"
+    ? formatQuantidade(pedido.quantidade)
+    : (pedido.quantidade ?? "-");
+
+  const linhas = [
+    `Pedido: ${pedido.codigo || "-"}`,
+    `Cliente: ${pedido.clienteNome || "-"}`,
+    `Representante: ${pedido.representanteNome || "-"}`,
+    `Produto: ${pedido.produtoNome || "-"}`,
+    `Quantidade: ${quantidade}`,
+    `Prazo: ${prazo}`,
+    `Status: ${pedido.status || "-"}`,
+    `Data de emissão: ${emissao}`,
+    `Observação: ${pedido.observacao || "-"}`
+  ];
+
+  doc.setFontSize(16);
+  doc.text("Detalhes do Pedido", 14, 18);
+  doc.setFontSize(11);
+  doc.text(linhas, 14, 30);
+
+  doc.save(`pedido-${pedido.codigo || pedido.id || "sem-codigo"}.pdf`);
+}
+
+function abrirModalDetalhesPedido(pedido) {
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+
+  const emissao = formatarDataPedido(pedido.createdAt);
+  const prazo = formatarDataPedido(pedido.data);
+  const quantidade = typeof formatQuantidade === "function"
+    ? formatQuantidade(pedido.quantidade)
+    : (pedido.quantidade ?? "-");
+
+  modal.innerHTML = `
+    <div class="bg-white rounded shadow w-full max-w-2xl p-4">
+      <h3 class="text-xl font-bold mb-4">Detalhes do Pedido</h3>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div><span class="font-semibold">Número:</span> ${escapeHtml(pedido.codigo || "-")}</div>
+        <div><span class="font-semibold">Status:</span> ${escapeHtml(pedido.status || "-")}</div>
+        <div><span class="font-semibold">Cliente:</span> ${escapeHtml(pedido.clienteNome || "-")}</div>
+        <div><span class="font-semibold">Representante:</span> ${escapeHtml(pedido.representanteNome || "-")}</div>
+        <div><span class="font-semibold">Produto:</span> ${escapeHtml(pedido.produtoNome || "-")}</div>
+        <div><span class="font-semibold">Quantidade:</span> ${escapeHtml(quantidade)}</div>
+        <div><span class="font-semibold">Prazo:</span> ${escapeHtml(prazo)}</div>
+        <div><span class="font-semibold">Data de emissão:</span> ${escapeHtml(emissao)}</div>
+        <div class="md:col-span-2"><span class="font-semibold">Observação:</span> ${escapeHtml(pedido.observacao || "-")}</div>
+      </div>
+
+      <div class="flex justify-end mt-5 gap-2">
+        <button id="btn-imprimir-pedido" class="bg-blue-600 text-white px-3 py-1 rounded">
+          Imprimir PDF
+        </button>
+        <button id="btn-fechar-pedido" class="bg-gray-500 text-white px-3 py-1 rounded">
+          Fechar
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById("btn-fechar-pedido").onclick = () => modal.remove();
+  document.getElementById("btn-imprimir-pedido").onclick = () => imprimirPedidoPdf(pedido);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) modal.remove();
+  });
+}
 // ================== APROVAR PEDIDO ==================
 async function aprovarPedido(id, btn) {
 
