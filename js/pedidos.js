@@ -1,5 +1,5 @@
-unction escapeHtml(texto) {
-  return String(texto ?? "")
+function escapeHtml(texto) {
+  return String(texto == null ? "" : texto)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -9,7 +9,7 @@ unction escapeHtml(texto) {
 
 function formatarDataPedido(valor) {
   if (!valor) return "-";
-  if (typeof valor?.toDate === "function") {
+  if (valor && typeof valor.toDate === "function") {
     return valor.toDate().toLocaleDateString("pt-BR");
   }
   const data = new Date(valor);
@@ -18,7 +18,8 @@ function formatarDataPedido(valor) {
 }
 
 function imprimirPedidoPdf(pedido) {
-  const { jsPDF } = window.jspdf || {};
+  const jsPdfLib = window.jspdf || {};
+  const jsPDF = jsPdfLib.jsPDF;
 
   if (!jsPDF) {
     alert("Biblioteca de PDF não encontrada.");
@@ -30,7 +31,7 @@ function imprimirPedidoPdf(pedido) {
   const prazo = formatarDataPedido(pedido.data);
   const quantidade = typeof formatQuantidade === "function"
     ? formatQuantidade(pedido.quantidade)
-    : (pedido.quantidade ?? "-");
+    : (pedido.quantidade == null ? "-" : pedido.quantidade);
 
   const linhas = [
     `Pedido: ${pedido.codigo || "-"}`,
@@ -60,7 +61,7 @@ function abrirModalDetalhesPedido(pedido) {
   const prazo = formatarDataPedido(pedido.data);
   const quantidade = typeof formatQuantidade === "function"
     ? formatQuantidade(pedido.quantidade)
-    : (pedido.quantidade ?? "-");
+    : (pedido.quantidade == null ? "-" : pedido.quantidade);
 
   modal.innerHTML = `
     <div class="bg-white rounded shadow w-full max-w-2xl p-4">
