@@ -2560,8 +2560,8 @@ await db.collection("pedidos").add({
               "red";
 
             const item = document.createElement("div");
-            item.className = "bg-white p-3 rounded shadow";
-
+            item.className = "bg-white p-3 rounded shadow cursor-pointer";
+            
   item.innerHTML = `      
   <div style="font-size:12px; color:#666;">
     Pedido: <b>${p.codigo || "-"}</b>
@@ -2610,8 +2610,14 @@ const btnCancelar = item.querySelector(".btn-cancelar");
             
 const btnExcluir = item.querySelector(".btn-excluir");
 
+item.addEventListener("click", () => {
+  abrirModalDetalhesPedido(p);
+});
+
+
 if (btnExcluir) {
-  btnExcluir.addEventListener("click", () => {
+  btnExcluir.addEventListener("click", (e) => {
+    e.stopPropagation();
     excluirPedidoCompleto(p.id);
   });
 }
@@ -2620,18 +2626,21 @@ const btnEditar = item.querySelector(".btn-editar");
 
 if (btnEditar) {
   btnEditar.addEventListener("click", async (e) => {
+    e.stopPropagation();
     editarPedidoAprovado(p.id);
   });
 }
 
 if (btnAprovar) {
   btnAprovar.addEventListener("click", async (e) => {
+    e.stopPropagation();
     aprovarPedido(p.id, e.target);
   });
 }
 
 if (btnCancelar) {
   btnCancelar.addEventListener("click", async (e) => {
+    e.stopPropagation();
     cancelarPedido(p.id, e.target);
   });
 }
