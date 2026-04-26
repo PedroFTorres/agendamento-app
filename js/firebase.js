@@ -14,4 +14,7 @@ firebase.initializeApp(firebaseConfig);
 // Conexões principais
 const auth = firebase.auth();
 const db = firebase.firestore();
+db.settings({
+  experimentalAutoDetectLongPolling: true
+});
 const functions = firebase.app().functions("southamerica-east1");
