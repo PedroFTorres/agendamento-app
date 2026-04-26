@@ -15,8 +15,90 @@
 
   <!-- Estilos extras -->
   <style>
-    body { background: #f3f4f6; }
-    .sidebar { position: sticky; top: 0; height: 100vh; }
+    :root {
+      --brand-primary: #1f3b64;
+      --brand-primary-soft: #2b4f86;
+      --brand-accent: #f28c28;
+      --brand-danger: #d64545;
+      --brand-bg: #f3f6fb;
+      --brand-card: #ffffff;
+      --brand-text: #1f2937;
+      --brand-muted: #6b7280;
+    }
+
+    body {
+      background: radial-gradient(circle at top right, #fff6ec 0%, var(--brand-bg) 40%, #eef3fb 100%);
+      color: var(--brand-text);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      border-right: 1px solid #e5e7eb;
+    }
+
+    #page-content > .bg-white,
+    form.bg-white,
+    li.bg-white,
+    div.bg-white.rounded,
+    div.bg-white.rounded-lg {
+      border: 1px solid #e9eef7;
+      box-shadow: 0 8px 24px rgba(31, 59, 100, 0.08);
+      border-radius: 14px;
+    }
+
+    .menu-item {
+      transition: all .2s ease;
+      border-radius: 10px;
+    }
+
+    .menu-item:hover {
+      background: #edf3ff !important;
+      color: var(--brand-primary);
+      transform: translateX(2px);
+    }
+
+    h1, h2, h3 {
+      color: var(--brand-primary);
+      letter-spacing: .2px;
+    }
+
+    .text-gray-500, .text-gray-600, .text-gray-700 {
+      color: var(--brand-muted) !important;
+    }
+
+    .bg-blue-600 {
+      background-color: var(--brand-primary-soft) !important;
+    }
+
+    .bg-blue-600:hover {
+      background-color: var(--brand-primary) !important;
+    }
+
+    .bg-green-600,
+    .bg-yellow-500 {
+      background-color: var(--brand-accent) !important;
+    }
+
+    .bg-green-600:hover,
+    .bg-yellow-500:hover {
+      filter: brightness(0.94);
+    }
+
+    .bg-red-600,
+    .bg-red-800 {
+      background-color: var(--brand-danger) !important;
+    }
+
+    button, .rounded {
+      transition: all .2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
     #chart-reps, #chart-clis {
       height: 400px !important;
       max-height: 400px !important;
