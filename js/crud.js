@@ -72,7 +72,26 @@ async function waitForAuth() {
     });
   });
 }
+async function criarUsuarioAuthSemTrocarSessao(email, senha) {
+  const appNome = "cadastro-usuarios";
+  let appSecundario = null;
 
+  for (let i = 0; i < firebase.apps.length; i++) {
+    if (firebase.apps[i].name === appNome) {
+      appSecundario = firebase.apps[i];
+      break;
+    }
+  }
+
+  if (!appSecundario) {
+    appSecundario = firebase.initializeApp(firebase.app().options, appNome);
+  }
+
+  const authSecundario = appSecundario.auth();
+  const cred = await authSecundario.createUserWithEmailAndPassword(email, senha);
+  await authSecundario.signOut();
+  return cred.user.uid;
+}
 // ================== FORMATAÇÕES ==================
 function formatQuantidade(num) {
   return Math.floor(Number(num || 0)).toLocaleString("pt-BR");
@@ -168,6 +187,22 @@ function formHTML(type) {
       <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
     `;
   }
+  
+  if (type === "usuarios") {
+    return `
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <input id="usuarios-nome" class="border p-2 rounded" placeholder="Nome do usuário" required>
+        <input id="usuarios-email" type="email" class="border p-2 rounded" placeholder="Email" required>
+        <input id="usuarios-senha" type="password" class="border p-2 rounded" placeholder="Senha inicial" required>
+        <select id="usuarios-perfil" class="border p-2 rounded" required>
+          <option value="representante">Representante</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button class="bg-blue-600 text-white p-2 rounded mt-3">Cadastrar usuário</button>
+    `;
+  }
+
   if (type === "produtos") {
     return `
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -372,6 +407,11 @@ function listItem(type, id, data) {
         </div>`;
   } else if (type === "representantes") {
     main = `<div class="font-semibold">${data.nome || "—"}</div>`;
+    } else if (type === "usuarios") {
+    main = `<div class="font-semibold">${data.nome || "—"}</div>
+        <div class="text-sm text-gray-500">
+          ${data.email || "—"} • Perfil: ${data.perfil || "—"}
+        </div>`;
   } else if (type === "produtos") {
     main = `<div class="font-semibold">${data.nome || "—"}</div>
             <div class="text-sm text-gray-500">Preço: ${formatPrecoProduto(data.preco)} • Cat: ${data.categoria || "—"}</div>`;
@@ -649,6 +689,42 @@ modal.remove();
             modal.remove();
           });
         }
+        if (type === "usuarios") {
+          const modal = document.createElement("div");
+          modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+          modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 space-y-4">
+              <h3 class="text-lg font-bold mb-2">Editar Usuário</h3>
+              <div class="grid grid-cols-1 gap-3">
+                <input id="edit-nome" class="border p-2 rounded" value="${d.nome || ""}" placeholder="Nome">
+                <input id="edit-email" class="border p-2 rounded bg-gray-100" value="${d.email || ""}" readonly>
+                <select id="edit-perfil" class="border p-2 rounded">
+                  <option value="representante" ${d.perfil === "representante" ? "selected" : ""}>Representante</option>
+                  <option value="admin" ${d.perfil === "admin" ? "selected" : ""}>Admin</option>
+                </select>
+              </div>
+              <div class="flex justify-end space-x-3 mt-4">
+                <button id="btn-cancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+                <button id="btn-save" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+
+          modal.querySelector("#btn-cancel").addEventListener("click", () => modal.remove());
+          modal.querySelector("#btn-save").addEventListener("click", async () => {
+            const nome = modal.querySelector("#edit-nome").value.trim();
+            const perfil = modal.querySelector("#edit-perfil").value;
+
+            if (!nome) {
+              alert("Informe o nome.");
+              return;
+            }
+
+            await db.collection(type).doc(id).update({ nome, perfil });
+            modal.remove();
+          });
+        }
 
         // -------- PRODUTOS --------
         if (type === "produtos") {
@@ -689,6 +765,11 @@ modal.remove();
 
 // ================== RENDER FORM ==================
 function renderForm(type) {
+   if (type === "usuarios" && PERFIL !== "admin") {
+    pageContent.innerHTML = `<p class="text-red-600 font-semibold">Sem permissão para acessar usuários.</p>`;
+    return;
+  }
+  
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4 capitalize">${type}</h2>
     <form id="${type}-form" class="bg-white p-4 rounded shadow mb-4">
@@ -822,6 +903,46 @@ const cred = await firebase.auth().createUserWithEmailAndPassword(email, senha);
 
 // 🔥 PEGA UID GERADO
 payload.uid = cred.user.uid;
+  } else if (type === "usuarios") {
+      if (PERFIL !== "admin") {
+        alert("Apenas admin pode cadastrar usuários.");
+        return;
+      }
+
+      const nome = document.getElementById("usuarios-nome").value.trim();
+      const email = document.getElementById("usuarios-email").value.trim();
+      const senha = document.getElementById("usuarios-senha").value.trim();
+      const perfil = document.getElementById("usuarios-perfil").value;
+
+      if (!nome || !email || !senha || !perfil) {
+        alert("Preencha todos os campos.");
+        return;
+      }
+
+      if (senha.length < 6) {
+        alert("A senha deve ter no mínimo 6 caracteres.");
+        return;
+      }
+
+      const existe = await db.collection("usuarios")
+        .where("email", "==", email)
+        .limit(1)
+        .get();
+
+      if (!existe.empty) {
+        alert("Já existe um usuário com esse e-mail.");
+        return;
+      }
+
+      const uidNovoUsuario = await criarUsuarioAuthSemTrocarSessao(email, senha);
+      payload = {
+        nome,
+        email,
+        perfil,
+        uid: uidNovoUsuario,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+  
     } else if (type === "produtos") {
       payload.nome = document.getElementById("produtos-nome").value.trim();
       payload.preco = parseFloat(document.getElementById("produtos-preco").value)||0;
