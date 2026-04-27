@@ -15,6 +15,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 db.settings({
-  experimentalAutoDetectLongPolling: true
+ experimentalAutoDetectLongPolling: true,
+  merge: true
 });
 const functions = firebase.app().functions("southamerica-east1");
