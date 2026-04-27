@@ -60,6 +60,50 @@ async function carregarUsuario() {
 }
 carregarUsuario();
 
+function normalizarTexto(valor) {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function normalizarDocumento(valor) {
+  return String(valor || "").replace(/\D/g, "");
+}
+
+async function encontrarClienteDuplicado({ cnpj, nome, userId, ignoreId = null }) {
+  const cnpjNormalizado = normalizarDocumento(cnpj);
+  const nomeNormalizado = normalizarTexto(nome);
+  if (!cnpjNormalizado && !nomeNormalizado) return null;
+
+  const snap = await db.collection("clientes").get();
+  let duplicado = null;
+
+  snap.forEach(doc => {
+    if (duplicado) return;
+    if (ignoreId && doc.id === ignoreId) return;
+
+    const data = doc.data() || {};
+    const cnpjDoc = normalizarDocumento(data.cnpj);
+    const nomeDoc = normalizarTexto(data.nome);
+
+    const cnpjIgual = cnpjNormalizado && cnpjDoc && cnpjDoc === cnpjNormalizado;
+    const nomeIgual = nomeNormalizado && nomeDoc && nomeDoc === nomeNormalizado;
+
+    if (cnpjIgual || (!cnpjNormalizado && nomeIgual)) {
+      duplicado = { id: doc.id, ...data };
+    }
+  });
+
+  if (duplicado && userId && duplicado.userId === userId) {
+    return { ...duplicado, mesmoRepresentante: true };
+  }
+
+  return duplicado;
+}
+
+
 function toast(msg) {
   try { alert(msg); } catch (_) { console.log(msg); }
 }
@@ -344,7 +388,7 @@ function bindModalNovoClienteRepresentante() {
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       nome: document.getElementById("m-clientes-nome").value.trim(),
       whatsapp: document.getElementById("m-clientes-whatsapp").value.trim(),
-      cnpj: document.getElementById("m-clientes-cnpj").value.replace(/\D/g, ""),
+      normalizarDocumento(document.getElementById("m-clientes-cnpj").value),
       ie: document.getElementById("m-clientes-ie").value.trim(),
       cep: document.getElementById("m-clientes-cep").value.trim(),
        endereco: document.getElementById("m-clientes-endereco").value.trim(),
@@ -373,13 +417,17 @@ function bindModalNovoClienteRepresentante() {
       return;
     }
 
-    const snap = await db.collection("clientes")
-      .where("cnpj", "==", payload.cnpj)
-      .where("userId", "==", user.uid)
-      .get();
+    const clienteDuplicado = await encontrarClienteDuplicado({
+      cnpj: payload.cnpj,
+      nome: payload.nome,
+      userId: user.uid
+    });
 
-    if (!snap.empty) {
-      alert("❌ Este cliente já está vinculado a outro usuário.");
+    if (clienteDuplicado) {
+      const msg = clienteDuplicado.mesmoRepresentante
+        ? "❌ Já existe um cliente com este CPF/CNPJ para este representante."
+        : "❌ Este cliente já está vinculado a outro representante e não pode ser cadastrado novamente.";
+      alert(msg);
       return;
     }
 
@@ -596,7 +644,7 @@ if (PERFIL === "admin") {
     modal.querySelector("#btn-save").addEventListener("click", async () => {
       const nome = $nome.value.trim();
 const whatsapp = $whats.value.trim();
-const cnpj = modal.querySelector("#edit-cnpj").value.trim();
+const cnpj = normalizarDocumento(modal.querySelector("#edit-cnpj").value);
 const ie = modal.querySelector("#edit-ie").value.trim();
 const cep = modal.querySelector("#edit-cep").value.trim();
       // 🔒 VALIDAÇÃO
@@ -615,6 +663,21 @@ if (PERFIL === "representante") {
   ie,
   cep
 };
+      const userIdDestino = (PERFIL === "admin" && $user) ? $user.value : d.userId;
+const clienteDuplicado = await encontrarClienteDuplicado({
+  cnpj,
+  nome,
+  userId: userIdDestino,
+  ignoreId: id
+});
+
+if (clienteDuplicado) {
+  const msg = clienteDuplicado.mesmoRepresentante
+    ? "❌ Já existe um cliente com este CPF/CNPJ para este representante."
+    : "❌ Este cliente já está vinculado a outro representante e não pode ser salvo.";
+  alert(msg);
+  return;
+}
 
 if (PERFIL === "admin" && $user) {
   updateData.userId = $user.value;
@@ -849,7 +912,7 @@ if (type === "clientes") {
    if (type === "clientes") {
   payload.nome = document.getElementById("clientes-nome").value.trim();
   payload.whatsapp = document.getElementById("clientes-whatsapp").value.trim();
-  let doc = document.getElementById("clientes-cnpj").value.replace(/\D/g, "");
+  let doc = normalizarDocumento(document.getElementById("clientes-cnpj").value);
 
 if (doc.length !== 11 && doc.length !== 14) {
   alert("CPF ou CNPJ inválido");
@@ -877,13 +940,17 @@ payload.cnpj = doc;
 
 // 🔒 BLOQUEIO
 if (type === "clientes") {
-  const snap = await db.collection("clientes")
-    .where("cnpj", "==", payload.cnpj)
-    .where("userId", "==", uid)
-    .get();
+   const clienteDuplicado = await encontrarClienteDuplicado({
+    cnpj: payload.cnpj,
+    nome: payload.nome,
+    userId: uid
+  });
 
-  if (!snap.empty) {
-    alert("❌ Este cliente já está vinculado a outro usuário.");
+  if (clienteDuplicado) {
+    const msg = clienteDuplicado.mesmoRepresentante
+      ? "❌ Já existe um cliente com este CPF/CNPJ para este representante."
+      : "❌ Este cliente já está vinculado a outro representante e não pode ser cadastrado novamente.";
+    alert(msg);
     return;
   }
 }
@@ -990,19 +1057,41 @@ payload.uid = cred.user.uid;
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet);
         const user = await waitForAuth();
+        let importados = 0;
+        let ignorados = 0;
         for (let row of rows) {
           const nome = row["Nome"] || row["nome"];
           const whatsapp = row["WhatsApp"] || row["whatsapp"];
           if (nome) {
-            await db.collection("clientes").add({
-              userId: user.uid,
-              nome,
-              whatsapp,
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+              const nome = (row["Nome"] || row["nome"] || "").trim();
+          const whatsapp = (row["WhatsApp"] || row["whatsapp"] || "").trim();
+          const cnpj = normalizarDocumento(row["CNPJ"] || row["cnpj"] || row["CPF"] || row["cpf"] || "");
+
+          if (!nome || !cnpj) {
+            ignorados++;
+            continue;
           }
+             const clienteDuplicado = await encontrarClienteDuplicado({
+            cnpj,
+            nome,
+            userId: user.uid
+          });
+
+          if (clienteDuplicado) {
+            ignorados++;
+            continue;
+          }
+
+          await db.collection("clientes").add({
+            userId: user.uid,
+            nome,
+            whatsapp,
+            cnpj,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          importados++;
         }
-        alert("Importação concluída!");
+        alert(`Importação concluída! ${importados} cliente(s) importado(s) e ${ignorados} ignorado(s).`);
       };
       reader.readAsArrayBuffer(file);
     });
