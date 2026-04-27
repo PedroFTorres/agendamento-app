@@ -388,16 +388,16 @@ function bindModalNovoClienteRepresentante() {
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       nome: document.getElementById("m-clientes-nome").value.trim(),
       whatsapp: document.getElementById("m-clientes-whatsapp").value.trim(),
-      cnpj: normalizarDocumento(document.getElementById("m-clientes-cnpj").value)
+      cnpj: normalizarDocumento(document.getElementById("m-clientes-cnpj").value),
       ie: document.getElementById("m-clientes-ie").value.trim(),
       cep: document.getElementById("m-clientes-cep").value.trim(),
-       endereco: document.getElementById("m-clientes-endereco").value.trim(),
+      endereco: document.getElementById("m-clientes-endereco").value.trim(), 
       numero: document.getElementById("m-clientes-numero").value.trim(),
       bairro: document.getElementById("m-clientes-bairro").value.trim(),
       cidade: document.getElementById("m-clientes-cidade").value.trim(),
       uf: document.getElementById("m-clientes-uf").value.trim().toUpperCase(),
       complemento: document.getElementById("m-clientes-complemento").value.trim(),
-      vinculadoPor: REPRESENTANTE_ATUAL
+      vinculadoPor: REPRESENTANTE_ATUAL,
     };
 
     if (!payload.nome || !payload.whatsapp || !payload.cnpj || !payload.cep) {
@@ -1069,7 +1069,7 @@ payload.uid = cred.user.uid;
           }
 
           
-             const clienteDuplicado = await encontrarClienteDuplicado({
+            const clienteDuplicado = await encontrarClienteDuplicado({
             cnpj,
             nome,
             userId: user.uid
