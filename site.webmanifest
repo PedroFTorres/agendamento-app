@@ -1,0 +1,15 @@
+{
+  "name": "Agendamento App",
+  "short_name": "Agendamento",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f6fb",
+  "theme_color": "#E67E22",
+  "icons": [
+    {
+      "src": "img/logo.png",
+      "sizes": "136x136",
+      "type": "image/png"
+    }
+  ]
+}
