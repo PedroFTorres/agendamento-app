@@ -63,7 +63,7 @@ carregarUsuario();
 function normalizarTexto(valor) {
   return String(valor || "")
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase();
 }
@@ -663,7 +663,7 @@ if (PERFIL === "representante") {
   ie,
   cep
 };
-      const userIdDestino = (PERFIL === "admin" && $user) ? $user.value : d.userId;
+     const userIdDestino = (PERFIL === "admin" && $user) ? $user.value : d.userId;
 const clienteDuplicado = await encontrarClienteDuplicado({
   cnpj,
   nome,
@@ -678,7 +678,6 @@ if (clienteDuplicado) {
   alert(msg);
   return;
 }
-
 if (PERFIL === "admin" && $user) {
   updateData.userId = $user.value;
 
