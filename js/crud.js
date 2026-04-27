@@ -388,7 +388,7 @@ function bindModalNovoClienteRepresentante() {
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       nome: document.getElementById("m-clientes-nome").value.trim(),
       whatsapp: document.getElementById("m-clientes-whatsapp").value.trim(),
-      normalizarDocumento(document.getElementById("m-clientes-cnpj").value),
+      cnpj: normalizarDocumento(document.getElementById("m-clientes-cnpj").value)
       ie: document.getElementById("m-clientes-ie").value.trim(),
       cep: document.getElementById("m-clientes-cep").value.trim(),
        endereco: document.getElementById("m-clientes-endereco").value.trim(),
@@ -1059,10 +1059,7 @@ payload.uid = cred.user.uid;
         let importados = 0;
         let ignorados = 0;
         for (let row of rows) {
-          const nome = row["Nome"] || row["nome"];
-          const whatsapp = row["WhatsApp"] || row["whatsapp"];
-          if (nome) {
-              const nome = (row["Nome"] || row["nome"] || "").trim();
+         const nome = (row["Nome"] || row["nome"] || "").trim();
           const whatsapp = (row["WhatsApp"] || row["whatsapp"] || "").trim();
           const cnpj = normalizarDocumento(row["CNPJ"] || row["cnpj"] || row["CPF"] || row["cpf"] || "");
 
@@ -1070,6 +1067,8 @@ payload.uid = cred.user.uid;
             ignorados++;
             continue;
           }
+
+          
              const clienteDuplicado = await encontrarClienteDuplicado({
             cnpj,
             nome,
