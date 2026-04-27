@@ -2099,65 +2099,65 @@ const snap = await query.get();
   });
 
   const modal = document.createElement("div");
-  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+ modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto";
 
   modal.innerHTML = `
-    <div class="bg-white p-6 rounded w-full max-w-3xl space-y-4 max-h-[90vh] overflow-auto">
-     <h3 class="text-lg font-bold">${representanteSomenteConsulta ? "Resumo das suas vendas" : "Resumo do dia"} ${dataSelecionada}</h3>
-    <div class="bg-blue-50 border border-blue-200 p-4 rounded text-center">
-   <div class="text-sm text-gray-600">${representanteSomenteConsulta ? "Total vendido por você" : "Total Geral"}</div>
-  <div class="text-2xl font-bold text-blue-700">
-    ${totalGeral.toLocaleString("pt-BR")}
-  </div>
-</div>
+     <div class="bg-white p-6 rounded w-full max-w-3xl max-h-[90vh] flex flex-col gap-4 overflow-hidden my-6">
+      <h3 class="text-lg font-bold">${representanteSomenteConsulta ? "Resumo das suas vendas" : "Resumo do dia"} ${dataSelecionada}</h3>
 
-<div class="grid ${representanteSomenteConsulta ? "grid-cols-1" : "grid-cols-2"} gap-4">
-        <div>
+ <div class="bg-blue-50 border border-blue-200 p-4 rounded text-center">
+        <div class="text-sm text-gray-600">${representanteSomenteConsulta ? "Total vendido por você" : "Total Geral"}</div>
+        <div class="text-2xl font-bold text-blue-700">
+          ${totalGeral.toLocaleString("pt-BR")}
+        </div>
+      </div>
+
+      <div class="overflow-y-auto pr-1 space-y-4">
+        <div class="grid ${representanteSomenteConsulta ? "grid-cols-1" : "grid-cols-2"} gap-4">
           <div class="bg-gray-50 p-3 rounded">
   <h4 class="font-bold mb-2">Por Produto</h4>
-  ${Object.entries(porProduto).map(([prod, qtd]) => `
-    <div class="flex justify-between border-b py-1">
-      <span>${prod}</span>
-      <strong>${qtd.toLocaleString("pt-BR")}</strong>
-    </div>
-  `).join("")}
-</div>
-          
-        <div>
-          ${representanteSomenteConsulta ? "" : `
-          <div>
-           <div class="bg-gray-50 p-3 rounded">
-  <h4 class="font-bold mb-2">Por Representante</h4>
-  ${Object.entries(porRep).map(([rep, qtd]) => `
-    <div class="flex justify-between border-b py-1">
-      <span>${rep}</span>
-      <strong>${qtd.toLocaleString("pt-BR")}</strong>
-    </div>
-  `).join("")}
-</div>
+            ${Object.entries(porProduto).map(([prod, qtd]) => `
+              <div class="flex justify-between border-b py-1">
+                <span>${prod}</span>
+                <strong>${qtd.toLocaleString("pt-BR")}</strong>
+              </div>
+            `).join("")}
           </div>
-        `}
-      </div>
+     ${representanteSomenteConsulta ? "" : `
+            <div class="bg-gray-50 p-3 rounded">
+              <h4 class="font-bold mb-2">Por Representante</h4>
+              ${Object.entries(porRep).map(([rep, qtd]) => `
+                <div class="flex justify-between border-b py-1">
+                  <span>${rep}</span>
+                  <strong>${qtd.toLocaleString("pt-BR")}</strong>
+                </div>
+              `).join("")}
+            </div>
+          `}
+        </div>
 
-      <div>
-        <h4 class="font-bold">Agendamentos:</h4>
-    ${lista.map((item, i) => `
-  <div class="py-2 px-2 ${i % 2 === 0 ? 'bg-gray-100' : 'bg-white'} rounded">
-    <div class="font-medium">
-      ${item.clienteNome}
-    </div>
-    <div class="text-sm text-gray-600">
-      ${item.produtoNome} • ${item.quantidade.toLocaleString("pt-BR")}
-    </div>
-    <div class="text-xs text-gray-500">
-      Rep: ${item.representanteNome || "-"}
-    </div>
-  </div>
-`).join("")}
+        <div>
+          <h4 class="font-bold mb-2">Agendamentos:</h4>
+          <div class="max-h-72 overflow-y-auto space-y-1 pr-1">
+            ${lista.map((item, i) => `
+              <div class="py-2 px-2 ${i % 2 === 0 ? 'bg-gray-100' : 'bg-white'} rounded">
+                <div class="font-medium">
+                  ${item.clienteNome}
+                </div>
+                <div class="text-sm text-gray-600">
+                  ${item.produtoNome} • ${item.quantidade.toLocaleString("pt-BR")}
+                </div>
+                <div class="text-xs text-gray-500">
+                  Rep: ${item.representanteNome || "-"}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
           
       </div>
 
-      <div class="flex ${representanteSomenteConsulta ? "justify-end" : "justify-between"} mt-4">
+      <div class="flex ${representanteSomenteConsulta ? "justify-end" : "justify-between"} mt-2">
         ${representanteSomenteConsulta ? "" : `
           <button id="novo" class="bg-green-600 text-white px-3 py-1 rounded">
             + Novo Agendamento
