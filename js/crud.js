@@ -2505,8 +2505,8 @@ function renderPedidos() {
           <select id="p-cliente" class="border p-2 w-full"></select>
           <select id="p-produto" class="border p-2 w-full"></select>
           <input id="p-qtd" type="text" class="border p-2 w-full" placeholder="Quantidade">
-          <select id="p-prazo" class="border p-2 w-full">
-            <option value="">Prazo de pagamento</option>
+          <select id="p-prazo" class="border p-2 w-full" required>
+            <option value="" selected disabled>Prazo de pagamento *</option>
             <option value="À vista">À vista</option>
             <option value="10 dias">10 dias</option>
             <option value="15 dias">15 dias</option>
@@ -2649,7 +2649,12 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
     const valor = document.getElementById("p-qtd").value.replace(/\./g, "");
     const quantidade = parseInt(valor);
 
-    if (!cliente || !produto || !quantidade || !prazo) {
+  if (!prazo) {
+      alert("Selecione o prazo de pagamento.");
+      return;
+    }
+
+    if (!cliente || !produto || !quantidade) {
       alert("Preencha tudo!");
       return;
     }
