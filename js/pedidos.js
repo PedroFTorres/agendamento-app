@@ -96,6 +96,7 @@ async function buscarDadosClientePedido(pedido) {
   }
 }
 
+async function imprimirPedidoPdf(pedido, cliente = {}) {
   const jsPdfLib = window.jspdf || {};
   const jsPDF = jsPdfLib.jsPDF;
 
