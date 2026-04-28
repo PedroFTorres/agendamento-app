@@ -2641,7 +2641,7 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
       });
     
   // CRIAR PEDIDO
-  
+  let pedidoEmEnvio = false;
   document.getElementById("btn-pedido")?.addEventListener("click", async () => {
 
      if (pedidoEmEnvio) return;
