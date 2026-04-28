@@ -17,7 +17,85 @@ function formatarDataPedido(valor) {
   return data.toLocaleDateString("pt-BR");
 }
 
-function imprimirPedidoPdf(pedido) {
+function formatarCampoCliente(valor) {
+  const campo = String(valor || "").trim();
+  return campo || "-";
+}
+
+function formatarEnderecoCliente(cliente = {}) {
+  const partes = [cliente.endereco, cliente.numero, cliente.bairro, cliente.cidade, cliente.uf]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+
+  if (!partes.length) return "-";
+  return partes.join(" • ");
+}
+
+function obterPrazoPedido(pedido) {
+  const prazoPagamento = String(pedido.prazoPagamento || "").trim();
+  const prazoAgendamento = formatarDataPedido(pedido.data);
+
+  if (prazoPagamento && prazoAgendamento !== "-") {
+    return `${prazoPagamento} • Entrega ${prazoAgendamento}`;
+  }
+
+  return prazoPagamento || prazoAgendamento;
+}
+
+async function carregarLogoDataUrl() {
+  try {
+    const blob = await fetch("img/logo.png").then((r) => r.blob());
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+const cacheClientePedido = new Map();
+
+async function buscarDadosClientePedido(pedido) {
+  const chave = `${pedido.userId || ""}::${pedido.clienteNome || ""}`;
+  if (cacheClientePedido.has(chave)) {
+    return cacheClientePedido.get(chave);
+  }
+
+  const snapshotPedido = {
+    nome: pedido.clienteNome || "",
+    cnpj: pedido.clienteCnpj || "",
+    whatsapp: pedido.clienteWhatsapp || "",
+    ie: pedido.clienteIe || "",
+    endereco: pedido.clienteEndereco || "",
+    numero: pedido.clienteNumero || "",
+    bairro: pedido.clienteBairro || "",
+    cidade: pedido.clienteCidade || "",
+    uf: pedido.clienteUf || ""
+  };
+
+  if (snapshotPedido.cnpj || snapshotPedido.whatsapp || snapshotPedido.endereco) {
+    cacheClientePedido.set(chave, snapshotPedido);
+    return snapshotPedido;
+  }
+
+  try {
+    let query = db.collection("clientes").where("nome", "==", pedido.clienteNome || "").limit(5);
+    if (pedido.userId) {
+      query = query.where("userId", "==", pedido.userId).limit(5);
+    }
+
+    const snap = await query.get();
+    const cliente = snap.empty ? snapshotPedido : (snap.docs[0].data() || snapshotPedido);
+    cacheClientePedido.set(chave, cliente);
+    return cliente;
+  } catch (e) {
+    cacheClientePedido.set(chave, snapshotPedido);
+    return snapshotPedido;
+  }
+}
+
   const jsPdfLib = window.jspdf || {};
   const jsPDF = jsPdfLib.jsPDF;
 
@@ -28,62 +106,142 @@ function imprimirPedidoPdf(pedido) {
 
   const doc = new jsPDF();
   const emissao = formatarDataPedido(pedido.createdAt);
-  const prazo = formatarDataPedido(pedido.data);
+  const prazo = obterPrazoPedido(pedido);
+
   const quantidade = typeof formatQuantidade === "function"
     ? formatQuantidade(pedido.quantidade)
     : (pedido.quantidade == null ? "-" : pedido.quantidade);
 
-  const linhas = [
-    `Pedido: ${pedido.codigo || "-"}`,
-    `Cliente: ${pedido.clienteNome || "-"}`,
-    `Representante: ${pedido.representanteNome || "-"}`,
-    `Produto: ${pedido.produtoNome || "-"}`,
-    `Quantidade: ${quantidade}`,
-    `Prazo: ${prazo}`,
-    `Status: ${pedido.status || "-"}`,
-    `Data de emissão: ${emissao}`,
-    `Observação: ${pedido.observacao || "-"}`
+const logo = await carregarLogoDataUrl();
+
+  if (logo) {
+    doc.addImage(logo, "PNG", 14, 10, 22, 22);
+  }
+
+  doc.setTextColor(31, 59, 100);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Detalhes do Pedido", 40, 18);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(107, 114, 128);
+  doc.text(`Emissão: ${emissao}`, 40, 24);
+
+  doc.setDrawColor(31, 59, 100);
+  doc.setLineWidth(0.5);
+  doc.line(14, 36, 196, 36);
+
+  const secoes = [
+    ["Pedido", pedido.codigo || "-"],
+    ["Status", pedido.status || "-"],
+    ["Representante", pedido.representanteNome || "-"],
+    ["Produto", pedido.produtoNome || "-"],
+    ["Quantidade", quantidade],
+    ["Prazo", prazo],
+    ["Observação", pedido.observacao || "-"]
   ];
 
-  doc.setFontSize(16);
-  doc.text("Detalhes do Pedido", 14, 18);
+  const dadosCliente = [
+    ["Cliente", formatarCampoCliente(cliente.nome || pedido.clienteNome)],
+    ["CNPJ/CPF", formatarCampoCliente(cliente.cnpj)],
+    ["WhatsApp", formatarCampoCliente(cliente.whatsapp)],
+    ["Inscrição Estadual", formatarCampoCliente(cliente.ie)],
+    ["Endereço", formatarEnderecoCliente(cliente)]
+  ];
+
+  let y = 46;
+  doc.setTextColor(31, 41, 55);
   doc.setFontSize(11);
-  doc.text(linhas, 14, 30);
+  doc.setFont("helvetica", "bold");
+  doc.text("Informações do Pedido", 14, y);
+  y += 6;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  secoes.forEach(([rotulo, valor]) => {
+    const linhas = doc.splitTextToSize(String(valor || "-"), 130);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${rotulo}:`, 14, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(linhas, 50, y);
+    y += Math.max(6, linhas.length * 5);
+  });
+
+  y += 2;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("Dados do Cliente", 14, y);
+  y += 6;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  dadosCliente.forEach(([rotulo, valor]) => {
+    const linhas = doc.splitTextToSize(String(valor || "-"), 130);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${rotulo}:`, 14, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(linhas, 50, y);
+    y += Math.max(6, linhas.length * 5);
+  });
 
   doc.save(`pedido-${pedido.codigo || pedido.id || "sem-codigo"}.pdf`);
 }
 
-function abrirModalDetalhesPedido(pedido) {
+async function abrirModalDetalhesPedido(pedido) {
+  const cliente = await buscarDadosClientePedido(pedido);
   const modal = document.createElement("div");
-  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+ modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3";
 
   const emissao = formatarDataPedido(pedido.createdAt);
-  const prazo = formatarDataPedido(pedido.data);
+   const prazo = obterPrazoPedido(pedido);
   const quantidade = typeof formatQuantidade === "function"
     ? formatQuantidade(pedido.quantidade)
     : (pedido.quantidade == null ? "-" : pedido.quantidade);
 
   modal.innerHTML = `
-    <div class="bg-white rounded shadow w-full max-w-2xl p-4">
-      <h3 class="text-xl font-bold mb-4">Detalhes do Pedido</h3>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-        <div><span class="font-semibold">Número:</span> ${escapeHtml(pedido.codigo || "-")}</div>
-        <div><span class="font-semibold">Status:</span> ${escapeHtml(pedido.status || "-")}</div>
-        <div><span class="font-semibold">Cliente:</span> ${escapeHtml(pedido.clienteNome || "-")}</div>
-        <div><span class="font-semibold">Representante:</span> ${escapeHtml(pedido.representanteNome || "-")}</div>
-        <div><span class="font-semibold">Produto:</span> ${escapeHtml(pedido.produtoNome || "-")}</div>
-        <div><span class="font-semibold">Quantidade:</span> ${escapeHtml(quantidade)}</div>
-        <div><span class="font-semibold">Prazo:</span> ${escapeHtml(prazo)}</div>
-        <div><span class="font-semibold">Data de emissão:</span> ${escapeHtml(emissao)}</div>
-        <div class="md:col-span-2"><span class="font-semibold">Observação:</span> ${escapeHtml(pedido.observacao || "-")}</div>
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-200">
+      <div class="px-5 py-4 text-white" style="background: linear-gradient(90deg, #1f3b64 0%, #2b4f86 100%);">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <img src="img/logo.png" alt="Logo" class="h-10 w-10 rounded-full bg-white p-1 object-contain" onerror="this.style.display='none'" />
+            <div>
+              <h3 class="text-xl font-bold leading-tight">Detalhes do Pedido</h3>
+              <p class="text-xs text-blue-100">Visualização administrativa e impressão profissional</p>
+            </div>
+          </div>
+          <span class="text-xs px-3 py-1 rounded-full font-semibold" style="background: #f28c28; color: #1f3b64;">${escapeHtml(pedido.status || "-")}</span>
+        </div>
       </div>
 
-      <div class="flex justify-end mt-5 gap-2">
-        <button id="btn-imprimir-pedido" class="bg-blue-600 text-white px-3 py-1 rounded">
+      <div class="p-5 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Número:</span> ${escapeHtml(pedido.codigo || "-")}</div>
+          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Data de emissão:</span> ${escapeHtml(emissao)}</div>
+          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Representante:</span> ${escapeHtml(pedido.representanteNome || "-")}</div>
+          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Produto:</span> ${escapeHtml(pedido.produtoNome || "-")}</div>
+          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Quantidade:</span> ${escapeHtml(quantidade)}</div>
+          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Prazo:</span> ${escapeHtml(prazo || "-")}</div>
+          <div class="md:col-span-2 bg-orange-50 rounded-lg p-3 border border-orange-100"><span class="font-semibold text-slate-700">Observação:</span> ${escapeHtml(pedido.observacao || "-")}</div>
+        </div>
+
+        <div class="border border-slate-200 rounded-lg p-4">
+          <h4 class="font-bold text-slate-800 mb-3">Dados do Cliente</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div><span class="font-semibold">Nome:</span> ${escapeHtml(formatarCampoCliente(cliente.nome || pedido.clienteNome))}</div>
+            <div><span class="font-semibold">CNPJ/CPF:</span> ${escapeHtml(formatarCampoCliente(cliente.cnpj))}</div>
+            <div><span class="font-semibold">WhatsApp:</span> ${escapeHtml(formatarCampoCliente(cliente.whatsapp))}</div>
+            <div><span class="font-semibold">Inscrição Estadual:</span> ${escapeHtml(formatarCampoCliente(cliente.ie))}</div>
+            <div class="md:col-span-2"><span class="font-semibold">Endereço:</span> ${escapeHtml(formatarEnderecoCliente(cliente))}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 px-5 py-4 border-t border-slate-200 bg-slate-50">
+        <button id="btn-imprimir-pedido" class="text-white px-4 py-2 rounded font-semibold" style="background-color:#1f3b64;">
           Imprimir PDF
         </button>
-        <button id="btn-fechar-pedido" class="bg-gray-500 text-white px-3 py-1 rounded">
+       <button id="btn-fechar-pedido" class="text-white px-4 py-2 rounded font-semibold" style="background-color:#6b7280;">
           Fechar
         </button>
       </div>
@@ -93,7 +251,7 @@ function abrirModalDetalhesPedido(pedido) {
   document.body.appendChild(modal);
 
   document.getElementById("btn-fechar-pedido").onclick = () => modal.remove();
-  document.getElementById("btn-imprimir-pedido").onclick = () => imprimirPedidoPdf(pedido);
+   document.getElementById("btn-imprimir-pedido").onclick = () => imprimirPedidoPdf(pedido, cliente);
   modal.addEventListener("click", (e) => {
     if (e.target === modal) modal.remove();
   });
