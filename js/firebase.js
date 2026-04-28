@@ -19,3 +19,19 @@ db.settings({
   merge: true
 });
 const functions = firebase.app().functions("southamerica-east1");
+const functions = typeof firebase.app().functions === "function"
+  ? firebase.app().functions("southamerica-east1")
+  : null;
+
+// Disponível globalmente para qualquer script (inclusive index.html inline).
+async function waitForAuth() {
+  if (auth.currentUser) return auth.currentUser;
+  return new Promise(resolve => {
+    const unsub = auth.onAuthStateChanged(u => {
+      if (u) {
+        unsub();
+        resolve(u);
+      }
+    });
+  });
+}
