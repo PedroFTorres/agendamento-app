@@ -2687,7 +2687,6 @@ const counterRef = db.collection("config").doc("pedidos");
       return novo;
       });
 
-const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
 
 const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
 
