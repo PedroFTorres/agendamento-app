@@ -592,3 +592,6 @@ async function excluirPedidoCompleto(id) {
     alert("Erro ao excluir pedido");
   }
 }
+// Garante disponibilidade global para chamadas vindas de outros scripts.
+window.imprimirPedidoPdf = imprimirPedidoPdf;
+window.abrirModalDetalhesPedido = abrirModalDetalhesPedido;
