@@ -22,7 +22,15 @@ if (document.getElementById("logout-button")) {
 
 // Verifica sessão
 auth.onAuthStateChanged(user => {
-  if (!user && location.pathname.includes("index.html")) {
+const path = location.pathname.toLowerCase();
+  const isLoginPage = path.endsWith("/login") || path.endsWith("/login.html");
+
+  if (!user && !isLoginPage) {
     location.href = "login.html";
+     return;
+  }
+
+  if (user && isLoginPage) {
+    location.href = "index.html";
   }
 });
