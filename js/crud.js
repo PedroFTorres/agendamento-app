@@ -108,14 +108,6 @@ function toast(msg) {
   try { alert(msg); } catch (_) { console.log(msg); }
 }
 
-async function waitForAuth() {
-  if (auth.currentUser) return auth.currentUser;
-  return new Promise(resolve => {
-    const unsub = auth.onAuthStateChanged(u => {
-      if (u) { unsub(); resolve(u); }
-    });
-  });
-}
 async function criarUsuarioAuthSemTrocarSessao(email, senha) {
   const appNome = "cadastro-usuarios";
   let appSecundario = null;
