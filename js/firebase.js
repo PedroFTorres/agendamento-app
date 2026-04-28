@@ -18,7 +18,7 @@ db.settings({
  experimentalAutoDetectLongPolling: true,
   merge: true
 });
-const functions = firebase.app().functions("southamerica-east1");
+
 const functions = typeof firebase.app().functions === "function"
   ? firebase.app().functions("southamerica-east1")
   : null;
