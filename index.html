@@ -239,7 +239,12 @@
   <script>
 (async () => {
   await waitForAuth();
-  await carregarUsuario(); // 🔥 GARANTE PERFIL
+  const carregarUsuarioFn = window.carregarUsuario;
+  if (typeof carregarUsuarioFn === "function") {
+    await carregarUsuarioFn(); // 🔥 GARANTE PERFIL
+  } else {
+    console.error("Função carregarUsuario não está disponível.");
+  }
 
   iniciarNotificacoes();
 
