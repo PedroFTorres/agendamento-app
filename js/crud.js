@@ -96,7 +96,7 @@ async function encontrarClienteDuplicado({ cnpj, nome, userId, ignoreId = null }
     }
   });
 
-  async function imprimirPedidoPdf(pedido, cliente = {}) {
+  
   if (duplicado && userId && duplicado.userId === userId) {
     return { ...duplicado, mesmoRepresentante: true };
   }
