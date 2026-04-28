@@ -2686,6 +2686,30 @@ const counterRef = db.collection("config").doc("pedidos");
 
 
 const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
+      let clienteSnapshot = {};
+      try {
+        const clienteSnap = await db.collection("clientes")
+          .where("userId", "==", user.uid)
+          .where("nome", "==", cliente)
+          .limit(1)
+          .get();
+
+        if (!clienteSnap.empty) {
+          const c = clienteSnap.docs[0].data() || {};
+          clienteSnapshot = {
+            clienteCnpj: c.cnpj || "",
+            clienteWhatsapp: c.whatsapp || "",
+            clienteIe: c.ie || "",
+            clienteEndereco: c.endereco || "",
+            clienteNumero: c.numero || "",
+            clienteBairro: c.bairro || "",
+            clienteCidade: c.cidade || "",
+            clienteUf: c.uf || ""
+          };
+        }
+      } catch (e) {
+        console.warn("Não foi possível carregar snapshot do cliente para o pedido.", e);
+      }
 
       await db.collection("pedidos").add({
         codigo,
@@ -2697,7 +2721,8 @@ const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
         quantidade,
         representanteNome: REPRESENTANTE_ATUAL,
         status: "pendente",
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        ...clienteSnapshot
        });
       const adminsSnap = await db.collection("usuarios")
         .where("perfil", "==", "admin")
