@@ -2866,14 +2866,27 @@ const btnCancelar = item.querySelector(".btn-cancelar");
             
 const btnExcluir = item.querySelector(".btn-excluir");
 
+item.addEventListener("click", () => {
 if (typeof window.abrirModalDetalhesPedido === "function") {
     window.abrirModalDetalhesPedido(p);
     return;
   }
 
   console.error("Função abrirModalDetalhesPedido não está disponível.");
-  alert("Não foi possível abrir os detalhes do pedido. Atualize a página e tente novamente.");
-
+  const prazoFallback = (p.prazoPagamento || p.data || "-");
+  alert(
+    `Pedido: ${p.codigo || "-"}
+` +
+    `Cliente: ${p.clienteNome || "-"}
+` +
+    `Produto: ${p.produtoNome || "-"}
+` +
+    `Quantidade: ${formatQuantidade(p.quantidade || 0)}
+` +
+    `Prazo: ${prazoFallback}
+` +
+    `Observação: ${p.observacao || "-"}`
+  );
 });
 
 
