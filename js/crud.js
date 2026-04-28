@@ -2522,6 +2522,7 @@ function renderPedidos() {
             <option value="30/60 dias">30/60 dias</option>
           </select>
           <input id="p-obs" type="text" class="border p-2 w-full" placeholder="Observações (opcional)">
+          <p id="msg-enviando-pedido" class="hidden text-center text-sm font-semibold text-blue-700">ENVIANDO SEU PEDIDO...</p>
           <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">Enviar Pedido</button>
           <button id="btn-cancelar-modal-pedido" type="button" class="bg-gray-400 text-white p-2 rounded w-full">Cancelar</button>
         </div>
@@ -2642,8 +2643,13 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
   // CRIAR PEDIDO
   
   document.getElementById("btn-pedido")?.addEventListener("click", async () => {
-    const user = await waitForAuth();
 
+     if (pedidoEmEnvio) return;
+
+    const btnPedido = document.getElementById("btn-pedido");
+    const btnCancelar = document.getElementById("btn-cancelar-modal-pedido");
+    const msgEnviando = document.getElementById("msg-enviando-pedido");
+    
     const cliente = document.getElementById("p-cliente").value;
     const produto = document.getElementById("p-produto").value;
     const prazo = document.getElementById("p-prazo").value;
@@ -2656,60 +2662,81 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
       return;
     }
 
-    const counterRef = db.collection("config").doc("pedidos");
+    pedidoEmEnvio = true;
+    try {
+      if (btnPedido) {
+        btnPedido.disabled = true;
+        btnPedido.textContent = "Enviando...";
+      }
+      if (btnCancelar) btnCancelar.disabled = true;
+      msgEnviando?.classList.remove("hidden");
+      const user = await waitForAuth();
 
-const numeroPedido = await db.runTransaction(async (t) => {
-  const doc = await t.get(counterRef);
+const counterRef = db.collection("config").doc("pedidos");
+
+ const numeroPedido = await db.runTransaction(async (t) => {
+        const doc = await t.get(counterRef);
 
   let ultimo = 0;
 
-  if (doc.exists) {
-    ultimo = doc.data().ultimoNumero || 0;
-  }
 
   const novo = ultimo + 1;
 
   t.set(counterRef, { ultimoNumero: novo }, { merge: true });
 
-  return novo;
-});
+      return novo;
+      });
 
 const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
 
-await db.collection("pedidos").add({
-  codigo,
-      userId: user.uid,
-      clienteNome: cliente,
-      produtoNome: produto,
-      prazoPagamento: prazo,
-      observacao: obs,
-      quantidade,
-      representanteNome: REPRESENTANTE_ATUAL,
-      status: "pendente",
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-     const adminsSnap = await db.collection("usuarios")
-      .where("perfil", "==", "admin")
-      .get();
+const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
+
+      await db.collection("pedidos").add({
+        codigo,
+        userId: user.uid,
+        clienteNome: cliente,
+        produtoNome: produto,
+        prazoPagamento: prazo,
+        observacao: obs,
+        quantidade,
+        representanteNome: REPRESENTANTE_ATUAL,
+        status: "pendente",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+       });
+      const adminsSnap = await db.collection("usuarios")
+        .where("perfil", "==", "admin")
+        .get();
 
     const notifPromises = adminsSnap.docs
-      .map(doc => {
-        const dados = doc.data() || {};
-        return dados.uid || dados.userId || doc.id;
-      })
-      .filter(Boolean)
-      .map(adminUid => db.collection("notificacoes").add({
-        userId: adminUid,
-        pedidoId: codigo,
-        texto: `📥 Novo pedido ${codigo} recebido de ${REPRESENTANTE_ATUAL}`,
-        lida: false,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      }));
+        .map(doc => {
+          const dados = doc.data() || {};
+          return dados.uid || dados.userId || doc.id;
+        })
+        .filter(Boolean)
+        .map(adminUid => db.collection("notificacoes").add({
+          userId: adminUid,
+          pedidoId: codigo,
+          texto: `📥 Novo pedido ${codigo} recebido de ${REPRESENTANTE_ATUAL}`,
+          lida: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }));
 
-    await Promise.all(notifPromises);
-    alert("Pedido enviado!");
-    if (PERFIL === "representante") {
-      document.getElementById("modal-pedido")?.classList.add("hidden");
+      await Promise.all(notifPromises);
+      alert("Pedido enviado!");
+      if (PERFIL === "representante") {
+        document.getElementById("modal-pedido")?.classList.add("hidden");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao enviar pedido. Tente novamente.");
+    } finally {
+      pedidoEmEnvio = false;
+      if (btnPedido) {
+        btnPedido.disabled = false;
+        btnPedido.textContent = "Enviar Pedido";
+      }
+      if (btnCancelar) btnCancelar.disabled = false;
+      msgEnviando?.classList.add("hidden");
     }
   });
 
