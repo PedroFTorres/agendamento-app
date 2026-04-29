@@ -1482,9 +1482,11 @@ if (PERFIL === "representante") {
 }
   if (start) query = query.where("data", ">=", start);
   if (end)   query = query.where("data", "<=", end);
-  if (clienteSel) query = query.where("clienteNome", "==", clienteSel);
-
+  
   const snap = await query.get();
+  const docsFiltrados = clienteSel
+    ? snap.docs.filter(doc => (doc.data().clienteNome || "") === clienteSel)
+    : snap.docs;
   // 🔥 Buscar preços dos produtos
 const produtosSnap = await db.collection("produtos")
   .where("userId", "==", uid)
@@ -1515,7 +1517,7 @@ produtosSnap.forEach(doc => {
   const porCli = {};
   const linhasTabela = [];
 
- snap.forEach(doc => {
+  docsFiltrados.forEach(doc => { 
   const d = doc.data();
   const qtd = d.quantidade || 0;
 
