@@ -274,12 +274,15 @@ async function aprovarPedido(id, btn) {
     }
 
     const modal = document.createElement("div");
-    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4";
 
     modal.innerHTML = `
-      <div class="bg-white p-4 rounded shadow w-full max-w-3xl">
+      <div class="bg-white p-3 sm:p-4 rounded shadow w-full max-w-3xl max-h-[95vh] overflow-y-auto">
         <h3 class="text-lg font-bold mb-2">Escolher data do agendamento</h3>
-        <div id="calendar-aprovacao"></div>
+         <div class="w-full overflow-x-auto">
+          <div id="calendar-aprovacao" class="min-w-[280px]"></div>
+        </div>
+
 
         <div class="text-right mt-3">
           <button id="fechar-modal" class="bg-gray-400 text-white px-3 py-1 rounded">
@@ -307,13 +310,24 @@ async function aprovarPedido(id, btn) {
     });
 
     let clicado = false;
+    const isMobile = window.matchMedia("(max-width: 640px)").matches;
 
     const calendar = new FullCalendar.Calendar(
       document.getElementById("calendar-aprovacao"),
       {
         initialView: "dayGridMonth",
+        aspectRatio: isMobile ? 0.95 : 1.35,
         locale: "pt-br",
         height: "auto",
+        contentHeight: "auto",
+        expandRows: true,
+        handleWindowResize: true,
+        windowResizeDelay: 150,
+        headerToolbar: {
+          left: "prev,next",
+          center: "title",
+          right: ""
+        },
         events: eventos,
 
         dateClick: async function(info) {
@@ -467,7 +481,7 @@ async function editarPedidoAprovado(id) {
 
   // 🔥 cria modal
   const modal = document.createElement("div");
-  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4";
 
   modal.innerHTML = `
     <div class="bg-white p-4 rounded shadow w-80">
