@@ -302,46 +302,94 @@ if (dataFiltro && n.data !== dataFiltro) return;
         // ===== IMPRESSÃO COM ZEBRA =====
         card.querySelector(".btn-print").onclick = () => {
           const w = window.open("", "_blank");
+         const observacaoFormatada = (n.observacaoGeral || "")
+            .split(/\r?\n/)
+            .map(l => l.trim())
+            .filter(Boolean)
+            .map(l => `<li>${l}</li>`)
+            .join("");
+         
           w.document.write(`
             <html>
               <head>
                 <title>${n.titulo}</title>
                 <style>
+                :root { --brand-primary: #1d4ed8; --brand-accent: #f59e0b; }
                   body {
-                    font-family: Arial;
-                    padding: 20px;
-                  }
-                  h2 {
-                    margin-bottom: 5px;
-                  }
-                  .cliente {
-                    padding: 8px;
-                    margin-bottom: 6px;
-                  }
-                  .zebra-0 {
+                   font-family: "Segoe UI", Arial, sans-serif;
+                    margin: 0;
                     background: #f3f4f6;
+                    color: #1f2937;
                   }
-                  .zebra-1 {
-                    background: #ffffff;
+                  .sheet {
+                    max-width: 820px;
+                    margin: 20px auto;
+                    background: #fff;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 12px;
+                    overflow: hidden;
+                  }
+                 .header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 16px;
+                    padding: 16px 20px;
+                    color: #fff;
+                    background: linear-gradient(135deg, var(--brand-primary), #1e40af);
+                  }
+                  .header img { height: 40px; width: auto; object-fit: contain; }
+                  .header h2 { margin: 0; font-size: 20px; }
+                  .header p { margin: 4px 0 0; font-size: 13px; opacity: .9; }
+                  .content { padding: 20px; }
+                  .cliente { padding: 12px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid var(--brand-primary); }
+                  .zebra-0 { background: #eff6ff; }
+                  .zebra-1 { background: #f9fafb; }
+                  .cliente strong { color: #1e3a8a; }
+                  .cliente ul { margin: 8px 0 0 18px; }
+                  .cliente li { margin-bottom: 4px; }
+                  .obs-box { margin-top: 18px; border-top: 2px solid #fde68a; padding-top: 12px; }
+                  .obs-title { margin: 0 0 8px; font-size: 15px; color: #92400e; }
+                  .obs-list { margin: 0 0 0 18px; }
+                  .obs-list li { margin-bottom: 6px; line-height: 1.4; }
+                  .footer { padding: 12px 20px; background: #f9fafb; color: #6b7280; font-size: 12px; text-align: right; }
+                  @media print {
+                    body { background: #fff; }
+                    .sheet { margin: 0; border: 0; max-width: 100%; border-radius: 0; }
                   }
                 </style>
               </head>
               <body>
-                <h2>${n.titulo}</h2>
-                <p><strong>Data:</strong> ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}</p>
-
-                ${n.clientes.map((c, i) => `
-                  <div class="cliente zebra-${i % 2}">
-                    <strong>${c.cliente}</strong>
-                    <ul>
-                      ${c.produtos.map(p => `
-                        <li>${p.nome}${p.obs ? ` — ${p.obs}` : ""}</li>
-                      `).join("")}
-                    </ul>
+              <div class="sheet">
+                  <div class="header">
+                    <div>
+                      <h2>${n.titulo}</h2>
+                      <p><strong>Data:</strong> ${new Date(n.data + "T00:00:00").toLocaleDateString("pt-BR")}</p>
+                    </div>
+                    <img src="img/logo.png" alt="Logo da empresa" />
                   </div>
-                `).join("")}
 
-                ${n.observacaoGeral ? `<p>${n.observacaoGeral}</p>` : ""}
+                  <div class="content">
+                    ${n.clientes.map((c, i) => `
+                      <div class="cliente zebra-${i % 2}">
+                        <strong>${c.cliente}</strong>
+                        <ul>
+                          ${c.produtos.map(p => `
+                            <li>${p.nome}${p.obs ? ` — ${p.obs}` : ""}</li>
+                          `).join("")}
+                        </ul>
+                      </div>
+                    `).join("")}
+
+                    ${observacaoFormatada ? `
+                      <div class="obs-box">
+                        <h3 class="obs-title">Anotações adicionais</h3>
+                        <ul class="obs-list">${observacaoFormatada}</ul>
+                      </div>
+                    ` : ""}
+                  </div>
+                <div class="footer">Documento gerado pelo sistema de agendamento</div>
+                </div>
               </body>
             </html>
           `);
