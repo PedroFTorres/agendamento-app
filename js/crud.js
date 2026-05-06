@@ -1570,216 +1570,167 @@ async function exportarPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  // Auxiliar para formatar datas YYYY-MM-DD → DD/MM/YYYY
-  function formatDateBR(dateStr) {
+    const formatDateBR = (dateStr) => {
     if (!dateStr) return "";
     const [y, m, d] = dateStr.split("-");
     return `${d}/${m}/${y}`;
-  }
+  };
 
-  // Função para quebrar texto em várias linhas
-  function wrapText(doc, text, x, y, maxWidth) {
-    const words = (text || "").split(" ");
-    let line = "";
-    let currentY = y;
+    const brandBlue = [31, 59, 100];
+  const brandOrange = [242, 140, 40];
+  const textDark = [31, 41, 55];
+  const textMuted = [107, 114, 128];
 
-    words.forEach(word => {
-      const testLine = line + word + " ";
-      const testWidth = doc.getTextWidth(testLine);
-      if (testWidth > maxWidth) {
-        doc.text(line.trim(), x, currentY);
-        currentY += 5; // espaço entre linhas
-        line = word + " ";
-      } else {
-        line = testLine;
-      }
-    });
-
-    if (line) {
-      doc.text(line.trim(), x, currentY);
-    }
-
-    return currentY; // última linha usada
-  }
-
-  // ===== Cabeçalho =====
+  
   try {
-    const logo = await fetch("img/logo.png").then(r => r.blob()).then(b => {
-      return new Promise(res => {
+     const logo = await fetch("img/logo.png")
+      .then(r => r.blob())
+      .then(b => new Promise(res => {
         const reader = new FileReader();
         reader.onload = () => res(reader.result);
         reader.readAsDataURL(b);
-      });
-    });
-    doc.addImage(logo, "PNG", 14, 10, 20, 20);
-  } catch (err) {
-    console.warn("Logo não encontrada em img/logo.png");
-  }
+     }));
+    doc.addImage(logo, "PNG", 14, 10, 22, 22);
+  } catch (_) {}
 
-  doc.setFontSize(16);
-  doc.text("Cerâmica Fortes", 40, 18);
+
+  doc.setTextColor(...brandBlue);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Relatório de Agendamentos", 40, 18);
+  
+  doc.setFont("helvetica", "normal");
+   doc.setFontSize(10);
+  doc.setTextColor(...textMuted);
+  doc.text(`Emissão: ${new Date().toLocaleDateString("pt-BR")}`, 40, 24);
+
   doc.setFontSize(10);
-  doc.text("Juntos Somos Mais Fortes", 40, 24);
+  doc.setFont("courier", "normal");
 
-  // Data de emissão
-  const hoje = new Date().toLocaleDateString("pt-BR");
+  let filtroTexto = "Agendamentos (todos os dias)";
+  if (start && end) filtroTexto = `Período: ${formatDateBR(start)} até ${formatDateBR(end)}`;
+  else if (start) filtroTexto = `Período: a partir de ${formatDateBR(start)}`;
+  else if (end) filtroTexto = `Período: até ${formatDateBR(end)}`;
+
+  doc.setDrawColor(...brandBlue);
+  doc.setLineWidth(0.5);
+  doc.line(14, 36, 196, 36);
   doc.setFontSize(10);
-  doc.text(`Data: ${hoje}`, 160, 18);
+  doc.setTextColor(...textDark);
+  doc.text(filtroTexto, 14, 43);
 
-  // Observação do filtro
-  let filtroTexto = "";
-  if (start && end) {
-    filtroTexto = `Agendamentos dos dias ${formatDateBR(start)} até ${formatDateBR(end)}`;
-  } else if (start) {
-    filtroTexto = `Agendamentos a partir de ${formatDateBR(start)}`;
-  } else if (end) {
-    filtroTexto = `Agendamentos até ${formatDateBR(end)}`;
-  } else {
-    filtroTexto = "Agendamentos (todos os dias)";
-  }
-
-  doc.setFontSize(11);
-  doc.text(filtroTexto, 14, 34);
-
+   const margemX = 14;
+  const larguraBox = 182;
   let y = 50;
 
-  // ================== Agendamentos ==================
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text("Agendamentos", 14, y);
-  y += 8;
+   const garantirPagina = (alturaNecessaria = 10) => {
+    if (y + alturaNecessaria > 282) {
+      doc.addPage();
+      y = 20;
+      }
+  };
 
-  doc.setFontSize(10);
-  doc.setFont("courier", "normal");
+    const desenharTituloSecao = (titulo) => {
+    garantirPagina(14);
+    doc.setFillColor(...brandBlue);
+    doc.roundedRect(margemX, y, larguraBox, 8, 2, 2, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(titulo, margemX + 3, y + 5.7);
+    y += 12;
+  };
+     const desenharLinhaResumo = (label, valor) => {
+    garantirPagina(9);
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(margemX, y, larguraBox, 7, 1.5, 1.5, "F");
+    doc.setTextColor(...textDark);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(`${label}:`, margemX + 3, y + 4.8);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(valor || "-"), margemX + 40, y + 4.8);
+    y += 8.5;
+  };
+    desenharTituloSecao("Resumo");
+  desenharLinhaResumo("Total Geral", formatQuantidade(totalGeral));
+  y += 2;
 
-  // Cabeçalho da tabela
-  doc.setFillColor(200, 200, 200);
-  doc.rect(14, y - 5, 180, 8, "F");
- // CABEÇALHO
-doc.text("Cliente", 14, y);
-doc.text("Produto", 60, y);
-doc.text("Qtd", 120, y);
+  desenharTituloSecao("Agendamentos");
+  linhasTabela.forEach((row, idx) => {
+    const clienteLinhas = doc.splitTextToSize(`Cliente: ${row.cliente || "-"}`, 172);
+    const produtoLinhas = doc.splitTextToSize(`Produto: ${row.produto || "-"}`, 172);
+    const qtdTexto = `Quantidade: ${formatQuantidade(row.qtd)}`;
+    const dataTexto = `Data: ${formatDateBR(row.data) || "-"}`;
+    const altura = (clienteLinhas.length + produtoLinhas.length) * 4.4 + 14;
 
-  y += 6;
+    garantirPagina(altura + 4);
+    doc.setFillColor(idx % 2 === 0 ? 239 : 249, idx % 2 === 0 ? 246 : 250, 255);
+    doc.roundedRect(margemX, y, larguraBox, altura, 2, 2, "F");
 
-  let rowIndex = 0;
-  linhasTabela.forEach(row => {
-    if (y > 270) { doc.addPage(); y = 20; }
-
-    if (rowIndex % 2 === 0) {
-      doc.setFillColor(255, 229, 204); // laranja claro
-      doc.rect(14, y - 4, 180, 6, "F");
-    }
-
-    // Cliente com quebra automática
-    let endY = wrapText(doc, row.cliente, 16, y, 50);
-
-    // Produto
-    doc.text(row.produto, 70, y, { maxWidth: 40 });
-
-    // Quantidade e Data
-    doc.text(formatQuantidade(row.qtd), 120, y, { align: "right" });
-    
-    
-    // Ajusta Y para próxima linha
-    y = Math.max(endY, y) + 6;
-    rowIndex++;
+    let yLinha = y + 5;
+    doc.setTextColor(...textDark);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(clienteLinhas, margemX + 3, yLinha);
+    yLinha += clienteLinhas.length * 4.4;
+    doc.text(produtoLinhas, margemX + 3, yLinha);
+    yLinha += produtoLinhas.length * 4.4 + 1;
+    doc.setFont("helvetica", "bold");
+    doc.text(qtdTexto, margemX + 3, yLinha);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...textMuted);
+    doc.text(dataTexto, margemX + 120, yLinha);
+    y += altura + 4;
   });
 
-  y += 10;
-
-  // ================== Totais por Produto ==================
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text("Totais por Produto", 14, y);
-  y += 8;
-
-  doc.setFontSize(10);
-  doc.setFont("courier", "normal");
-
-  doc.setFillColor(200, 200, 200);
-  doc.rect(14, y - 5, 180, 8, "F");
-  doc.text("Produto", 16, y);
-  doc.text("Quantidade", 160, y);
-  y += 6;
-
-  rowIndex = 0;
-  Object.entries(porProduto).forEach(([prod, qtd]) => {
-    if (y > 270) { doc.addPage(); y = 20; }
-
-    if (rowIndex % 2 === 0) {
-      doc.setFillColor(255, 229, 204);
-      doc.rect(14, y - 4, 180, 6, "F");
-    }
-
-    doc.text(prod, 16, y, { maxWidth: 60 });
-    doc.text(formatQuantidade(qtd), 160, y, { align: "right" });
-
-    y += 6;
-    rowIndex++;
+y += 2;
+  desenharTituloSecao("Totais por Produto");
+  Object.entries(porProduto).forEach(([prod, qtd], idx) => {
+    garantirPagina(9);
+    doc.setFillColor(idx % 2 === 0 ? 255 : 249, idx % 2 === 0 ? 247 : 250, idx % 2 === 0 ? 237 : 241);
+    doc.roundedRect(margemX, y, larguraBox, 7, 1.5, 1.5, "F");
+    doc.setTextColor(...textDark);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(prod || "-"), margemX + 3, y + 4.8);
+    doc.setFont("helvetica", "bold");
+    doc.text(formatQuantidade(qtd), margemX + larguraBox - 3, y + 4.8, { align: "right" });
+    y += 8.5;
   });
 
-  y += 10;
-
-  // ================== Totais por Representante ==================
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text("Totais por Representante", 14, y);
-  y += 8;
-
-  doc.setFontSize(10);
-  doc.setFont("courier", "normal");
-
-  doc.setFillColor(200, 200, 200);
-  doc.rect(14, y - 5, 180, 8, "F");
-  doc.text("Representante", 16, y);
-  doc.text("Quantidade", 160, y);
-  y += 6;
-
-  rowIndex = 0;
-  Object.entries(porRep).forEach(([rep, qtd]) => {
-    if (y > 270) { doc.addPage(); y = 20; }
-
-    if (rowIndex % 2 === 0) {
-      doc.setFillColor(255, 229, 204);
-      doc.rect(14, y - 4, 180, 6, "F");
-    }
-
-    doc.text(rep, 16, y, { maxWidth: 80 });
-    doc.text(formatQuantidade(qtd), 160, y, { align: "right" });
-
-    y += 6;
-    rowIndex++;
+ y += 2;
+  desenharTituloSecao("Totais por Representante");
+  Object.entries(porRep).forEach(([rep, qtd], idx) => {
+    garantirPagina(9);
+    doc.setFillColor(idx % 2 === 0 ? 255 : 249, idx % 2 === 0 ? 247 : 250, idx % 2 === 0 ? 237 : 241);
+    doc.roundedRect(margemX, y, larguraBox, 7, 1.5, 1.5, "F");
+    doc.setTextColor(...textDark);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(rep || "-"), margemX + 3, y + 4.8);
+    doc.setFont("helvetica", "bold");
+    doc.text(formatQuantidade(qtd), margemX + larguraBox - 3, y + 4.8, { align: "right" });
+    y += 8.5;
   });
 
-  y += 12;
-
-  // ================== Total Geral ==================
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL GERAL: ${formatQuantidade(totalGeral)}`, 14, y);
- 
-  y += 12;
-
-  // ================== Observação final ==================
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 0, 0); // vermelho
-  doc.text(
-    "Seu agendamento está sujeito a alterações, pois a disponibilidade pode variar devido a",
-    14, y
+   y += 4;
+  garantirPagina(18);
+  doc.setDrawColor(...brandOrange);
+  doc.setLineWidth(0.6);
+  doc.line(margemX, y, margemX + larguraBox, y);
+  y += 6;
+   doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...brandBlue);
+  doc.text("Observação", margemX, y);
+  y += 5;
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...textDark);
+  const obs = doc.splitTextToSize(
+    "Seu agendamento está sujeito a alterações, pois a disponibilidade pode variar devido a cronogramas de fabricação ou possíveis imprevistos na produção.",
+    178
   );
-  y += 6;
-  doc.text(
-    "cronogramas de fabricação ou possíveis imprevistos na produção.",
-    14, y
-  );
-
-  // Resetar cor para preto
-  doc.setTextColor(0, 0, 0);
-
-  // ===== Download =====
-  doc.save("relatorio-agendamentos.pdf");
+   doc.text(obs, margemX, y);
+   doc.save("relatorio-agendamentos.pdf");
 }
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
