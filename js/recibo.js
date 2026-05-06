@@ -119,17 +119,15 @@ function renderRecibo() {
     const valorExtenso = numeroParaExtensoBRL(valorNum);
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
+     const brandBlue = [31, 59, 100];
+    const brandOrange = [242, 140, 40];
+    const textDark = [31, 41, 55];
+    const textMuted = [107, 114, 128];
+    const margemX = 14;
+    const larguraBox = 182;
+    let y = 12;
 
-    // ===== DIMENSÕES =====
-    const margemX = 20;
-    const larguraCaixa = 170;
-    const alturaCaixa = 130;
-    const inicioY = 20;
-    doc.rect(margemX, inicioY, larguraCaixa, alturaCaixa);
-
-    let y = inicioY + 15;
-
-    // ===== LOGO E CABEÇALHO =====
+   
     try {
       const logo = await fetch("img/logo.png")
         .then(r => r.blob())
@@ -138,88 +136,72 @@ function renderRecibo() {
           reader.onload = () => res(reader.result);
           reader.readAsDataURL(b);
         }));
-      doc.addImage(logo, "PNG", margemX + 5, y - 10, 20, 20);
+      doc.addImage(logo, "PNG", margemX, y - 2, 22, 22);
     } catch {}
-
+    
+    doc.setTextColor(...brandBlue);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("CERÂMICA FORTES LTDA.", margemX + 90, y, { align: "center" });
-
+    doc.setFontSize(18);
+    doc.text("Recibo de Pagamento", 40, y + 6);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.text("BR 316 KM 05 S/N – Timon(MA) – CEP 65.630-000", margemX + 90, y + 5, { align: "center" });
-    doc.text("Fone: (99) 3118-3700 | Fax: (99) 3118-3701", margemX + 90, y + 10, { align: "center" });
-    doc.text("E-mail: fortes@fortes.com.br  www.fortes.com.br", margemX + 90, y + 15, { align: "center" });
-    doc.text("CNPJ: 06.849.988/0001-44 – I.E: 12.095.413-3", margemX + 90, y + 20, { align: "center" });
 
-    y += 30;
-
-    // ===== VALOR NUMÉRICO =====
-    doc.setFont("helvetica", "bold");
+   
+    
+   
     doc.setFontSize(10);
-    doc.text("Valor do Recibo (R$):", margemX + 5, y);
+    
+     doc.setTextColor(...textMuted);
+    doc.text(`Emissão: ${hoje}`, 40, y + 12);
 
-    const larguraValor = doc.getTextWidth(valorMoeda) + 8;
-    doc.setFillColor(255, 204, 153);
-    doc.rect(margemX + 60, y - 5, larguraValor, 10, "F");
-    doc.text(valorMoeda, margemX + 64, y);
+    y += 22;
+    doc.setDrawColor(...brandBlue);
+    doc.setLineWidth(0.5);
+    doc.line(margemX, y, margemX + larguraBox, y);
+    y += 6;
 
-    y += 12;
+    const tituloSecao = (titulo) => {
+      doc.setFillColor(...brandBlue);
+      doc.roundedRect(margemX, y, larguraBox, 8, 2, 2, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text(titulo, margemX + 3, y + 5.6);
+      y += 11;
+    };
 
-    // ===== VALOR POR EXTENSO =====
-    const larguraExt = doc.getTextWidth(valorExtenso) + 8;
-    doc.setFillColor(255, 229, 204);
-    doc.rect(margemX + 60, y - 5, larguraExt, 10, "F");
-    doc.setFontSize(9);
-    doc.text(valorExtenso, margemX + 64, y);
+    const linhaInfo = (label, valor, destaque = false) => {
+      const linhas = doc.splitTextToSize(String(valor || "-"), 132);
+      const altura = Math.max(8, linhas.length * 4.4 + 3);
+      doc.setFillColor(destaque ? 255 : 248, destaque ? 247 : 250, destaque ? 237 : 252);
+      doc.roundedRect(margemX, y, larguraBox, altura, 1.5, 1.5, "F");
+      doc.setTextColor(...textDark);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(`${label}:`, margemX + 3, y + 5);
+      doc.setFont("helvetica", destaque ? "bold" : "normal");
+      doc.text(linhas, margemX + 46, y + 5);
+      y += altura + 2.5;
+    };
 
-    y += 18;
+    tituloSecao("Dados do Recibo");
+    linhaInfo("Valor", valorMoeda, true);
+    linhaInfo("Valor por extenso", valorExtenso);
+    linhaInfo("Referência", ref);
 
-    // ===== REFERÊNCIA =====
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("Referência:", margemX + 5, y);
-    doc.rect(margemX + 30, y - 5, 130, 15);
+    y += 2;
+    tituloSecao("Partes");
+    linhaInfo("Recebemos de", cliente);
+    linhaInfo("Favorecido", "CERÂMICA FORTES LTDA.");
+    linhaInfo("Data", hoje);
+
+    y += 8;
+    doc.setDrawColor(...brandOrange);
+    doc.setLineWidth(0.6);
+    doc.line(margemX + 40, y, margemX + 140, y);
+    doc.setTextColor(...textMuted);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(ref, margemX + 34, y + 5);
-
-    y += 25;
-
-    // ===== PAGADOR =====
-    doc.setFont("helvetica", "bold");
-    doc.text("Recebemos de:", margemX + 5, y);
-    doc.rect(margemX + 35, y - 5, 125, 10);
-    doc.setFont("helvetica", "normal");
-    doc.text(cliente, margemX + 38, y);
-
-    y += 15;
-
-    // ===== FAVORECIDO =====
-    doc.setFont("helvetica", "bold");
-    doc.text("Favorecido:", margemX + 5, y);
-    doc.rect(margemX + 30, y - 5, 130, 10);
-    doc.setFont("helvetica", "normal");
-    doc.text("CERÂMICA FORTES LTDA.", margemX + 34, y);
-
-    y += 15;
-
-// ===== DATA =====
-doc.setFont("helvetica", "bold");
-doc.setFontSize(9); // fonte menor
-doc.text("Data:", margemX + 5, y - 2); // subimos 2px
-doc.setFont("helvetica", "normal");
-doc.setFontSize(9); // fonte menor também
-doc.text(hoje, margemX + 30, y - 2);
-
-
-
-
-    // ===== ASSINATURA =====
-    y += 25;
-    doc.line(margemX + 50, y, margemX + 120, y);
-    doc.setFontSize(8);
-    doc.text("Assinatura do Favorecido", margemX + 85, y + 5, { align: "center" });
+    doc.text("Assinatura do Favorecido", margemX + 90, y + 5, { align: "center" });
 
     doc.save(`recibo-${cliente}.pdf`);
   });
