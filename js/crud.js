@@ -1487,31 +1487,9 @@ if (PERFIL === "representante") {
   const docsFiltrados = clienteSel
     ? snap.docs.filter(doc => (doc.data().clienteNome || "") === clienteSel)
     : snap.docs;
-  // 🔥 Buscar preços dos produtos
-const produtosSnap = await db.collection("produtos")
-  .where("userId", "==", uid)
-  .get();
 
-const mapaPrecos = {};
-// 🔥 preços por cliente
-const precosClientesSnap = await db.collection("precos_clientes")
-  .where("userId", "==", uid)
-  .get();
-
-const mapaPrecosClientes = {};
-
-precosClientesSnap.forEach(doc => {
-  const p = doc.data();
-  const chave = `${p.clienteNome}_${p.produtoNome}`;
-  mapaPrecosClientes[chave] = p.preco;
-});
-produtosSnap.forEach(doc => {
-  const p = doc.data();
-  mapaPrecos[p.nome] = p.preco || 0;
-});
 
   let totalGeral = 0;
-  let faturamentoPrevisto = 0;
   const porProduto = {};
   const porRep = {};
   const porCli = {};
@@ -1523,35 +1501,23 @@ produtosSnap.forEach(doc => {
 
   totalGeral += qtd;
 
-// 💰 preço inteligente
-const precoPadrao = mapaPrecos[d.produtoNome] || 0;
-const precoCliente = mapaPrecosClientes[`${d.clienteNome}_${d.produtoNome}`];
-
-const precoFinal = precoCliente ?? precoPadrao;
-
-const valorTotal = qtd * precoFinal;
-
-faturamentoPrevisto += valorTotal;
-
     // Totais
     porProduto[d.produtoNome] = (porProduto[d.produtoNome] || 0) + qtd;
     porRep[d.representanteNome] = (porRep[d.representanteNome] || 0) + qtd;
     porCli[d.clienteNome] = (porCli[d.clienteNome] || 0) + qtd;
 
-    linhasTabela.push({
+  linhasTabela.push({ 
   cliente: d.clienteNome || "-",
   produto: d.produtoNome || "-",
   representante: d.representanteNome || "-",
   qtd: qtd,
-  data: d.data || "-",
-  valorTotal: valorTotal // 🔥 NOVO
+ data: d.data || "-"
 });
   });
 
   // Renderiza os totais na tela
  let html = `
   <p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p>
-  <p><strong>Previsão de Faturamento:</strong> ${formatMoeda(faturamentoPrevisto)}</p>
   <ul>
 `;
   for (const [prod, qtd] of Object.entries(porProduto)) {
@@ -1588,7 +1554,6 @@ faturamentoPrevisto += valorTotal;
   end, 
   linhasTabela, 
   totalGeral, 
-  faturamentoPrevisto, // 👈 adicionar isso
   porProduto, 
   porRep 
 };
@@ -1601,7 +1566,7 @@ async function exportarPDF() {
     return;
   }
 
-  const { start, end, linhasTabela, totalGeral, faturamentoPrevisto, porProduto, porRep } = window.__REL_CACHE__;
+  const { start, end, linhasTabela, totalGeral, porProduto, porRep } = window.__REL_CACHE__;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
@@ -1694,7 +1659,6 @@ async function exportarPDF() {
 doc.text("Cliente", 14, y);
 doc.text("Produto", 60, y);
 doc.text("Qtd", 120, y);
-doc.text("Valor", 150, y); // 🔥 posição final
 
   y += 6;
 
@@ -1715,7 +1679,7 @@ doc.text("Valor", 150, y); // 🔥 posição final
 
     // Quantidade e Data
     doc.text(formatQuantidade(row.qtd), 120, y, { align: "right" });
-    doc.text(formatMoeda(row.valorTotal), 190, y, { align: "right" });
+    
     
     // Ajusta Y para próxima linha
     y = Math.max(endY, y) + 6;
@@ -1794,9 +1758,7 @@ doc.text("Valor", 150, y); // 🔥 posição final
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.text(`TOTAL GERAL: ${formatQuantidade(totalGeral)}`, 14, y);
-  y += 8;
-doc.text(`PREVISÃO DE FATURAMENTO: ${formatMoeda(faturamentoPrevisto)}`, 14, y);
-
+ 
   y += 12;
 
   // ================== Observação final ==================
