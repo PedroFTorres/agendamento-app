@@ -146,6 +146,55 @@ function formatPrecoProduto(num) {
     minimumFractionDigits: 4, maximumFractionDigits: 4
   });
 }
+
+function formatarCodigoPedido(numero) {
+  return "PED-" + String(numero).padStart(4, "0");
+}
+
+function extrairNumeroPedido(codigo) {
+  const match = String(codigo || "").match(/PED-(\d+)/i);
+  return match ? Number(match[1]) : 0;
+}
+
+async function buscarMaiorNumeroPedido() {
+  try {
+    const snap = await db.collection("pedidos")
+      .orderBy("codigo", "desc")
+      .limit(100)
+      .get();
+
+    let maior = 0;
+    snap.forEach(doc => {
+      maior = Math.max(maior, extrairNumeroPedido(doc.data()?.codigo));
+    });
+
+    return maior;
+  } catch (e) {
+    console.warn("Não foi possível consultar o maior número de pedido existente.", e);
+    return 0;
+  }
+}
+
+async function gerarCodigoPedidoUnico() {
+  const maiorExistente = await buscarMaiorNumeroPedido();
+  const counterRef = db.collection("config").doc("pedidos");
+
+  const numeroPedido = await db.runTransaction(async (t) => {
+    const doc = await t.get(counterRef);
+    const ultimoContador = doc.exists ? Number(doc.data().ultimoNumero || 0) : 0;
+    const novo = Math.max(ultimoContador, maiorExistente) + 1;
+
+    t.set(counterRef, {
+      ultimoNumero: novo,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return novo;
+  });
+
+  return formatarCodigoPedido(numeroPedido);
+}
+
 function formatarDataISO(data) {
   if (!data) return null;
 
@@ -2430,11 +2479,10 @@ function renderPedidos() {
             <option value="30 dias">30 dias</option>
             <option value="30/60 dias">30/60 dias</option>
           </select>
-           ${PERFIL === "admin" ? `<input id="p-data-entrega" type="date" class="border p-2 w-full" title="Data de entrega/agendamento">` : ""}
-          <input id="p-responsavel" type="text" class="border p-2 w-full" placeholder="Representante/responsável">
+           <input id="p-responsavel" type="text" class="border p-2 w-full" placeholder="Representante/responsável">
           <input id="p-obs" type="text" class="border p-2 w-full" placeholder="Observações (opcional)">
           <p id="msg-enviando-pedido" class="hidden text-center text-sm font-semibold text-blue-700">ENVIANDO SEU PEDIDO...</p>
-          <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">${PERFIL === "admin" ? "Criar Pedido" : "Enviar Pedido"}</button>
+          <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">Enviar Pedido</button>
           <button id="btn-cancelar-modal-pedido" type="button" class="bg-gray-400 text-white p-2 rounded w-full">Cancelar</button>
         </div>
       </div>
@@ -2572,17 +2620,10 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
     const prazo = document.getElementById("p-prazo").value;
     const obs = document.getElementById("p-obs").value;
     const responsavel = document.getElementById("p-responsavel")?.value.trim() || REPRESENTANTE_ATUAL || "Administrativo";
-    const dataEntrega = document.getElementById("p-data-entrega")?.value || "";
     const valor = document.getElementById("p-qtd").value.replace(/\./g, "");
     const quantidade = parseInt(valor);
 
-    if (PERFIL === "admin" && !dataEntrega) {
-      alert("Informe a data de entrega/agendamento.");
-      return;
-    }
-
-
-  if (!prazo) {
+    if (!prazo) {
       alert("Selecione o prazo de pagamento.");
       return;
     }
@@ -2602,22 +2643,7 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
       msgEnviando?.classList.remove("hidden");
       const user = await waitForAuth();
 
-const counterRef = db.collection("config").doc("pedidos");
-
- const numeroPedido = await db.runTransaction(async (t) => {
-        const doc = await t.get(counterRef);
-
-  const ultimo = doc.exists ? (doc.data().ultimoNumero || 0) : 0;
-
-
-  const novo = ultimo + 1;
-
-  t.set(counterRef, { ultimoNumero: novo }, { merge: true });
-
-      return novo;
-      });
-
-const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
+ const codigo = await gerarCodigoPedidoUnico();
       let clienteSnapshot = {};
       let pedidoUserId = user.uid;
       try {
@@ -2658,7 +2684,7 @@ const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
         console.warn("Não foi possível carregar snapshot do cliente para o pedido.", e);
       }
 
-      const statusInicial = PERFIL === "admin" ? "aprovado" : "pendente";
+      
       const pedidoPayload = {
         codigo,
         userId: pedidoUserId,
@@ -2668,55 +2694,34 @@ const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
         observacao: obs,
         quantidade,
         representanteNome: responsavel,
-        status: statusInicial,
+        status: "pendente",
         criadoPorAdmin: PERFIL === "admin",
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         ...clienteSnapshot
       };
 
-      if (PERFIL === "admin") {
-        pedidoPayload.data = dataEntrega;
-      }
+     await db.collection("pedidos").add(pedidoPayload);
 
-   const pedidoRef = await db.collection("pedidos").add(pedidoPayload);
+      const adminsSnap = await db.collection("usuarios")
+        .where("perfil", "==", "admin")
+        .get();
 
-      if (PERFIL === "admin") {
-        const agRef = await db.collection("agendamentos").add({
-          userId: pedidoUserId,
-          clienteNome: cliente,
-          produtoNome: produto,
-          quantidade,
-          representanteNome: responsavel,
-          criadoPor: user.uid,
-          data: dataEntrega,
-          observacao: obs,
+ const notifPromises = adminsSnap.docs
+        .map(doc => {
+          const dados = doc.data() || {};
+          return dados.uid || dados.userId || doc.id;
+        })
+        .filter(Boolean)
+        .map(adminUid => db.collection("notificacoes").add({
+          userId: adminUid,
           pedidoId: codigo,
+           texto: `📥 Novo pedido ${codigo} recebido de ${responsavel}`,
+          lida: false,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        }));
 
-       await pedidoRef.update({ agendamentoId: agRef.id });
-      } else {
-        const adminsSnap = await db.collection("usuarios")
-          .where("perfil", "==", "admin")
-          .get();
-
-        const notifPromises = adminsSnap.docs
-          .map(doc => {
-            const dados = doc.data() || {};
-            return dados.uid || dados.userId || doc.id;
-          })
-          .filter(Boolean)
-          .map(adminUid => db.collection("notificacoes").add({
-            userId: adminUid,
-            pedidoId: codigo,
-            texto: `📥 Novo pedido ${codigo} recebido de ${responsavel}`,
-            lida: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          }));
-
-        await Promise.all(notifPromises);
-      }
-      alert(PERFIL === "admin" ? "Pedido criado e aprovado!" : "Pedido enviado!");
+      await Promise.all(notifPromises);
+      alert("Pedido enviado para aprovação!");
       document.getElementById("modal-pedido")?.classList.add("hidden");
     } catch (e) {
       console.error(e);
@@ -2725,7 +2730,7 @@ const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
       pedidoEmEnvio = false;
       if (btnPedido) {
         btnPedido.disabled = false;
-        btnPedido.textContent = PERFIL === "admin" ? "Criar Pedido" : "Enviar Pedido";
+         btnPedido.textContent = "Enviar Pedido";
       }
       if (btnCancelar) btnCancelar.disabled = false;
       msgEnviando?.classList.add("hidden");
