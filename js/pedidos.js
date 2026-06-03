@@ -31,6 +31,43 @@ function formatarEnderecoCliente(cliente = {}) {
   return partes.join(" • ");
 }
 
+function normalizarItensPedido(pedido = {}) {
+  if (Array.isArray(pedido.itens) && pedido.itens.length) {
+    return pedido.itens
+      .map((item) => ({
+        produtoNome: String(item.produtoNome || item.produto || "").trim(),
+        quantidade: Number(item.quantidade || 0)
+      }))
+      .filter((item) => item.produtoNome && item.quantidade > 0);
+  }
+
+  const produtoNome = String(pedido.produtoNome || "").trim();
+  const quantidade = Number(pedido.quantidade || 0);
+  return produtoNome && quantidade > 0 ? [{ produtoNome, quantidade }] : [];
+}
+
+function formatarQuantidadePedido(valor) {
+  if (typeof formatQuantidade === "function") {
+    return formatQuantidade(valor);
+  }
+  return valor == null ? "-" : Number(valor).toLocaleString("pt-BR");
+}
+
+function formatarItensPedidoTexto(pedido = {}) {
+  const itens = normalizarItensPedido(pedido);
+  if (!itens.length) return pedido.produtoNome || "-";
+
+  return itens
+    .map((item) => `${item.produtoNome} (${formatarQuantidadePedido(item.quantidade)})`)
+    .join(", ");
+}
+
+function obterTotalQuantidadePedido(pedido = {}) {
+  const itens = normalizarItensPedido(pedido);
+  if (!itens.length) return Number(pedido.quantidade || 0);
+  return itens.reduce((total, item) => total + Number(item.quantidade || 0), 0);
+}
+
 function obterPrazoPedido(pedido) {
   const prazoPagamento = String(pedido.prazoPagamento || "").trim();
   const prazoAgendamento = formatarDataPedido(pedido.data);
@@ -109,9 +146,8 @@ async function imprimirPedidoPdf(pedido, cliente = {}) {
   const emissao = formatarDataPedido(pedido.createdAt);
   const prazo = obterPrazoPedido(pedido);
 
-  const quantidade = typeof formatQuantidade === "function"
-    ? formatQuantidade(pedido.quantidade)
-    : (pedido.quantidade == null ? "-" : pedido.quantidade);
+  const itensTexto = formatarItensPedidoTexto(pedido);
+  const quantidade = formatarQuantidadePedido(obterTotalQuantidadePedido(pedido));
 
 const logo = await carregarLogoDataUrl();
 
@@ -137,8 +173,8 @@ const logo = await carregarLogoDataUrl();
     ["Pedido", pedido.codigo || "-"],
     ["Status", pedido.status || "-"],
     ["Representante", pedido.representanteNome || "-"],
-    ["Produto", pedido.produtoNome || "-"],
-    ["Quantidade", quantidade],
+    ["Produtos", itensTexto],
+    ["Quantidade total", quantidade],
     ["Prazo", prazo],
     ["Observação", pedido.observacao || "-"]
   ];
@@ -196,9 +232,8 @@ async function abrirModalDetalhesPedido(pedido) {
 
   const emissao = formatarDataPedido(pedido.createdAt);
    const prazo = obterPrazoPedido(pedido);
-  const quantidade = typeof formatQuantidade === "function"
-    ? formatQuantidade(pedido.quantidade)
-    : (pedido.quantidade == null ? "-" : pedido.quantidade);
+ const itensTexto = formatarItensPedidoTexto(pedido);
+  const quantidade = formatarQuantidadePedido(obterTotalQuantidadePedido(pedido));
 
   modal.innerHTML = `
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-200">
@@ -220,8 +255,8 @@ async function abrirModalDetalhesPedido(pedido) {
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Número:</span> ${escapeHtml(pedido.codigo || "-")}</div>
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Data de emissão:</span> ${escapeHtml(emissao)}</div>
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Representante:</span> ${escapeHtml(pedido.representanteNome || "-")}</div>
-          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Produto:</span> ${escapeHtml(pedido.produtoNome || "-")}</div>
-          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Quantidade:</span> ${escapeHtml(quantidade)}</div>
+          <div class="bg-slate-50 rounded-lg p-3 md:col-span-2"><span class="font-semibold text-slate-700">Produtos:</span> ${escapeHtml(itensTexto)}</div>
+          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Quantidade total:</span> ${escapeHtml(quantidade)}</div>
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Prazo:</span> ${escapeHtml(prazo || "-")}</div>
           <div class="md:col-span-2 bg-orange-50 rounded-lg p-3 border border-orange-100"><span class="font-semibold text-slate-700">Observação:</span> ${escapeHtml(pedido.observacao || "-")}</div>
         </div>
@@ -339,20 +374,28 @@ async function aprovarPedido(id, btn) {
 
           try {
 
-            const agRef = await db.collection("agendamentos").add({
-              userId: p.userId,
-              clienteNome: p.clienteNome,
-              produtoNome: p.produtoNome,
-              quantidade: p.quantidade,
-              representanteNome: p.representanteNome,
-              criadoPor: p.userId,
-              data: dataEscolhida,
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+           const itensPedido = normalizarItensPedido(p);
+            const agRefs = [];
+
+            for (const item of itensPedido) {
+              const agRef = await db.collection("agendamentos").add({
+                userId: p.userId,
+                clienteNome: p.clienteNome,
+                produtoNome: item.produtoNome,
+                quantidade: item.quantidade,
+                representanteNome: p.representanteNome,
+                criadoPor: p.userId,
+                pedidoId: p.codigo || id,
+                data: dataEscolhida,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              agRefs.push(agRef.id);
+            }
 
             await db.collection("pedidos").doc(id).update({
               status: "aprovado",
-              agendamentoId: agRef.id,
+              agendamentoId: agRefs[0] || "",
+              agendamentoIds: agRefs,
               data: dataEscolhida,
               notificadoAprovado: true
             });
@@ -479,6 +522,9 @@ async function editarPedidoAprovado(id) {
     dataAtual = agSnap.data()?.data || "";
   }
 
+  const itensPedido = normalizarItensPedido(p);
+  const permiteEditarQuantidade = itensPedido.length <= 1;
+  
   // 🔥 cria modal
   const modal = document.createElement("div");
   modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4";
@@ -487,9 +533,17 @@ async function editarPedidoAprovado(id) {
     <div class="bg-white p-4 rounded shadow w-80">
       <h3 class="text-lg font-bold mb-3">Editar Pedido</h3>
 
-      <label class="block mb-1">Quantidade</label>
-      <input id="edit-qtd" type="number" value="${p.quantidade}" class="w-full border p-2 mb-3"/>
-
+      ${permiteEditarQuantidade ? `
+        <label class="block mb-1">Quantidade</label>
+        <input id="edit-qtd" type="number" value="${p.quantidade}" class="w-full border p-2 mb-3"/>
+      ` : `
+        <div class="bg-slate-50 border rounded p-2 mb-3 text-sm">
+          <p class="font-semibold mb-1">Produtos deste pedido</p>
+          <p>${escapeHtml(formatarItensPedidoTexto(p))}</p>
+          <p class="text-xs text-gray-500 mt-1">Pedidos com mais de um produto permitem editar a data. Altere quantidades nos agendamentos individuais, se necessário.</p>
+        </div>
+      `}
+      
       <label class="block mb-1">Data</label>
       <input id="edit-data" type="date" value="${dataAtual}" class="w-full border p-2 mb-3"/>
 
@@ -512,35 +566,48 @@ async function editarPedidoAprovado(id) {
   // salvar
   document.getElementById("salvar-edit").onclick = async () => {
 
-    const novaQtd = document.getElementById("edit-qtd").value;
+    const novaQtd = permiteEditarQuantidade ? document.getElementById("edit-qtd").value : p.quantidade;
     const novaData = document.getElementById("edit-data").value;
 
-    if (!novaQtd || !novaData) {
+   if ((permiteEditarQuantidade && !novaQtd) || !novaData) {
       alert("Preencha todos os campos");
       return;
     }
 
     try {
 
-      // 🔥 atualiza pedido
-      await db.collection("pedidos").doc(id).update({
-        quantidade: Number(novaQtd),
-        qtdAnterior: p.quantidade,
+      const atualizacaoPedido = {
         dataAnterior: dataAtual,
         data: novaData,
-        notificadoQtd: true,
         notificadoData: true,
         editadoPor: user.uid,
         editadoEm: new Date()
-      });
+      };
+
+       if (permiteEditarQuantidade) {
+        atualizacaoPedido.quantidade = Number(novaQtd);
+        atualizacaoPedido.qtdAnterior = p.quantidade;
+        atualizacaoPedido.notificadoQtd = true;
+      }
+
+       // 🔥 atualiza pedido
+      await db.collection("pedidos").doc(id).update(atualizacaoPedido);
 
       // 🔥 atualiza agendamento
-      if (p.agendamentoId) {
-        await db.collection("agendamentos").doc(p.agendamentoId).update({
-          quantidade: Number(novaQtd),
-          data: novaData
-        });
-      }
+      const agendamentoIds = Array.isArray(p.agendamentoIds) && p.agendamentoIds.length
+        ? p.agendamentoIds
+        : (p.agendamentoId ? [p.agendamentoId] : []);
+
+      await Promise.all(agendamentoIds.map((agId, index) => {
+        const atualizacaoAgendamento = { data: novaData };
+        if (permiteEditarQuantidade) {
+          atualizacaoAgendamento.quantidade = Number(novaQtd);
+        } else if (itensPedido[index]) {
+          atualizacaoAgendamento.quantidade = itensPedido[index].quantidade;
+        }
+        return db.collection("agendamentos").doc(agId).update(atualizacaoAgendamento);
+      }));
+
 
       modal.remove();
       alert("Pedido atualizado!");
@@ -549,7 +616,9 @@ async function editarPedidoAprovado(id) {
       await db.collection("notificacoes").add({
         userId: p.userId,
         pedidoId: p.codigo,
-        texto: `📝 Pedido ${p.codigo} atualizado: quantidade ${p.quantidade} → ${Number(novaQtd)}, data ${dataAtual || "-"} → ${novaData}.`,
+        texto: permiteEditarQuantidade
+          ? `📝 Pedido ${p.codigo} atualizado: quantidade ${p.quantidade} → ${Number(novaQtd)}, data ${dataAtual || "-"} → ${novaData}.`
+          : `📝 Pedido ${p.codigo} atualizado: data ${dataAtual || "-"} → ${novaData}.`,
         lida: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -585,9 +654,11 @@ async function excluirPedidoCompleto(id) {
 
     const pedido = pedidoSnap.data();
 
-    if (pedido.agendamentoId) {
-      await db.collection("agendamentos").doc(pedido.agendamentoId).delete();
-    }
+   const agendamentoIds = Array.isArray(pedido.agendamentoIds) && pedido.agendamentoIds.length
+      ? pedido.agendamentoIds
+      : (pedido.agendamentoId ? [pedido.agendamentoId] : []);
+
+    await Promise.all(agendamentoIds.map((agId) => db.collection("agendamentos").doc(agId).delete()));
 
     await pedidoRef.delete();
 
