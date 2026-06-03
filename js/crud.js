@@ -2413,7 +2413,7 @@ function renderPedidos() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Pedidos</h2>
 
-    ${PERFIL === "representante" ? `
+    ${["representante", "admin"].includes(PERFIL) ? `
    <div class="bg-white p-4 rounded shadow mb-4">
       <button id="btn-abrir-modal-pedido" type="button" class="w-full md:w-auto text-white p-2 rounded" style="background-color: #E67E22;">+ Novo Pedido</button>
       <div id="modal-pedido" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 p-0 md:p-4">
@@ -2430,9 +2430,11 @@ function renderPedidos() {
             <option value="30 dias">30 dias</option>
             <option value="30/60 dias">30/60 dias</option>
           </select>
+           ${PERFIL === "admin" ? `<input id="p-data-entrega" type="date" class="border p-2 w-full" title="Data de entrega/agendamento">` : ""}
+          <input id="p-responsavel" type="text" class="border p-2 w-full" placeholder="Representante/responsável">
           <input id="p-obs" type="text" class="border p-2 w-full" placeholder="Observações (opcional)">
           <p id="msg-enviando-pedido" class="hidden text-center text-sm font-semibold text-blue-700">ENVIANDO SEU PEDIDO...</p>
-          <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">Enviar Pedido</button>
+          <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">${PERFIL === "admin" ? "Criar Pedido" : "Enviar Pedido"}</button>
           <button id="btn-cancelar-modal-pedido" type="button" class="bg-gray-400 text-white p-2 rounded w-full">Cancelar</button>
         </div>
       </div>
