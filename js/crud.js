@@ -2469,8 +2469,14 @@ function renderPedidos() {
         <div class="bg-white w-full md:max-w-2xl md:mx-auto md:mt-12 rounded-t-2xl md:rounded-xl p-4 md:p-6 max-h-[92vh] overflow-y-auto absolute bottom-0 left-0 right-0 md:static space-y-2">
           <h3 class="text-lg font-bold mb-2">Novo Pedido</h3>
           <select id="p-cliente" class="border p-2 w-full"></select>
-          <select id="p-produto" class="border p-2 w-full"></select>
-          <input id="p-qtd" type="text" class="border p-2 w-full" placeholder="Quantidade">
+           <div id="p-itens" class="space-y-2">
+            <div class="pedido-item grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+              <select id="p-produto" class="pedido-produto border p-2 w-full md:col-span-7"></select>
+              <input id="p-qtd" type="text" class="pedido-qtd border p-2 w-full md:col-span-4" placeholder="Quantidade">
+              <button type="button" class="btn-remover-produto hidden bg-red-600 text-white p-2 rounded md:col-span-1">×</button>
+            </div>
+          </div>
+          <button id="btn-adicionar-produto" type="button" class="border border-blue-600 text-blue-700 p-2 rounded w-full">+ Adicionar outro produto</button>
           <select id="p-prazo" class="border p-2 w-full" required>
             <option value="" selected disabled>Prazo de pagamento *</option>
             <option value="À vista">À vista</option>
@@ -2511,16 +2517,20 @@ if (!lista) {
    const inputResponsavel = document.getElementById("p-responsavel");
   if (inputResponsavel) inputResponsavel.value = REPRESENTANTE_ATUAL || "";
 
-inputQtd?.addEventListener("input", (e) => {
-  let v = e.target.value.replace(/\D/g, "");
+function formatarInputQuantidadePedido(input) {
+  input?.addEventListener("input", (e) => {
+    let v = e.target.value.replace(/\D/g, "");
 
-  if (!v) {
-    e.target.value = "";
-    return;
-  }
+     if (!v) {
+      e.target.value = "";
+      return;
+    }
 
-  e.target.value = Number(v).toLocaleString("pt-BR");
-});
+   e.target.value = Number(v).toLocaleString("pt-BR");
+  });
+}
+
+formatarInputQuantidadePedido(inputQtd);
 
   // 🔥 CONTROLE DE DATA
   let dataAtual = new Date();
@@ -2595,12 +2605,53 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
 // ordena
       listaProdutos.sort((a, b) => a.localeCompare(b, "pt-BR"));
 
-    // monta select
+      function preencherSelectProduto(select) {
+      if (!select) return;
+      const valorAtual = select.value;
+      select.innerHTML = `<option value="">Selecione produto</option>`;
       listaProdutos.forEach(nome => {
         const opt = document.createElement("option");
         opt.value = nome;
         opt.textContent = nome;
-        $produto.appendChild(opt);
+      select.appendChild(opt);
+      });
+      if (valorAtual) select.value = valorAtual;
+    }
+
+     }
+
+    function adicionarLinhaProduto() {
+      const containerItens = document.getElementById("p-itens");
+      const primeiraLinha = containerItens?.querySelector(".pedido-item");
+      if (!containerItens || !primeiraLinha) return;
+
+      const novaLinha = primeiraLinha.cloneNode(true);
+      novaLinha.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+      const selectProduto = novaLinha.querySelector(".pedido-produto");
+      const inputQuantidade = novaLinha.querySelector(".pedido-qtd");
+      preencherSelectProduto(selectProduto);
+      if (inputQuantidade) inputQuantidade.value = "";
+      formatarInputQuantidadePedido(inputQuantidade);
+      novaLinha.querySelector(".btn-remover-produto")?.addEventListener("click", () => {
+        novaLinha.remove();
+        atualizarBotoesRemoverProduto();
+      });
+      containerItens.appendChild(novaLinha);
+      atualizarBotoesRemoverProduto();
+    }
+
+    preencherSelectProduto($produto);
+    document.querySelector("#p-itens .btn-remover-produto")?.addEventListener("click", (e) => {
+      e.currentTarget.closest(".pedido-item")?.remove();
+      atualizarBotoesRemoverProduto();
+    });
+    atualizarBotoesRemoverProduto();
+    document.getElementById("btn-adicionar-produto")?.addEventListener("click", adicionarLinhaProduto);
+
+    function atualizarBotoesRemoverProduto() {
+      const linhas = document.querySelectorAll("#p-itens .pedido-item");
+      linhas.forEach((linha) => {
+        linha.querySelector(".btn-remover-produto")?.classList.toggle("hidden", linhas.length === 1);
       });
     
   // CRIAR PEDIDO
@@ -2616,20 +2667,27 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
     const clienteSelect = document.getElementById("p-cliente");
     const cliente = clienteSelect.value;
     const clienteDocId = clienteSelect.selectedOptions[0]?.dataset.id || "";
-    const produto = document.getElementById("p-produto").value;
+    const itens = Array.from(document.querySelectorAll("#p-itens .pedido-item"))
+      .map((linha) => {
+        const produtoNome = linha.querySelector(".pedido-produto")?.value || "";
+        const valor = (linha.querySelector(".pedido-qtd")?.value || "").replace(/\./g, "");
+        return { produtoNome, quantidade: parseInt(valor) || 0 };
+      })
+      .filter((item) => item.produtoNome && item.quantidade > 0);
     const prazo = document.getElementById("p-prazo").value;
     const obs = document.getElementById("p-obs").value;
     const responsavel = document.getElementById("p-responsavel")?.value.trim() || REPRESENTANTE_ATUAL || "Administrativo";
-    const valor = document.getElementById("p-qtd").value.replace(/\./g, "");
-    const quantidade = parseInt(valor);
+    const produto = itens[0]?.produtoNome || "";
+    const quantidade = itens.reduce((total, item) => total + item.quantidade, 0);
+
 
     if (!prazo) {
       alert("Selecione o prazo de pagamento.");
       return;
     }
 
-    if (!cliente || !produto || !quantidade) {
-      alert("Preencha tudo!");
+     if (!cliente || !itens.length) {
+      alert("Selecione pelo menos um produto com quantidade.");
       return;
     }
 
@@ -2690,6 +2748,8 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
         userId: pedidoUserId,
         clienteNome: cliente,
         produtoNome: produto,
+        produtosResumo: itens.map((item) => `${item.produtoNome} (${typeof formatQuantidade === "function" ? formatQuantidade(item.quantidade) : item.quantidade})`).join(", "),
+        itens,
         prazoPagamento: prazo,
         observacao: obs,
         quantidade,
@@ -2799,7 +2859,7 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
     Pedido: <b>${p.codigo || "-"}</b>
   </div>
 
-  <b>${p.clienteNome}</b> - ${p.produtoNome} (${formatQuantidade(p.quantidade)})<br>
+  <b>${p.clienteNome}</b> - ${typeof formatarItensPedidoTexto === "function" ? formatarItensPedidoTexto(p) : `${p.produtoNome} (${formatQuantidade(p.quantidade)})`}<br>
   
   <div style="font-size:12px; color:#555;">
     Representante: ${p.representanteNome || "não informado"}
@@ -2855,9 +2915,9 @@ if (typeof window.abrirModalDetalhesPedido === "function") {
 ` +
     `Cliente: ${p.clienteNome || "-"}
 ` +
-    `Produto: ${p.produtoNome || "-"}
+    `Produtos: ${typeof formatarItensPedidoTexto === "function" ? formatarItensPedidoTexto(p) : (p.produtoNome || "-")}
 ` +
-    `Quantidade: ${formatQuantidade(p.quantidade || 0)}
+     `Quantidade total: ${formatQuantidade(p.quantidade || 0)}
 ` +
     `Prazo: ${prazoFallback}
 ` +
