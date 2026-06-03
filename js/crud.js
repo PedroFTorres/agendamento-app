@@ -2459,6 +2459,8 @@ Object.entries(mapa).forEach(([cliente, itens])=>{
 }
 
 function renderPedidos() {
+   const renderPedidosToken = Date.now() + Math.random();
+  window.__renderPedidosToken = renderPedidosToken;
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Pedidos</h2>
 
