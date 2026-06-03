@@ -2692,7 +2692,7 @@ const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
           observacao: obs,
           pedidoId: codigo,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }));
+        });
 
        await pedidoRef.update({ agendamentoId: agRef.id });
       } else {
