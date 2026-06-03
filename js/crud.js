@@ -2460,6 +2460,8 @@ if (!lista) {
   return;
 }
   const inputQtd = document.getElementById("p-qtd");
+   const inputResponsavel = document.getElementById("p-responsavel");
+  if (inputResponsavel) inputResponsavel.value = REPRESENTANTE_ATUAL || "";
 
 inputQtd?.addEventListener("input", (e) => {
   let v = e.target.value.replace(/\D/g, "");
@@ -2495,7 +2497,7 @@ inputQtd?.addEventListener("input", (e) => {
     dataAtual.setMonth(dataAtual.getMonth() + 1);
     renderPedidos();
   };
-  if (PERFIL === "representante") {
+  if (["representante", "admin"].includes(PERFIL)) {
   const modalPedido = document.getElementById("modal-pedido");
   document.getElementById("btn-abrir-modal-pedido")?.addEventListener("click", () => {
     modalPedido?.classList.remove("hidden");
@@ -2514,10 +2516,12 @@ waitForAuth().then(async user => {
         cliQuery = cliQuery.where("userId", "==", user.uid);
       }
        const cliSnap = await cliQuery.orderBy("nome").get();
+      $cliente.innerHTML = `<option value="">Selecione cliente</option>`;
       cliSnap.forEach(doc => {
         const opt = document.createElement("option");
         opt.value = doc.data().nome;
         opt.textContent = doc.data().nome;
+        opt.dataset.id = doc.id;
         $cliente.appendChild(opt);
       });
 
@@ -2561,12 +2565,22 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
     const btnCancelar = document.getElementById("btn-cancelar-modal-pedido");
     const msgEnviando = document.getElementById("msg-enviando-pedido");
     
-    const cliente = document.getElementById("p-cliente").value;
+    const clienteSelect = document.getElementById("p-cliente");
+    const cliente = clienteSelect.value;
+    const clienteDocId = clienteSelect.selectedOptions[0]?.dataset.id || "";
     const produto = document.getElementById("p-produto").value;
     const prazo = document.getElementById("p-prazo").value;
     const obs = document.getElementById("p-obs").value;
+    const responsavel = document.getElementById("p-responsavel")?.value.trim() || REPRESENTANTE_ATUAL || "Administrativo";
+    const dataEntrega = document.getElementById("p-data-entrega")?.value || "";
     const valor = document.getElementById("p-qtd").value.replace(/\./g, "");
     const quantidade = parseInt(valor);
+
+    if (PERFIL === "admin" && !dataEntrega) {
+      alert("Informe a data de entrega/agendamento.");
+      return;
+    }
+
 
   if (!prazo) {
       alert("Selecione o prazo de pagamento.");
@@ -2593,7 +2607,7 @@ const counterRef = db.collection("config").doc("pedidos");
  const numeroPedido = await db.runTransaction(async (t) => {
         const doc = await t.get(counterRef);
 
-  let ultimo = 0;
+  const ultimo = doc.exists ? (doc.data().ultimoNumero || 0) : 0;
 
 
   const novo = ultimo + 1;
@@ -2603,18 +2617,32 @@ const counterRef = db.collection("config").doc("pedidos");
       return novo;
       });
 
-
 const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
       let clienteSnapshot = {};
+      let pedidoUserId = user.uid;
       try {
-        const clienteSnap = await db.collection("clientes")
-          .where("userId", "==", user.uid)
-          .where("nome", "==", cliente)
-          .limit(1)
-          .get();
+       let clienteDoc = null;
+        if (clienteDocId) {
+          const docCliente = await db.collection("clientes").doc(clienteDocId).get();
+          if (docCliente.exists) clienteDoc = docCliente.data() || {};
+        }
 
-        if (!clienteSnap.empty) {
-          const c = clienteSnap.docs[0].data() || {};
+         if (!clienteDoc) {
+          let clienteQuery = db.collection("clientes").where("nome", "==", cliente).limit(1);
+          if (PERFIL === "representante") {
+            clienteQuery = db.collection("clientes")
+              .where("userId", "==", user.uid)
+              .where("nome", "==", cliente)
+              .limit(1);
+          }
+
+          const clienteSnap = await clienteQuery.get();
+          if (!clienteSnap.empty) clienteDoc = clienteSnap.docs[0].data() || {};
+        }
+
+        if (clienteDoc) {
+          const c = clienteDoc;
+          pedidoUserId = c.userId || user.uid;
           clienteSnapshot = {
             clienteCnpj: c.cnpj || "",
             clienteWhatsapp: c.whatsapp || "",
@@ -2630,42 +2658,66 @@ const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
         console.warn("Não foi possível carregar snapshot do cliente para o pedido.", e);
       }
 
-      await db.collection("pedidos").add({
+      const statusInicial = PERFIL === "admin" ? "aprovado" : "pendente";
+      const pedidoPayload = {
         codigo,
-        userId: user.uid,
+        userId: pedidoUserId,
         clienteNome: cliente,
         produtoNome: produto,
         prazoPagamento: prazo,
         observacao: obs,
         quantidade,
-        representanteNome: REPRESENTANTE_ATUAL,
-        status: "pendente",
+        representanteNome: responsavel,
+        status: statusInicial,
+        criadoPorAdmin: PERFIL === "admin",
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         ...clienteSnapshot
-       });
-      const adminsSnap = await db.collection("usuarios")
-        .where("perfil", "==", "admin")
-        .get();
+      };
 
-    const notifPromises = adminsSnap.docs
-        .map(doc => {
-          const dados = doc.data() || {};
-          return dados.uid || dados.userId || doc.id;
-        })
-        .filter(Boolean)
-        .map(adminUid => db.collection("notificacoes").add({
-          userId: adminUid,
+      if (PERFIL === "admin") {
+        pedidoPayload.data = dataEntrega;
+      }
+
+   const pedidoRef = await db.collection("pedidos").add(pedidoPayload);
+
+      if (PERFIL === "admin") {
+        const agRef = await db.collection("agendamentos").add({
+          userId: pedidoUserId,
+          clienteNome: cliente,
+          produtoNome: produto,
+          quantidade,
+          representanteNome: responsavel,
+          criadoPor: user.uid,
+          data: dataEntrega,
+          observacao: obs,
           pedidoId: codigo,
-          texto: `📥 Novo pedido ${codigo} recebido de ${REPRESENTANTE_ATUAL}`,
-          lida: false,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }));
 
-      await Promise.all(notifPromises);
-      alert("Pedido enviado!");
-      if (PERFIL === "representante") {
-        document.getElementById("modal-pedido")?.classList.add("hidden");
+       await pedidoRef.update({ agendamentoId: agRef.id });
+      } else {
+        const adminsSnap = await db.collection("usuarios")
+          .where("perfil", "==", "admin")
+          .get();
+
+        const notifPromises = adminsSnap.docs
+          .map(doc => {
+            const dados = doc.data() || {};
+            return dados.uid || dados.userId || doc.id;
+          })
+          .filter(Boolean)
+          .map(adminUid => db.collection("notificacoes").add({
+            userId: adminUid,
+            pedidoId: codigo,
+            texto: `📥 Novo pedido ${codigo} recebido de ${responsavel}`,
+            lida: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }));
+
+        await Promise.all(notifPromises);
       }
+      alert(PERFIL === "admin" ? "Pedido criado e aprovado!" : "Pedido enviado!");
+      document.getElementById("modal-pedido")?.classList.add("hidden");
     } catch (e) {
       console.error(e);
       alert("Erro ao enviar pedido. Tente novamente.");
@@ -2673,7 +2725,7 @@ const codigo = "PED-" + String(numeroPedido).padStart(4, "0");
       pedidoEmEnvio = false;
       if (btnPedido) {
         btnPedido.disabled = false;
-        btnPedido.textContent = "Enviar Pedido";
+        btnPedido.textContent = PERFIL === "admin" ? "Criar Pedido" : "Enviar Pedido";
       }
       if (btnCancelar) btnCancelar.disabled = false;
       msgEnviando?.classList.add("hidden");
