@@ -2655,7 +2655,8 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
       linhas.forEach((linha) => {
         linha.querySelector(".btn-remover-produto")?.classList.toggle("hidden", linhas.length === 1);
       });
-    
+    }
+  
   // CRIAR PEDIDO
   let pedidoEmEnvio = false;
   document.getElementById("btn-pedido")?.addEventListener("click", async () => {
@@ -2799,7 +2800,6 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
     }
   });
 
-  }
     if (!PERFIL) {
       await carregarUsuario();
     }
