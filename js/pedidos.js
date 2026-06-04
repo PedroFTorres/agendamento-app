@@ -509,43 +509,81 @@ async function editarPedidoAprovado(id) {
     return;
   }
 
-  if (p.status !== "aprovado") {
-    alert("Só pode editar pedidos aprovados");
-    return;
-  }
-
-  // 🔥 pega data atual do agendamento
-  let dataAtual = "";
-
-  if (p.agendamentoId) {
+  // 🔥 pega data atual do pedido/agendamento
+  let dataAtual = p.data || "";
+  
+  if (!dataAtual && p.agendamentoId) {
     const agSnap = await db.collection("agendamentos").doc(p.agendamentoId).get();
     dataAtual = agSnap.data()?.data || "";
   }
 
   const itensPedido = normalizarItensPedido(p);
-  const permiteEditarQuantidade = itensPedido.length <= 1;
+  const itensEditaveis = itensPedido.length ? itensPedido : [{ produtoNome: p.produtoNome || "", quantidade: Number(p.quantidade || 0) }];
+  const produtosSnap = await db.collection("produtos").get();
+  const nomesProdutos = [];
+  const nomesUnicos = new Set();
+
+  produtosSnap.forEach((produtoDoc) => {
+    const nome = String(produtoDoc.data()?.nome || "").trim();
+    const chave = nome.toLowerCase();
+    if (!nome || nomesUnicos.has(chave)) return;
+    nomesUnicos.add(chave);
+    nomesProdutos.push(nome);
+  });
+  nomesProdutos.sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  const optionsProdutos = nomesProdutos
+    .map((nome) => `<option value="${escapeHtml(nome)}"></option>`)
+    .join("");
+
+  function montarLinhaItem(item) {
+    return `
+      <div class="edit-item grid grid-cols-1 sm:grid-cols-12 gap-2 items-end border rounded p-2">
+        <label class="sm:col-span-7 text-sm">
+          <span class="block mb-1">Produto</span>
+          <input class="edit-produto w-full border p-2" list="edit-produtos-lista" value="${escapeHtml(item.produtoNome)}" placeholder="Produto">
+        </label>
+        <label class="sm:col-span-4 text-sm">
+          <span class="block mb-1">Quantidade</span>
+          <input class="edit-qtd w-full border p-2" type="number" min="1" value="${Number(item.quantidade || 0)}" placeholder="Quantidade">
+        </label>
+        <button type="button" class="remover-edit-item bg-red-600 text-white px-2 py-2 rounded sm:col-span-1">×</button>
+      </div>
+    `;
+  }
   
   // 🔥 cria modal
   const modal = document.createElement("div");
   modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4";
 
   modal.innerHTML = `
-    <div class="bg-white p-4 rounded shadow w-80">
+    <div class="bg-white p-4 rounded shadow w-full max-w-2xl max-h-[95vh] overflow-y-auto">
+      <h3 class="text-lg font-bold mb-3">Editar Pedido</h3>
+      <p class="text-xs text-gray-500 mb-3">Edição permitida somente para administradores.</p>
       <h3 class="text-lg font-bold mb-3">Editar Pedido</h3>
 
-      ${permiteEditarQuantidade ? `
-        <label class="block mb-1">Quantidade</label>
-        <input id="edit-qtd" type="number" value="${p.quantidade}" class="w-full border p-2 mb-3"/>
-      ` : `
-        <div class="bg-slate-50 border rounded p-2 mb-3 text-sm">
-          <p class="font-semibold mb-1">Produtos deste pedido</p>
-          <p>${escapeHtml(formatarItensPedidoTexto(p))}</p>
-          <p class="text-xs text-gray-500 mt-1">Pedidos com mais de um produto permitem editar a data. Altere quantidades nos agendamentos individuais, se necessário.</p>
-        </div>
-      `}
+      <datalist id="edit-produtos-lista">${optionsProdutos}</datalist>
+
+      <div id="edit-itens" class="space-y-2 mb-3">
+        ${itensEditaveis.map(montarLinhaItem).join("")}
+      </div>
+
+      <button id="adicionar-edit-item" type="button" class="border border-blue-600 text-blue-700 px-3 py-2 rounded w-full mb-3">
+        + Adicionar produto
+      </button>
       
-      <label class="block mb-1">Data</label>
-      <input id="edit-data" type="date" value="${dataAtual}" class="w-full border p-2 mb-3"/>
+     <label class="block mb-1">Data/Dia</label>
+      <input id="edit-data" type="date" value="${escapeHtml(dataAtual)}" class="w-full border p-2 mb-3"/>
+
+      <label class="block mb-1">Prazo de pagamento</label>
+      <select id="edit-prazo" class="w-full border p-2 mb-3">
+        ${["À vista", "10 dias", "15 dias", "30 dias", "30/60 dias"]
+          .map((prazo) => `<option value="${prazo}" ${prazo === (p.prazoPagamento || "") ? "selected" : ""}>${prazo}</option>`)
+          .join("")}
+      </select>
+
+      <label class="block mb-1">Observação do pedido</label>
+      <input id="edit-obs" type="text" value="${escapeHtml(p.observacao || "")}" class="w-full border p-2 mb-3" placeholder="Observações"/>
 
       <div class="flex justify-end space-x-2">
         <button id="cancelar-edit" class="bg-gray-400 text-white px-3 py-1 rounded">
@@ -560,55 +598,118 @@ async function editarPedidoAprovado(id) {
 
   document.body.appendChild(modal);
 
+  const containerItens = modal.querySelector("#edit-itens");
+
+  function atualizarBotoesRemover() {
+    const linhas = modal.querySelectorAll(".edit-item");
+    linhas.forEach((linha) => {
+      linha.querySelector(".remover-edit-item")?.classList.toggle("hidden", linhas.length === 1);
+    });
+  }
+
+  function registrarRemocao(linha) {
+    linha.querySelector(".remover-edit-item")?.addEventListener("click", () => {
+      linha.remove();
+      atualizarBotoesRemover();
+    });
+  }
+
+  modal.querySelectorAll(".edit-item").forEach(registrarRemocao);
+  atualizarBotoesRemover();
+
+  modal.querySelector("#adicionar-edit-item").onclick = () => {
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = montarLinhaItem({ produtoNome: "", quantidade: 0 }).trim();
+    const linha = wrapper.firstElementChild;
+    containerItens.appendChild(linha);
+    registrarRemocao(linha);
+    atualizarBotoesRemover();
+  };
+
   // cancelar
   document.getElementById("cancelar-edit").onclick = () => modal.remove();
 
   // salvar
   document.getElementById("salvar-edit").onclick = async () => {
 
-    const novaQtd = permiteEditarQuantidade ? document.getElementById("edit-qtd").value : p.quantidade;
+    const novosItens = Array.from(modal.querySelectorAll(".edit-item"))
+      .map((linha) => ({
+        produtoNome: linha.querySelector(".edit-produto")?.value.trim() || "",
+        quantidade: Number(linha.querySelector(".edit-qtd")?.value || 0)
+      }))
+      .filter((item) => item.produtoNome && item.quantidade > 0);
     const novaData = document.getElementById("edit-data").value;
+    const novoPrazo = document.getElementById("edit-prazo").value;
+    const novaObs = document.getElementById("edit-obs").value.trim();
 
-   if ((permiteEditarQuantidade && !novaQtd) || !novaData) {
-      alert("Preencha todos os campos");
+  if (!novosItens.length || !novaData || !novoPrazo) {
+      alert("Preencha produto, quantidade, data e prazo");
       return;
     }
 
     try {
+      const quantidadeTotal = novosItens.reduce((total, item) => total + item.quantidade, 0);
+      const agendamentoIdsAtuais = Array.isArray(p.agendamentoIds) && p.agendamentoIds.length
+        ? p.agendamentoIds
+        : (p.agendamentoId ? [p.agendamentoId] : []);
+      const agendamentoIdsFinais = [];
+
+      if (p.status === "aprovado") {
+        for (let index = 0; index < novosItens.length; index += 1) {
+          const item = novosItens[index];
+          const dadosAgendamento = {
+            userId: p.userId,
+            clienteNome: p.clienteNome,
+            produtoNome: item.produtoNome,
+            quantidade: item.quantidade,
+            representanteNome: p.representanteNome,
+            criadoPor: p.userId,
+            pedidoId: p.codigo || id,
+            data: novaData
+          };
+
+          if (agendamentoIdsAtuais[index]) {
+            await db.collection("agendamentos").doc(agendamentoIdsAtuais[index]).update(dadosAgendamento);
+            agendamentoIdsFinais.push(agendamentoIdsAtuais[index]);
+          } else {
+            const novoAgendamento = await db.collection("agendamentos").add({
+              ...dadosAgendamento,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            agendamentoIdsFinais.push(novoAgendamento.id);
+          }
+        }
+
+        const agendamentosRemovidos = agendamentoIdsAtuais.slice(novosItens.length);
+        await Promise.all(agendamentosRemovidos.map((agId) => db.collection("agendamentos").doc(agId).delete()));
+      }
 
       const atualizacaoPedido = {
         dataAnterior: dataAtual,
         data: novaData,
-        notificadoData: true,
+        produtoNome: novosItens[0].produtoNome,
+        produtosResumo: novosItens.map((item) => `${item.produtoNome} (${typeof formatQuantidade === "function" ? formatQuantidade(item.quantidade) : item.quantidade})`).join(", "),
+        itens: novosItens,
+        quantidade: quantidadeTotal,
+        qtdAnterior: p.quantidade,
+        prazoPagamento: novoPrazo,
+        observacao: novaObs,
+        notificadoData: dataAtual !== novaData,
+        notificadoQtd: Number(p.quantidade || 0) !== quantidadeTotal,
         editadoPor: user.uid,
         editadoEm: new Date()
       };
 
-       if (permiteEditarQuantidade) {
-        atualizacaoPedido.quantidade = Number(novaQtd);
-        atualizacaoPedido.qtdAnterior = p.quantidade;
-        atualizacaoPedido.notificadoQtd = true;
+       if (p.status === "aprovado") {
+        atualizacaoPedido.agendamentoId = agendamentoIdsFinais[0] || "";
+        atualizacaoPedido.agendamentoIds = agendamentoIdsFinais;
       }
 
+      
        // 🔥 atualiza pedido
       await db.collection("pedidos").doc(id).update(atualizacaoPedido);
 
-      // 🔥 atualiza agendamento
-      const agendamentoIds = Array.isArray(p.agendamentoIds) && p.agendamentoIds.length
-        ? p.agendamentoIds
-        : (p.agendamentoId ? [p.agendamentoId] : []);
-
-      await Promise.all(agendamentoIds.map((agId, index) => {
-        const atualizacaoAgendamento = { data: novaData };
-        if (permiteEditarQuantidade) {
-          atualizacaoAgendamento.quantidade = Number(novaQtd);
-        } else if (itensPedido[index]) {
-          atualizacaoAgendamento.quantidade = itensPedido[index].quantidade;
-        }
-        return db.collection("agendamentos").doc(agId).update(atualizacaoAgendamento);
-      }));
-
-
+      
       modal.remove();
       alert("Pedido atualizado!");
 
@@ -616,9 +717,7 @@ async function editarPedidoAprovado(id) {
       await db.collection("notificacoes").add({
         userId: p.userId,
         pedidoId: p.codigo,
-        texto: permiteEditarQuantidade
-          ? `📝 Pedido ${p.codigo} atualizado: quantidade ${p.quantidade} → ${Number(novaQtd)}, data ${dataAtual || "-"} → ${novaData}.`
-          : `📝 Pedido ${p.codigo} atualizado: data ${dataAtual || "-"} → ${novaData}.`,
+        texto: `📝 Pedido ${p.codigo} atualizado pelo administrador. Produtos: ${atualizacaoPedido.produtosResumo}. Data: ${dataAtual || "-"} → ${novaData}.`,
         lida: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
