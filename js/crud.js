@@ -2890,11 +2890,9 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
       </button>
     ` : ""}
 
-    ${p.status === "aprovado" ? `
-      <button data-id="${p.id}" class="btn-editar bg-blue-600 text-white px-2 py-1 rounded">
-        Editar
-      </button>
-    ` : ""}
+    <button data-id="${p.id}" class="btn-editar bg-blue-600 text-white px-2 py-1 rounded">
+      Editar
+    </button>
 
   </div>
 ` : ""}
