@@ -79,6 +79,77 @@ function obterPrazoPedido(pedido) {
   return prazoPagamento || prazoAgendamento;
 }
 
+function formatarDataWhatsapp(valor) {
+  if (!valor) return "-";
+  if (valor && typeof valor.toDate === "function") {
+    return valor.toDate().toLocaleDateString("pt-BR");
+  }
+  if (typeof valor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    const [ano, mes, dia] = valor.split("-");
+    return `${dia}/${mes}/${ano}`;
+  }
+  return formatarDataPedido(valor);
+}
+
+function normalizarNumeroWhatsapp(valor) {
+  const digitos = String(valor || "").replace(/\D/g, "");
+  if (!digitos) return "";
+  if (digitos.startsWith("55")) return digitos;
+  return `55${digitos}`;
+}
+
+function abrirUrlWhatsapp(numero, mensagem) {
+  const numeroNormalizado = normalizarNumeroWhatsapp(numero);
+  if (!numeroNormalizado) return false;
+  const url = `https://wa.me/${numeroNormalizado}?text=${encodeURIComponent(mensagem)}`;
+  window.open(url, "_blank", "noopener");
+  return true;
+}
+
+async function abrirWhatsappPedidoAprovado(pedido, dataAgendada) {
+  const cliente = await buscarDadosClientePedido(pedido);
+  const mensagem = [
+    `Olá, ${pedido.clienteNome || "cliente"}.`,
+    `Seu pedido ${pedido.codigo || ""} foi aprovado e agendado para ${formatarDataWhatsapp(dataAgendada)}.`,
+    `Produtos: ${formatarItensPedidoTexto(pedido)}.`,
+    `Quantidade total: ${formatarQuantidadePedido(obterTotalQuantidadePedido(pedido))}.`
+  ].filter(Boolean).join("\n");
+
+  if (!abrirUrlWhatsapp(cliente.whatsapp || pedido.clienteWhatsapp, mensagem)) {
+    alert("Pedido aprovado, mas este cliente não tem WhatsApp cadastrado.");
+  }
+}
+
+async function abrirWhatsappPedidoAtualizado(pedidoAnterior, pedidoAtualizado, dataAnterior, novaData) {
+  const cliente = await buscarDadosClientePedido(pedidoAtualizado);
+  const itensAntes = formatarItensPedidoTexto(pedidoAnterior);
+  const itensDepois = formatarItensPedidoTexto(pedidoAtualizado);
+  const quantidadeAntes = obterTotalQuantidadePedido(pedidoAnterior);
+  const quantidadeDepois = obterTotalQuantidadePedido(pedidoAtualizado);
+  const linhasAlteracoes = [];
+
+  if (dataAnterior !== novaData) {
+    linhasAlteracoes.push(`Data: ${formatarDataWhatsapp(dataAnterior)} -> ${formatarDataWhatsapp(novaData)}`);
+  }
+  if (itensAntes !== itensDepois || Number(quantidadeAntes || 0) !== Number(quantidadeDepois || 0)) {
+    linhasAlteracoes.push(`Pedido: ${itensAntes} -> ${itensDepois}`);
+    linhasAlteracoes.push(`Quantidade total: ${formatarQuantidadePedido(quantidadeAntes)} -> ${formatarQuantidadePedido(quantidadeDepois)}`);
+  }
+
+  if (!linhasAlteracoes.length) return;
+
+  const mensagem = [
+    `Olá, ${pedidoAtualizado.clienteNome || "cliente"}.`,
+    `Houve uma atualização no seu pedido ${pedidoAtualizado.codigo || ""}:`,
+    ...linhasAlteracoes,
+    `Nova data agendada: ${formatarDataWhatsapp(novaData)}.`
+  ].join("\n");
+
+  if (!abrirUrlWhatsapp(cliente.whatsapp || pedidoAtualizado.clienteWhatsapp, mensagem)) {
+    alert("Pedido atualizado, mas este cliente não tem WhatsApp cadastrado.");
+  }
+}
+
 async function carregarLogoDataUrl() {
   try {
     const blob = await fetch("img/logo.png").then((r) => r.blob());
@@ -420,6 +491,14 @@ async function aprovarPedido(id, btn) {
             });
 
             alert("Pedido aprovado e agendado!");
+            await abrirWhatsappPedidoAprovado({
+              id,
+              ...p,
+              status: "aprovado",
+              agendamentoId: agRefs[0] || "",
+              agendamentoIds: agRefs,
+              data: dataEscolhida
+            }, dataEscolhida);
             modal.remove();
 
           } catch (e) {
@@ -721,6 +800,15 @@ async function editarPedidoAprovado(id) {
         lida: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+
+      if (p.status === "aprovado") {
+        await abrirWhatsappPedidoAtualizado(
+          p,
+          { id, ...p, ...atualizacaoPedido },
+          dataAtual,
+          novaData
+        );
+      }
 
       location.reload();
 
