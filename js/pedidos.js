@@ -73,7 +73,37 @@ function obterPrazoPedido(pedido) {
   return prazoPagamento || "-";
 }
 
-function obterDataAgendadaPedido(pedido) {
+async function obterDataCarregamentoPedido(pedido) {
+  const agendamentoIds = Array.isArray(pedido.agendamentoIds) && pedido.agendamentoIds.length
+    ? pedido.agendamentoIds
+    : (pedido.agendamentoId ? [pedido.agendamentoId] : []);
+
+  for (const agendamentoId of agendamentoIds) {
+    try {
+      const snap = await db.collection("agendamentos").doc(agendamentoId).get();
+      const data = snap.data()?.data;
+      if (data) return formatarDataPedido(data);
+    } catch (_) {
+      // Continua para tentar outras referencias do pedido.
+    }
+  }
+
+  if (pedido.codigo) {
+    try {
+      const snap = await db.collection("agendamentos")
+        .where("pedidoId", "==", pedido.codigo)
+        .limit(1)
+        .get();
+
+      if (!snap.empty) {
+        const data = snap.docs[0].data()?.data;
+        if (data) return formatarDataPedido(data);
+      }
+    } catch (_) {
+      // Se nao encontrar no agendamento, usa a data salva no pedido como fallback.
+    }
+  }
+
   return formatarDataPedido(pedido.data);
 }
 
@@ -110,7 +140,7 @@ async function abrirWhatsappPedidoAprovado(pedido, dataAgendada) {
 
   const mensagem = [
     `Olá, ${pedido.clienteNome || "cliente"}.`,
-    `Seu pedido ${pedido.codigo || ""} foi aprovado e agendado para ${formatarDataWhatsapp(dataAgendada)}.`,
+    `Seu pedido ${pedido.codigo || ""} foi aprovado com carregamento para ${formatarDataWhatsapp(dataAgendada)}.`,
     `Produtos: ${formatarItensPedidoTexto(pedido)}.`,
     `Quantidade total: ${formatarQuantidadePedido(obterTotalQuantidadePedido(pedido))}.`,
     "O PDF do pedido foi gerado para anexar nesta conversa."
@@ -145,7 +175,7 @@ async function abrirWhatsappPedidoAtualizado(pedidoAnterior, pedidoAtualizado, d
     `Olá, ${pedidoAtualizado.clienteNome || "cliente"}.`,
     `Houve uma atualização no seu pedido ${pedidoAtualizado.codigo || ""}:`,
     ...linhasAlteracoes,
-    `Nova data agendada: ${formatarDataWhatsapp(novaData)}.`,
+    `Nova data do carregamento: ${formatarDataWhatsapp(novaData)}.`,
     "O PDF atualizado do pedido foi gerado para anexar nesta conversa."
   ].join("\n");
 
@@ -220,7 +250,7 @@ async function imprimirPedidoPdf(pedido, cliente = {}) {
   const doc = new jsPDF();
   const emissao = formatarDataPedido(pedido.createdAt);
   const prazo = obterPrazoPedido(pedido);
-  const dataAgendada = obterDataAgendadaPedido(pedido);
+  const dataCarregamento = await obterDataCarregamentoPedido(pedido);
 
   const itensTexto = formatarItensPedidoTexto(pedido);
   const quantidade = formatarQuantidadePedido(obterTotalQuantidadePedido(pedido));
@@ -252,7 +282,7 @@ const logo = await carregarLogoDataUrl();
     ["Produtos", itensTexto],
     ["Quantidade total", quantidade],
     ["Prazo", prazo],
-    ["Data agendada", dataAgendada],
+    ["Data do carregamento", dataCarregamento],
     ["Observação", pedido.observacao || "-"]
   ];
 
@@ -309,7 +339,7 @@ async function abrirModalDetalhesPedido(pedido) {
 
   const emissao = formatarDataPedido(pedido.createdAt);
    const prazo = obterPrazoPedido(pedido);
-  const dataAgendada = obterDataAgendadaPedido(pedido);
+  const dataCarregamento = await obterDataCarregamentoPedido(pedido);
  const itensTexto = formatarItensPedidoTexto(pedido);
   const quantidade = formatarQuantidadePedido(obterTotalQuantidadePedido(pedido));
 
@@ -336,7 +366,7 @@ async function abrirModalDetalhesPedido(pedido) {
           <div class="bg-slate-50 rounded-lg p-3 md:col-span-2"><span class="font-semibold text-slate-700">Produtos:</span> ${escapeHtml(itensTexto)}</div>
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Quantidade total:</span> ${escapeHtml(quantidade)}</div>
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Prazo:</span> ${escapeHtml(prazo || "-")}</div>
-          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Data agendada:</span> ${escapeHtml(dataAgendada || "-")}</div>
+          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Data do carregamento:</span> ${escapeHtml(dataCarregamento || "-")}</div>
           <div class="md:col-span-2 bg-orange-50 rounded-lg p-3 border border-orange-100"><span class="font-semibold text-slate-700">Observação:</span> ${escapeHtml(pedido.observacao || "-")}</div>
         </div>
 
