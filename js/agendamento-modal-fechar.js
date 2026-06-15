@@ -1,4 +1,84 @@
 (() => {
+  async function buscarPedidoDoAgendamento(agendamento) {
+    const pedidoId = String(agendamento.pedidoId || "").trim();
+    if (!pedidoId) return null;
+
+    const snap = await db.collection("pedidos")
+      .where("codigo", "==", pedidoId)
+      .limit(1)
+      .get();
+
+    if (snap.empty) return null;
+    const doc = snap.docs[0];
+    return { id: doc.id, ...doc.data() };
+  }
+
+  function montarAtualizacaoPedidoPorAgendamento(pedido, agendamentoId, agendamentoAnterior, agendamentoAtualizado) {
+    const atualizacao = {
+      dataAnterior: pedido.data || agendamentoAnterior.data || "",
+      data: agendamentoAtualizado.data,
+      notificadoData: (pedido.data || agendamentoAnterior.data || "") !== agendamentoAtualizado.data
+    };
+
+    if (Array.isArray(pedido.itens) && pedido.itens.length) {
+      const itens = pedido.itens.map((item) => ({ ...item }));
+      const agendamentoIds = Array.isArray(pedido.agendamentoIds) ? pedido.agendamentoIds : [];
+      let index = agendamentoIds.indexOf(agendamentoId);
+
+      if (index < 0) {
+        index = itens.findIndex((item) => item.produtoNome === agendamentoAnterior.produtoNome);
+      }
+
+      if (index >= 0 && itens[index]) {
+        itens[index] = {
+          ...itens[index],
+          produtoNome: agendamentoAtualizado.produtoNome,
+          quantidade: agendamentoAtualizado.quantidade
+        };
+
+        const quantidadeTotal = itens.reduce((total, item) => total + Number(item.quantidade || 0), 0);
+        atualizacao.itens = itens;
+        atualizacao.produtoNome = itens[0]?.produtoNome || agendamentoAtualizado.produtoNome;
+        atualizacao.produtosResumo = itens
+          .map((item) => `${item.produtoNome} (${typeof formatQuantidade === "function" ? formatQuantidade(item.quantidade) : item.quantidade})`)
+          .join(", ");
+        atualizacao.qtdAnterior = pedido.quantidade;
+        atualizacao.quantidade = quantidadeTotal;
+        atualizacao.notificadoQtd = Number(pedido.quantidade || 0) !== quantidadeTotal;
+      }
+    } else {
+      atualizacao.produtoNome = agendamentoAtualizado.produtoNome;
+      atualizacao.quantidade = agendamentoAtualizado.quantidade;
+      atualizacao.qtdAnterior = pedido.quantidade;
+      atualizacao.notificadoQtd = Number(pedido.quantidade || 0) !== Number(agendamentoAtualizado.quantidade || 0);
+    }
+
+    return atualizacao;
+  }
+
+  async function atualizarPedidoVinculadoAoAgendamento(agendamentoId, agendamentoAnterior, agendamentoAtualizado) {
+    const pedido = await buscarPedidoDoAgendamento(agendamentoAnterior);
+    if (!pedido) return;
+
+    const atualizacaoPedido = montarAtualizacaoPedidoPorAgendamento(
+      pedido,
+      agendamentoId,
+      agendamentoAnterior,
+      agendamentoAtualizado
+    );
+
+    await db.collection("pedidos").doc(pedido.id).update(atualizacaoPedido);
+
+    if (pedido.status === "aprovado" && typeof window.abrirWhatsappPedidoAtualizado === "function") {
+      await window.abrirWhatsappPedidoAtualizado(
+        pedido,
+        { ...pedido, ...atualizacaoPedido },
+        pedido.data || agendamentoAnterior.data,
+        agendamentoAtualizado.data
+      );
+    }
+  }
+
   async function abrirEdicaoAgendamentoComFechar(id) {
     const user = await waitForAuth();
     const snap = await db.collection("agendamentos").doc(id).get();
@@ -88,13 +168,16 @@
     modal.querySelector("#edit-data").value = d.data || "";
 
     modal.querySelector("#salvar").onclick = async () => {
-      await db.collection("agendamentos").doc(id).update({
+      const dadosAtualizados = {
         clienteNome: selCliente.value,
         representanteNome: selRepresentante.value || REPRESENTANTE_ATUAL,
         produtoNome: selProduto.value,
         quantidade: parseInt(modal.querySelector("#edit-qtd").value, 10) || 0,
         data: modal.querySelector("#edit-data").value
-      });
+      };
+
+      await db.collection("agendamentos").doc(id).update(dadosAtualizados);
+      await atualizarPedidoVinculadoAoAgendamento(id, d, dadosAtualizados);
 
       fecharModal();
     };
