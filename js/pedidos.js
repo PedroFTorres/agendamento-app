@@ -70,13 +70,11 @@ function obterTotalQuantidadePedido(pedido = {}) {
 
 function obterPrazoPedido(pedido) {
   const prazoPagamento = String(pedido.prazoPagamento || "").trim();
-  const prazoAgendamento = formatarDataPedido(pedido.data);
+  return prazoPagamento || "-";
+}
 
-  if (prazoPagamento && prazoAgendamento !== "-") {
-    return `${prazoPagamento} • Entrega ${prazoAgendamento}`;
-  }
-
-  return prazoPagamento || prazoAgendamento;
+function obterDataAgendadaPedido(pedido) {
+  return formatarDataPedido(pedido.data);
 }
 
 function formatarDataWhatsapp(valor) {
@@ -108,11 +106,14 @@ function abrirUrlWhatsapp(numero, mensagem) {
 
 async function abrirWhatsappPedidoAprovado(pedido, dataAgendada) {
   const cliente = await buscarDadosClientePedido(pedido);
+  await imprimirPedidoPdf(pedido, cliente);
+
   const mensagem = [
     `Olá, ${pedido.clienteNome || "cliente"}.`,
     `Seu pedido ${pedido.codigo || ""} foi aprovado e agendado para ${formatarDataWhatsapp(dataAgendada)}.`,
     `Produtos: ${formatarItensPedidoTexto(pedido)}.`,
-    `Quantidade total: ${formatarQuantidadePedido(obterTotalQuantidadePedido(pedido))}.`
+    `Quantidade total: ${formatarQuantidadePedido(obterTotalQuantidadePedido(pedido))}.`,
+    "O PDF do pedido foi gerado para anexar nesta conversa."
   ].filter(Boolean).join("\n");
 
   if (!abrirUrlWhatsapp(cliente.whatsapp || pedido.clienteWhatsapp, mensagem)) {
@@ -138,11 +139,14 @@ async function abrirWhatsappPedidoAtualizado(pedidoAnterior, pedidoAtualizado, d
 
   if (!linhasAlteracoes.length) return;
 
+  await imprimirPedidoPdf(pedidoAtualizado, cliente);
+
   const mensagem = [
     `Olá, ${pedidoAtualizado.clienteNome || "cliente"}.`,
     `Houve uma atualização no seu pedido ${pedidoAtualizado.codigo || ""}:`,
     ...linhasAlteracoes,
-    `Nova data agendada: ${formatarDataWhatsapp(novaData)}.`
+    `Nova data agendada: ${formatarDataWhatsapp(novaData)}.`,
+    "O PDF atualizado do pedido foi gerado para anexar nesta conversa."
   ].join("\n");
 
   if (!abrirUrlWhatsapp(cliente.whatsapp || pedidoAtualizado.clienteWhatsapp, mensagem)) {
@@ -216,6 +220,7 @@ async function imprimirPedidoPdf(pedido, cliente = {}) {
   const doc = new jsPDF();
   const emissao = formatarDataPedido(pedido.createdAt);
   const prazo = obterPrazoPedido(pedido);
+  const dataAgendada = obterDataAgendadaPedido(pedido);
 
   const itensTexto = formatarItensPedidoTexto(pedido);
   const quantidade = formatarQuantidadePedido(obterTotalQuantidadePedido(pedido));
@@ -247,6 +252,7 @@ const logo = await carregarLogoDataUrl();
     ["Produtos", itensTexto],
     ["Quantidade total", quantidade],
     ["Prazo", prazo],
+    ["Data agendada", dataAgendada],
     ["Observação", pedido.observacao || "-"]
   ];
 
@@ -303,6 +309,7 @@ async function abrirModalDetalhesPedido(pedido) {
 
   const emissao = formatarDataPedido(pedido.createdAt);
    const prazo = obterPrazoPedido(pedido);
+  const dataAgendada = obterDataAgendadaPedido(pedido);
  const itensTexto = formatarItensPedidoTexto(pedido);
   const quantidade = formatarQuantidadePedido(obterTotalQuantidadePedido(pedido));
 
@@ -329,6 +336,7 @@ async function abrirModalDetalhesPedido(pedido) {
           <div class="bg-slate-50 rounded-lg p-3 md:col-span-2"><span class="font-semibold text-slate-700">Produtos:</span> ${escapeHtml(itensTexto)}</div>
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Quantidade total:</span> ${escapeHtml(quantidade)}</div>
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Prazo:</span> ${escapeHtml(prazo || "-")}</div>
+          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Data agendada:</span> ${escapeHtml(dataAgendada || "-")}</div>
           <div class="md:col-span-2 bg-orange-50 rounded-lg p-3 border border-orange-100"><span class="font-semibold text-slate-700">Observação:</span> ${escapeHtml(pedido.observacao || "-")}</div>
         </div>
 
@@ -868,3 +876,4 @@ async function excluirPedidoCompleto(id) {
 // Garante disponibilidade global para chamadas vindas de outros scripts.
 window.imprimirPedidoPdf = imprimirPedidoPdf;
 window.abrirModalDetalhesPedido = abrirModalDetalhesPedido;
+window.abrirWhatsappPedidoAtualizado = abrirWhatsappPedidoAtualizado;
