@@ -279,59 +279,67 @@ const logo = await carregarLogoDataUrl();
   doc.setLineWidth(0.5);
   doc.line(14, 36, 196, 36);
 
-  const secoes = [
-    ["Pedido", pedido.codigo || "-"],
-    ["Status", pedido.status || "-"],
-    ["Representante", pedido.representanteNome || "-"],
-    ["Produtos", itensTexto],
-    ["Quantidade total", quantidade],
-    ["Prazo", prazo],
-    ["Data do carregamento", dataCarregamento],
-    ["Observação", pedido.observacao || "-"]
-  ];
+  const margemX = 14;
+  const larguraPagina = 182;
+  const gap = 6;
+  const larguraColuna = (larguraPagina - gap) / 2;
 
-  const dadosCliente = [
-    ["Cliente", formatarCampoCliente(cliente.nome || pedido.clienteNome)],
-    ["CNPJ/CPF", formatarCampoCliente(cliente.cnpj)],
-    ["WhatsApp", formatarCampoCliente(cliente.whatsapp)],
-    ["Inscrição Estadual", formatarCampoCliente(cliente.ie)],
-    ["Endereço", formatarEnderecoCliente(cliente)]
-  ];
+  function desenharTituloSecao(titulo, posY) {
+    doc.setTextColor(31, 41, 55);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text(titulo, margemX, posY);
+    return posY + 7;
+  }
+
+  function desenharCampo(rotulo, valor, x, posY, larguraCampo) {
+    const texto = String(valor || "-");
+    const linhas = doc.splitTextToSize(texto, larguraCampo - 8);
+    const altura = Math.max(18, 11 + linhas.length * 5);
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(x, posY, larguraCampo, altura, 2, 2, "FD");
+
+    doc.setTextColor(31, 41, 55);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${rotulo}:`, x + 4, posY + 6);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(linhas, x + 4, posY + 12);
+
+    return posY + altura + 4;
+  }
+
+  function desenharLinhaDupla(campoA, campoB, posY) {
+    const yA = desenharCampo(campoA[0], campoA[1], margemX, posY, larguraColuna);
+    const yB = desenharCampo(campoB[0], campoB[1], margemX + larguraColuna + gap, posY, larguraColuna);
+    return Math.max(yA, yB);
+  }
 
   let y = 46;
-  doc.setTextColor(31, 41, 55);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text("Informações do Pedido", 14, y);
-  y += 6;
+  y = desenharTituloSecao("Informações do Pedido", y);
+  y = desenharLinhaDupla(["Pedido", pedido.codigo || "-"], ["Status", pedido.status || "-"], y);
+  y = desenharLinhaDupla(["Representante", pedido.representanteNome || "-"], ["Prazo", prazo], y);
+  y = desenharCampo("Produtos", itensTexto, margemX, y, larguraPagina);
+  y = desenharLinhaDupla(["Quantidade total", quantidade], ["Data do carregamento", dataCarregamento], y);
+  y = desenharCampo("Observação", pedido.observacao || "-", margemX, y, larguraPagina);
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  secoes.forEach(([rotulo, valor]) => {
-    const linhas = doc.splitTextToSize(String(valor || "-"), 130);
-    doc.setFont("helvetica", "bold");
-    doc.text(`${rotulo}:`, 14, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(linhas, 50, y);
-    y += Math.max(6, linhas.length * 5);
-  });
-
-  y += 2;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("Dados do Cliente", 14, y);
-  y += 6;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  dadosCliente.forEach(([rotulo, valor]) => {
-    const linhas = doc.splitTextToSize(String(valor || "-"), 130);
-    doc.setFont("helvetica", "bold");
-    doc.text(`${rotulo}:`, 14, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(linhas, 50, y);
-    y += Math.max(6, linhas.length * 5);
-  });
+  y += 3;
+  y = desenharTituloSecao("Dados do Cliente", y);
+  y = desenharLinhaDupla(
+    ["Cliente", formatarCampoCliente(cliente.nome || pedido.clienteNome)],
+    ["CNPJ/CPF", formatarCampoCliente(cliente.cnpj)],
+    y
+  );
+  y = desenharLinhaDupla(
+    ["WhatsApp", formatarCampoCliente(cliente.whatsapp)],
+    ["Inscrição Estadual", formatarCampoCliente(cliente.ie)],
+    y
+  );
+  y = desenharCampo("Endereço", formatarEnderecoCliente(cliente), margemX, y, larguraPagina);
 
   doc.save(`pedido-${pedido.codigo || pedido.id || "sem-codigo"}.pdf`);
 }
