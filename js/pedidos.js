@@ -12,6 +12,10 @@ function formatarDataPedido(valor) {
   if (valor && typeof valor.toDate === "function") {
     return valor.toDate().toLocaleDateString("pt-BR");
   }
+  if (typeof valor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    const [ano, mes, dia] = valor.split("-");
+    return `${dia}/${mes}/${ano}`;
+  }
   const data = new Date(valor);
   if (Number.isNaN(data.getTime())) return "-";
   return data.toLocaleDateString("pt-BR");
