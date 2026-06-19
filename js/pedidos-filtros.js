@@ -31,6 +31,14 @@
       .toLowerCase();
   }
 
+  function escaparAtributoFiltro(valor) {
+    return String(valor || "")
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
   function preencherSelectProduto(select, listaProdutos) {
     if (!select) return;
     const valorAtual = select.value;
@@ -392,7 +400,7 @@
             <form id="filtro-representante-form" class="block">
               <span class="block text-sm font-semibold text-gray-700 mb-1">Representante</span>
               <div class="flex gap-2">
-                <input id="filtro-representante-pedidos" type="search" class="border p-2 rounded w-full" value="${pedidosFiltroRepresentante}" placeholder="Buscar por representante">
+                <input id="filtro-representante-pedidos" type="search" class="border p-2 rounded w-full" value="${escaparAtributoFiltro(pedidosFiltroRepresentante)}" placeholder="Buscar por representante">
                 <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded">Buscar</button>
               </div>
             </form>
