@@ -1608,7 +1608,7 @@ function renderRelatorios(somenteRanking = false) {
   window.__MODO_RANKING_CLIENTES__ = somenteRanking;
   const hoje = new Date();
   const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
-  const colunasFiltro = PERFIL === "admin" ? "lg:grid-cols-4" : "md:grid-cols-3";
+  const colunasFiltro = PERFIL === "admin" ? "lg:grid-cols-5" : "lg:grid-cols-4";
 
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-3">${somenteRanking ? "Ranking de Clientes" : "Relatórios"}</h2>
@@ -1624,6 +1624,13 @@ function renderRelatorios(somenteRanking = false) {
           <span class="block text-xs font-semibold text-gray-600 mb-1">Cliente</span>
           <select id="rel-cliente" class="border p-2 rounded w-full">
             <option value="">Todos os clientes</option>
+          </select>
+        </label>
+
+        <label class="block">
+          <span class="block text-xs font-semibold text-gray-600 mb-1">Produto</span>
+          <select id="rel-produto" class="border p-2 rounded w-full">
+            <option value="">Todos os produtos</option>
           </select>
         </label>
 
@@ -1757,6 +1764,26 @@ async function carregarFiltrosRelatorio() {
       selCli.appendChild(opt);
     });
 
+  const selProduto = document.getElementById("rel-produto");
+  if (selProduto) {
+    const produtosSnap = await db.collection("produtos").get();
+    const produtos = new Set();
+
+    produtosSnap.forEach(doc => {
+      const nome = String(doc.data()?.nome || "").trim();
+      if (nome) produtos.add(nome);
+    });
+
+    Array.from(produtos)
+      .sort((a, b) => a.localeCompare(b, "pt-BR"))
+      .forEach(nome => {
+        const opt = document.createElement("option");
+        opt.value = nome;
+        opt.textContent = nome;
+        selProduto.appendChild(opt);
+      });
+  }
+
   const selRep = document.getElementById("rel-representante");
   if (PERFIL === "admin" && selRep) {
     const repSnap = await db.collection("usuarios")
@@ -1785,6 +1812,7 @@ async function gerarRelatorio() {
   const start = document.getElementById("rel-start").value;
   const end = document.getElementById("rel-end").value;
   const clienteSel = document.getElementById("rel-cliente").value;
+  const produtoSel = document.getElementById("rel-produto")?.value || "";
   const representanteSel = document.getElementById("rel-representante")?.value || "";
   const totaisEl = document.getElementById("rel-totais");
   const rankingEl = document.getElementById("ranking-clientes-lista");
@@ -1838,6 +1866,7 @@ async function gerarRelatorio() {
     if (start && data < start) return false;
     if (end && data > end) return false;
     if (clienteSel && String(d.clienteNome || "") !== clienteSel) return false;
+    if (produtoSel && String(d.produtoNome || "") !== produtoSel) return false;
     if (PERFIL === "admin" && representanteSel && String(d.representanteNome || "") !== representanteSel) return false;
     return true;
   });
@@ -1971,6 +2000,7 @@ async function gerarRelatorio() {
     porCli,
     rankingClientes,
     clienteSel,
+    produtoSel,
     representanteSel
   };
 }
@@ -1991,6 +2021,7 @@ async function exportarPDF() {
     porCli,
     rankingClientes,
     clienteSel,
+    produtoSel,
     representanteSel
   } = window.__REL_CACHE__;
   const { jsPDF } = window.jspdf;
@@ -2081,6 +2112,10 @@ async function exportarPDF() {
   y += 5;
   if (clienteSel) {
     doc.text(`Cliente: ${clienteSel}`, margemX, y);
+    y += 5;
+  }
+  if (produtoSel) {
+    doc.text(`Produto: ${produtoSel}`, margemX, y);
     y += 5;
   }
   if (representanteSel) {
