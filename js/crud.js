@@ -1139,6 +1139,126 @@ payload.uid = cred.user.uid;
 }
 
 // ================== AGENDAMENTOS ==================
+function excluirAgendamentoESincronizarPedido(id) {
+  return (async () => {
+    await waitForAuth();
+
+    if (PERFIL !== "admin") {
+      alert("Sem permissão para excluir agendamentos.");
+      return;
+    }
+
+    const agendamentoRef = db.collection("agendamentos").doc(id);
+    const agendamentoSnap = await agendamentoRef.get();
+
+    if (!agendamentoSnap.exists) {
+      alert("Agendamento não encontrado.");
+      return;
+    }
+
+    const agendamento = agendamentoSnap.data() || {};
+    let pedidoDoc = null;
+
+    const porListaIds = await db.collection("pedidos")
+      .where("agendamentoIds", "array-contains", id)
+      .limit(1)
+      .get();
+
+    if (!porListaIds.empty) {
+      pedidoDoc = porListaIds.docs[0];
+    }
+
+    if (!pedidoDoc) {
+      const porIdPrincipal = await db.collection("pedidos")
+        .where("agendamentoId", "==", id)
+        .limit(1)
+        .get();
+
+      if (!porIdPrincipal.empty) {
+        pedidoDoc = porIdPrincipal.docs[0];
+      }
+    }
+
+    if (!pedidoDoc && agendamento.pedidoId) {
+      const porCodigo = await db.collection("pedidos")
+        .where("codigo", "==", agendamento.pedidoId)
+        .limit(1)
+        .get();
+
+      if (!porCodigo.empty) {
+        pedidoDoc = porCodigo.docs[0];
+      }
+    }
+
+    const batch = db.batch();
+    batch.delete(agendamentoRef);
+
+    if (pedidoDoc) {
+      const pedido = pedidoDoc.data() || {};
+      let agendamentosRestantes = [];
+
+      if (agendamento.pedidoId) {
+        const relacionados = await db.collection("agendamentos")
+          .where("pedidoId", "==", agendamento.pedidoId)
+          .get();
+
+        agendamentosRestantes = relacionados.docs
+          .filter(doc => doc.id !== id)
+          .map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+      } else {
+        const idsAtuais = Array.isArray(pedido.agendamentoIds) && pedido.agendamentoIds.length
+          ? pedido.agendamentoIds
+          : (pedido.agendamentoId ? [pedido.agendamentoId] : []);
+
+        const snapsRestantes = await Promise.all(
+          idsAtuais
+            .filter(agendamentoId => agendamentoId !== id)
+            .map(agendamentoId => db.collection("agendamentos").doc(agendamentoId).get())
+        );
+
+        agendamentosRestantes = snapsRestantes
+          .filter(doc => doc.exists)
+          .map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+      }
+
+      if (!agendamentosRestantes.length) {
+        batch.update(pedidoDoc.ref, {
+          status: "cancelado",
+          motivoCancelamento: "Agendamento excluído pela Dashboard",
+          notificadoCancelado: true,
+          agendamentoId: "",
+          agendamentoIds: [],
+          editadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        const itensRestantes = agendamentosRestantes.map(item => ({
+          produtoNome: item.produtoNome || "Não informado",
+          quantidade: Number(item.quantidade || 0)
+        }));
+        const quantidadeRestante = itensRestantes.reduce(
+          (total, item) => total + item.quantidade,
+          0
+        );
+        const idsRestantes = agendamentosRestantes.map(item => item.id);
+
+        batch.update(pedidoDoc.ref, {
+          agendamentoId: idsRestantes[0] || "",
+          agendamentoIds: idsRestantes,
+          itens: itensRestantes,
+          produtoNome: itensRestantes[0]?.produtoNome || "",
+          produtosResumo: itensRestantes
+            .map(item => `${item.produtoNome} (${formatQuantidade(item.quantidade)})`)
+            .join(", "),
+          quantidade: quantidadeRestante,
+          editadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+
+    await batch.commit();
+  })();
+}
+
 function renderAgendamentos() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Agendamentos</h2>
@@ -1386,7 +1506,7 @@ if (PERFIL === "representante") {
             container.querySelectorAll(".btn-del").forEach(btn => {
               btn.addEventListener("click", async e => {
                 if (confirm("Excluir este agendamento?")) {
-                  await db.collection("agendamentos").doc(e.target.dataset.id).delete();
+                  await excluirAgendamentoESincronizarPedido(e.target.dataset.id);
                 }
               });
             });
@@ -2336,7 +2456,7 @@ listaProdutos.forEach(nome => {
   // EXCLUIR
   modal.querySelector("#excluir").onclick = async () => {
     if (confirm("Excluir agendamento?")) {
-      await db.collection("agendamentos").doc(id).delete();
+      await excluirAgendamentoESincronizarPedido(id);
       modal.remove();
     }
   };
