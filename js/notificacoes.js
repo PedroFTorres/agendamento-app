@@ -1,5 +1,138 @@
+async function obterRegistroNotificacoes() {
+  if (!("serviceWorker" in navigator)) return null;
+
+  try {
+    return await navigator.serviceWorker.register("notification-sw.js");
+  } catch (e) {
+    console.error("Não foi possível registrar as notificações do celular:", e);
+    return null;
+  }
+}
+
+async function mostrarNotificacaoCelular(id, notificacao) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (!notificacao?.texto) return;
+
+  const registro = await obterRegistroNotificacoes();
+  const opcoes = {
+    body: notificacao.texto,
+    icon: new URL("img/logo.png", window.location.href).href,
+    badge: new URL("img/logo.png", window.location.href).href,
+    tag: `agendamento-notificacao-${id}`,
+    renotify: false,
+    data: { url: window.location.href }
+  };
+
+  if (registro?.showNotification) {
+    await registro.showNotification("Agendamento App", opcoes);
+    return;
+  }
+
+  try {
+    new Notification("Agendamento App", opcoes);
+  } catch (e) {
+    console.warn("O navegador não conseguiu mostrar a notificação.", e);
+  }
+}
+
+function iniciarEscutaNotificacoesCelular(userId) {
+  if (window.__UNSUB_NOTIFICACOES_CELULAR__) {
+    window.__UNSUB_NOTIFICACOES_CELULAR__();
+  }
+
+  let primeiraCarga = true;
+  window.__UNSUB_NOTIFICACOES_CELULAR__ = db.collection("notificacoes")
+    .where("userId", "==", userId)
+    .onSnapshot((snap) => {
+      if (primeiraCarga) {
+        primeiraCarga = false;
+        return;
+      }
+
+      snap.docChanges().forEach((change) => {
+        if (change.type !== "added") return;
+
+        const notificacao = change.doc.data() || {};
+        if (notificacao.lida === true || !notificacao.texto) return;
+        mostrarNotificacaoCelular(change.doc.id, notificacao);
+      });
+    }, (erro) => {
+      console.error("Erro ao acompanhar notificações do celular:", erro);
+    });
+}
+
+async function solicitarNotificacoesCelular() {
+  if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+    alert("Este navegador não oferece suporte a notificações.");
+    return;
+  }
+
+  const permissao = await Notification.requestPermission();
+  if (permissao !== "granted") {
+    atualizarStatusNotificacoesCelular();
+    alert("A permissão não foi concedida. Você pode liberá-la nas configurações do navegador.");
+    return;
+  }
+
+  const registro = await obterRegistroNotificacoes();
+  if (!registro) {
+    alert("Não foi possível ativar as notificações neste aparelho.");
+    return;
+  }
+
+  await registro.showNotification("Notificações ativadas", {
+    body: "Você receberá avisos enquanto o aplicativo estiver aberto ou ativo em segundo plano.",
+    icon: new URL("img/logo.png", window.location.href).href,
+    tag: "agendamento-notificacoes-ativadas",
+    data: { url: window.location.href }
+  });
+
+  atualizarStatusNotificacoesCelular();
+}
+
+function atualizarStatusNotificacoesCelular() {
+  const status = document.getElementById("status-notificacoes-celular");
+  const botao = document.getElementById("btn-ativar-notificacoes-celular");
+  if (!status || !botao) return;
+
+  if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+    status.textContent = "Este navegador não oferece suporte a notificações.";
+    botao.classList.add("hidden");
+    return;
+  }
+
+  if (Notification.permission === "granted") {
+    status.textContent = "Notificações ativadas neste aparelho.";
+    status.className = "text-sm text-green-700";
+    botao.textContent = "Ativadas";
+    botao.disabled = true;
+    botao.className = "bg-green-600 text-white px-3 py-2 rounded opacity-70 cursor-default";
+    obterRegistroNotificacoes();
+    return;
+  }
+
+  if (Notification.permission === "denied") {
+    status.textContent = "Notificações bloqueadas. Libere-as nas configurações do navegador.";
+    status.className = "text-sm text-red-700";
+    botao.textContent = "Bloqueadas";
+    botao.disabled = true;
+    botao.className = "bg-gray-400 text-white px-3 py-2 rounded cursor-not-allowed";
+    return;
+  }
+
+  status.textContent = "Ative para receber avisos neste celular.";
+  status.className = "text-sm text-gray-600";
+  botao.textContent = "Ativar notificações";
+  botao.disabled = false;
+}
+
 async function iniciarNotificacoes() {
   const user = await waitForAuth();
+  iniciarEscutaNotificacoesCelular(user.uid);
+
+  if ("Notification" in window && Notification.permission === "granted") {
+    obterRegistroNotificacoes();
+  }
 
   let query = db.collection("pedidos")
   .where("userId", "==", user.uid);
@@ -127,10 +260,26 @@ function atualizarBadge(userId) {
 function renderNotificacoes() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Notificações</h2>
+
+    <div class="bg-white p-3 rounded shadow mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div>
+        <div class="font-semibold">Notificações no celular</div>
+        <div id="status-notificacoes-celular" class="text-sm text-gray-600"></div>
+      </div>
+      <button id="btn-ativar-notificacoes-celular" class="bg-blue-600 text-white px-3 py-2 rounded">
+        Ativar notificações
+      </button>
+    </div>
+
     <div id="lista-notificacoes" class="space-y-2"></div>
   `;
 
   const lista = document.getElementById("lista-notificacoes");
+  atualizarStatusNotificacoesCelular();
+  document.getElementById("btn-ativar-notificacoes-celular")?.addEventListener(
+    "click",
+    solicitarNotificacoesCelular
+  );
 
   waitForAuth().then(user => {
 
