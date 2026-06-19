@@ -1,6 +1,7 @@
 (() => {
   let pedidosDataAtual = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let pedidosFiltroStatus = "todos";
+  let pedidosFiltroRepresentante = "";
   let unsubscribePedidos = null;
 
   function atualizarCabecalhoDashboard(page) {
@@ -20,6 +21,14 @@
     if (pedido.createdAt?.toDate) return pedido.createdAt.toDate();
     if (pedido.createdAt?.seconds) return new Date(pedido.createdAt.seconds * 1000);
     return null;
+  }
+
+  function normalizarNomeRepresentante(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
   }
 
   function preencherSelectProduto(select, listaProdutos) {
@@ -94,6 +103,9 @@
             <button data-id="${p.id}" class="btn-aprovar bg-green-600 text-white px-2 py-1 rounded">
               Aprovar
             </button>
+          ` : ""}
+
+          ${["pendente", "aprovado"].includes(p.status) ? `
             <button data-id="${p.id}" class="btn-cancelar bg-red-600 text-white px-2 py-1 rounded">
               Cancelar
             </button>
@@ -365,13 +377,27 @@
       </div>
 
       <div class="bg-white p-3 rounded shadow mb-3">
-        <label for="filtro-status-pedidos" class="block text-sm font-semibold text-gray-700 mb-1">Status</label>
-        <select id="filtro-status-pedidos" class="border p-2 rounded w-full md:w-64">
-          <option value="todos" ${pedidosFiltroStatus === "todos" ? "selected" : ""}>Todos</option>
-          <option value="pendente" ${pedidosFiltroStatus === "pendente" ? "selected" : ""}>Pendente</option>
-          <option value="aprovado" ${pedidosFiltroStatus === "aprovado" ? "selected" : ""}>Aprovado</option>
-          <option value="cancelado" ${pedidosFiltroStatus === "cancelado" ? "selected" : ""}>Cancelado</option>
-        </select>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="block">
+            <span class="block text-sm font-semibold text-gray-700 mb-1">Status</span>
+            <select id="filtro-status-pedidos" class="border p-2 rounded w-full">
+              <option value="todos" ${pedidosFiltroStatus === "todos" ? "selected" : ""}>Todos</option>
+              <option value="pendente" ${pedidosFiltroStatus === "pendente" ? "selected" : ""}>Pendente</option>
+              <option value="aprovado" ${pedidosFiltroStatus === "aprovado" ? "selected" : ""}>Aprovado</option>
+              <option value="cancelado" ${pedidosFiltroStatus === "cancelado" ? "selected" : ""}>Cancelado</option>
+            </select>
+          </label>
+
+          ${PERFIL === "admin" ? `
+            <form id="filtro-representante-form" class="block">
+              <span class="block text-sm font-semibold text-gray-700 mb-1">Representante</span>
+              <div class="flex gap-2">
+                <input id="filtro-representante-pedidos" type="search" class="border p-2 rounded w-full" value="${pedidosFiltroRepresentante}" placeholder="Buscar por representante">
+                <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded">Buscar</button>
+              </div>
+            </form>
+          ` : ""}
+        </div>
       </div>
 
       <div id="lista-pedidos" class="space-y-2"></div>
@@ -392,6 +418,12 @@
 
     document.getElementById("filtro-status-pedidos").addEventListener("change", (e) => {
       pedidosFiltroStatus = e.target.value;
+      window.renderPedidos();
+    });
+
+    document.getElementById("filtro-representante-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      pedidosFiltroRepresentante = document.getElementById("filtro-representante-pedidos")?.value.trim() || "";
       window.renderPedidos();
     });
 
@@ -453,14 +485,19 @@
           const mesmoStatus =
             pedidosFiltroStatus === "todos" ||
             String(p.status || "").toLowerCase() === pedidosFiltroStatus;
+          const termoRepresentante = normalizarNomeRepresentante(pedidosFiltroRepresentante);
+          const mesmoRepresentante =
+            PERFIL !== "admin" ||
+            !termoRepresentante ||
+            normalizarNomeRepresentante(p.representanteNome).includes(termoRepresentante);
 
-          if (mesmoMes && mesmoStatus) {
+          if (mesmoMes && mesmoStatus && mesmoRepresentante) {
             pedidos.push({ id: doc.id, ...p });
           }
         });
 
         if (!pedidos.length) {
-          lista.innerHTML = `<p class="text-gray-500">Nenhum pedido encontrado para este mes e status.</p>`;
+          lista.innerHTML = `<p class="text-gray-500">Nenhum pedido encontrado para os filtros selecionados.</p>`;
           return;
         }
 
