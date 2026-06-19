@@ -2320,6 +2320,7 @@ async function abrirModalAgendamento(dataSelecionada) {
     <select id="m-produto" class="border p-2 w-full"></select>
 
     <input id="m-qtd" type="number" class="border p-2 w-full" placeholder="Quantidade">
+    <textarea id="m-obs" class="border p-2 w-full rounded" rows="3" placeholder="Observação (opcional)"></textarea>
 
     <div class="flex justify-end space-x-2">
       <button id="cancelar" class="bg-gray-400 text-white px-3 py-1 rounded">Cancelar</button>
@@ -2374,6 +2375,7 @@ lista.forEach(cliente => {
     const cliente = clienteOption?.textContent || "";
     const produto = selProduto.value;
     const qtd = parseInt(modal.querySelector("#m-qtd").value);
+    const observacao = modal.querySelector("#m-obs").value.trim();
     const representanteUid = clienteOption?.dataset.userId || user.uid;
     const representanteNome = clienteOption?.dataset.representanteNome || REPRESENTANTE_ATUAL;
 
@@ -2386,6 +2388,7 @@ lista.forEach(cliente => {
       produtoNome: produto,
       quantidade: qtd,
       data: dataSelecionada,
+      observacao,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
@@ -2419,6 +2422,7 @@ async function abrirEdicaoAgendamento(id) {
 
       <input id="edit-data" type="date" class="border p-2 w-full">
       <input id="edit-qtd" type="number" class="border p-2 w-full">
+      <textarea id="edit-observacao" class="border p-2 w-full rounded" rows="3" placeholder="Observação (opcional)"></textarea>
 
       <div class="flex justify-between">
         <button id="excluir" class="bg-red-600 text-white px-3 py-1 rounded">Excluir</button>
@@ -2482,6 +2486,7 @@ listaProdutos.forEach(nome => {
   // Preenche outros campos
   modal.querySelector("#edit-qtd").value = d.quantidade || 0;
   modal.querySelector("#edit-data").value = d.data || "";
+  modal.querySelector("#edit-observacao").value = d.observacao || "";
 
   // SALVAR
   modal.querySelector("#salvar").onclick = async () => {
@@ -2490,7 +2495,8 @@ listaProdutos.forEach(nome => {
       representanteNome: d.representanteNome || REPRESENTANTE_ATUAL,
       produtoNome: selProduto.value,
       quantidade: parseInt(modal.querySelector("#edit-qtd").value) || 0,
-      data: modal.querySelector("#edit-data").value
+      data: modal.querySelector("#edit-data").value,
+      observacao: modal.querySelector("#edit-observacao").value.trim()
     });
 
     modal.remove();
