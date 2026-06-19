@@ -1564,6 +1564,16 @@ function renderRelatorios() {
     });
 }
 
+function renderRankingClientes() {
+  renderRelatorios();
+
+  const titulo = pageContent.querySelector("h2");
+  if (titulo) titulo.textContent = "Ranking de Clientes";
+
+  document.getElementById("rel-totais")?.closest(".bg-white")?.classList.add("hidden");
+  document.getElementById("chart-reps")?.closest(".bg-white")?.classList.add("hidden");
+}
+
 async function carregarFiltrosRelatorio() {
   const user = await waitForAuth();
   const selCli = document.getElementById("rel-cliente");
@@ -2428,6 +2438,7 @@ document.querySelectorAll(".menu-item").forEach(btn => {
    if (page === "agendamentos") renderAgendamentos();
     else if (page === "pedidos") renderPedidos();
     else if (page === "relatorios") renderRelatorios();
+    else if (page === "ranking-clientes") renderRankingClientes();
     else if (page === "dashboard") renderDashboard();
     else if (page === "notificacoes") renderNotificacoes();
     else if (page === "producao") renderProducao();
