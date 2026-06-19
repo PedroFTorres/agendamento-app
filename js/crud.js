@@ -176,23 +176,14 @@ async function buscarMaiorNumeroPedido() {
 }
 
 async function gerarCodigoPedidoUnico() {
-  const maiorExistente = await buscarMaiorNumeroPedido();
-  const counterRef = db.collection("config").doc("pedidos");
+  const agora = new Date();
+  const dois = (valor) => String(valor).padStart(2, "0");
+  const tres = (valor) => String(valor).padStart(3, "0");
+  const data = `${agora.getFullYear()}${dois(agora.getMonth() + 1)}${dois(agora.getDate())}`;
+  const hora = `${dois(agora.getHours())}${dois(agora.getMinutes())}${dois(agora.getSeconds())}`;
+  const aleatorio = String(Math.floor(Math.random() * 100)).padStart(2, "0");
 
-  const numeroPedido = await db.runTransaction(async (t) => {
-    const doc = await t.get(counterRef);
-    const ultimoContador = doc.exists ? Number(doc.data().ultimoNumero || 0) : 0;
-    const novo = Math.max(ultimoContador, maiorExistente) + 1;
-
-    t.set(counterRef, {
-      ultimoNumero: novo,
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-
-    return novo;
-  });
-
-  return formatarCodigoPedido(numeroPedido);
+  return `PED-${data}-${hora}${tres(agora.getMilliseconds())}-${aleatorio}`;
 }
 
 function formatarDataISO(data) {
