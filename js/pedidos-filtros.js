@@ -31,14 +31,6 @@
       .toLowerCase();
   }
 
-  function escaparAtributoFiltro(valor) {
-    return String(valor || "")
-      .replace(/&/g, "&amp;")
-      .replace(/"/g, "&quot;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
-
   function preencherSelectProduto(select, listaProdutos) {
     if (!select) return;
     const valorAtual = select.value;
@@ -165,6 +157,36 @@
     });
 
     return item;
+  }
+
+  async function carregarSelectRepresentantes() {
+    const select = document.getElementById("filtro-representante-pedidos");
+    if (PERFIL !== "admin" || !select) return;
+
+    try {
+      const snap = await db.collection("usuarios")
+        .where("perfil", "==", "representante")
+        .get();
+      const nomes = new Set();
+
+      snap.forEach(doc => {
+        const nome = String(doc.data()?.nome || "").trim();
+        if (nome) nomes.add(nome);
+      });
+
+      Array.from(nomes)
+        .sort((a, b) => a.localeCompare(b, "pt-BR"))
+        .forEach(nome => {
+          const option = document.createElement("option");
+          option.value = nome;
+          option.textContent = nome;
+          select.appendChild(option);
+        });
+
+      select.value = pedidosFiltroRepresentante;
+    } catch (e) {
+      console.error("Erro ao carregar representantes do filtro:", e);
+    }
   }
 
   async function configurarNovoPedido(user, listaProdutos) {
@@ -397,13 +419,12 @@
           </label>
 
           ${PERFIL === "admin" ? `
-            <form id="filtro-representante-form" class="block">
+            <label class="block">
               <span class="block text-sm font-semibold text-gray-700 mb-1">Representante</span>
-              <div class="flex gap-2">
-                <input id="filtro-representante-pedidos" type="search" class="border p-2 rounded w-full" value="${escaparAtributoFiltro(pedidosFiltroRepresentante)}" placeholder="Buscar por representante">
-                <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded">Buscar</button>
-              </div>
-            </form>
+              <select id="filtro-representante-pedidos" class="border p-2 rounded w-full">
+                <option value="">Todos os representantes</option>
+              </select>
+            </label>
           ` : ""}
         </div>
       </div>
@@ -429,9 +450,8 @@
       window.renderPedidos();
     });
 
-    document.getElementById("filtro-representante-form")?.addEventListener("submit", (e) => {
-      e.preventDefault();
-      pedidosFiltroRepresentante = document.getElementById("filtro-representante-pedidos")?.value.trim() || "";
+    document.getElementById("filtro-representante-pedidos")?.addEventListener("change", (e) => {
+      pedidosFiltroRepresentante = e.target.value;
       window.renderPedidos();
     });
 
@@ -444,6 +464,7 @@
 
     waitForAuth().then(async user => {
       if (!PERFIL) await carregarUsuario();
+      await carregarSelectRepresentantes();
 
       const prodSnap = await db.collection("produtos").get();
       const nomesUnicos = new Set();
