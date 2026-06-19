@@ -1047,6 +1047,8 @@ function renderProdutos() {
     botaoSalvar.disabled = true;
 
     try {
+      const editando = Boolean(produtoEmEdicao);
+
       if (produtoEmEdicao) {
         await db.collection("produtos").doc(produtoEmEdicao).update({
           nome,
@@ -1066,7 +1068,7 @@ function renderProdutos() {
       }
 
       fecharModal();
-      toast(produtoEmEdicao ? "Produto atualizado!" : "Produto criado!");
+      toast(editando ? "Produto atualizado!" : "Produto criado!");
     } catch (e) {
       console.error("Erro ao salvar produto:", e);
       alert("Não foi possível salvar o produto.");
