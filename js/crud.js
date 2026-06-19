@@ -1476,7 +1476,8 @@ function aplicarMesRelatorio(valorMes) {
   if (fim) fim.value = periodo.fim;
 }
 
-function renderRelatorios() {
+function renderRelatorios(somenteRanking = false) {
+  window.__MODO_RANKING_CLIENTES__ = somenteRanking;
   const hoje = new Date();
   const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
 
@@ -1565,7 +1566,7 @@ function renderRelatorios() {
 }
 
 function renderRankingClientes() {
-  renderRelatorios();
+  renderRelatorios(true);
 
   const titulo = pageContent.querySelector("h2");
   if (titulo) titulo.textContent = "Ranking de Clientes";
@@ -1639,21 +1640,26 @@ async function gerarRelatorio() {
   totaisEl.textContent = "Carregando...";
   rankingEl.innerHTML = "";
 
-  let query = db.collection("agendamentos");
-  if (PERFIL === "representante") {
-    query = query.where("userId", "==", user.uid);
-  }
+  const somenteRanking = window.__MODO_RANKING_CLIENTES__ === true;
+  let docsFiltrados = [];
 
-  const snap = await query.get();
-  const docsFiltrados = snap.docs.filter(doc => {
-    const d = doc.data() || {};
-    const data = String(d.data || "");
-    if (start && data < start) return false;
-    if (end && data > end) return false;
-    if (clienteSel && String(d.clienteNome || "") !== clienteSel) return false;
-    if (PERFIL === "admin" && representanteSel && String(d.representanteNome || "") !== representanteSel) return false;
-    return true;
-  });
+  if (!somenteRanking) {
+    let query = db.collection("agendamentos");
+    if (PERFIL === "representante") {
+      query = query.where("userId", "==", user.uid);
+    }
+
+    const snap = await query.get();
+    docsFiltrados = snap.docs.filter(doc => {
+      const d = doc.data() || {};
+      const data = String(d.data || "");
+      if (start && data < start) return false;
+      if (end && data > end) return false;
+      if (clienteSel && String(d.clienteNome || "") !== clienteSel) return false;
+      if (PERFIL === "admin" && representanteSel && String(d.representanteNome || "") !== representanteSel) return false;
+      return true;
+    });
+  }
 
   let totalGeral = 0;
   const porProduto = {};
@@ -1671,7 +1677,6 @@ async function gerarRelatorio() {
     totalGeral += qtd;
     porProduto[produto] = (porProduto[produto] || 0) + qtd;
     porRep[representante] = (porRep[representante] || 0) + qtd;
-    porCli[cliente] = (porCli[cliente] || 0) + qtd;
 
     linhasTabela.push({
       cliente,
@@ -1680,6 +1685,33 @@ async function gerarRelatorio() {
       qtd,
       data: d.data || "-"
     });
+  });
+
+  let pedidosQuery = db.collection("pedidos");
+  if (PERFIL === "representante") {
+    pedidosQuery = pedidosQuery.where("userId", "==", user.uid);
+  }
+
+  const pedidosSnap = await pedidosQuery.get();
+  pedidosSnap.forEach(doc => {
+    const pedido = doc.data() || {};
+    if (String(pedido.status || "").toLowerCase() !== "aprovado") return;
+
+    const dataPedido = String(pedido.data || "");
+    const clientePedido = String(pedido.clienteNome || "Não informado");
+    const representantePedido = String(pedido.representanteNome || "");
+
+    if (start && dataPedido < start) return;
+    if (end && dataPedido > end) return;
+    if (clienteSel && clientePedido !== clienteSel) return;
+    if (PERFIL === "admin" && representanteSel && representantePedido !== representanteSel) return;
+
+    const quantidadePedido = Number(pedido.quantidade || 0) ||
+      (Array.isArray(pedido.itens)
+        ? pedido.itens.reduce((total, item) => total + Number(item?.quantidade || 0), 0)
+        : 0);
+
+    porCli[clientePedido] = (porCli[clientePedido] || 0) + quantidadePedido;
   });
 
   const produtosOrdenados = Object.entries(porProduto)
