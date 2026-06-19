@@ -327,29 +327,44 @@
           ...clienteSnapshot
         });
 
-        const adminsSnap = await db.collection("usuarios")
-          .where("perfil", "==", "admin")
-          .get();
+        try {
+          const adminsSnap = await db.collection("usuarios")
+            .where("perfil", "==", "admin")
+            .get();
 
-        await Promise.all(adminsSnap.docs
-          .map(doc => {
-            const dados = doc.data() || {};
-            return dados.uid || dados.userId || doc.id;
-          })
-          .filter(Boolean)
-          .map(adminUid => db.collection("notificacoes").add({
-            userId: adminUid,
-            pedidoId: codigo,
-            texto: `Novo pedido ${codigo} recebido de ${responsavel}`,
-            lida: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          })));
+          await Promise.all(adminsSnap.docs
+            .map(doc => {
+              const dados = doc.data() || {};
+              return dados.uid || dados.userId || doc.id;
+            })
+            .filter(Boolean)
+            .map(adminUid => db.collection("notificacoes").add({
+              userId: adminUid,
+              pedidoId: codigo,
+              texto: `Novo pedido ${codigo} recebido de ${responsavel}`,
+              lida: false,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })));
+        } catch (erroNotificacao) {
+          console.warn(
+            "Pedido salvo, mas não foi possível avisar os administradores agora.",
+            erroNotificacao
+          );
+        }
 
         alert("Pedido enviado para aprovacao!");
         document.getElementById("modal-pedido")?.classList.add("hidden");
       } catch (e) {
         console.error(e);
-        alert("Erro ao enviar pedido. Tente novamente.");
+        const limiteFirebase =
+          e?.code === "resource-exhausted" ||
+          e?.code === "unknown" ||
+          String(e?.message || "").includes("429");
+        alert(
+          limiteFirebase
+            ? "O Firebase atingiu um limite temporário. Aguarde alguns minutos e tente novamente."
+            : "Erro ao enviar pedido. Tente novamente."
+        );
       } finally {
         pedidoEmEnvio = false;
         btnPedido.disabled = false;
