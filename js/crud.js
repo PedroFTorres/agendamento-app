@@ -2791,6 +2791,11 @@ const snap = await query.get();
                 <div class="text-xs text-gray-500">
                   Rep: ${item.representanteNome || "-"}
                 </div>
+                ${item.observacao ? `
+                  <div class="text-xs font-semibold text-red-600 mt-1">
+                    Obs: ${escapeHtmlRelatorio(item.observacao)}
+                  </div>
+                ` : ""}
               </div>
             `).join("")}
           </div>
