@@ -1449,94 +1449,201 @@ if (PERFIL === "representante") {
 let chartRepsInst = null;
 let chartClisInst = null;
 
+function escapeHtmlRelatorio(valor) {
+  return String(valor || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function obterPeriodoMes(valorMes) {
+  const [ano, mes] = String(valorMes || "").split("-").map(Number);
+  if (!ano || !mes) return { inicio: "", fim: "" };
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  return {
+    inicio: `${ano}-${String(mes).padStart(2, "0")}-01`,
+    fim: `${ano}-${String(mes).padStart(2, "0")}-${String(ultimoDia).padStart(2, "0")}`
+  };
+}
+
+function aplicarMesRelatorio(valorMes) {
+  const periodo = obterPeriodoMes(valorMes);
+  const inicio = document.getElementById("rel-start");
+  const fim = document.getElementById("rel-end");
+  if (inicio) inicio.value = periodo.inicio;
+  if (fim) fim.value = periodo.fim;
+}
+
 function renderRelatorios() {
+  const hoje = new Date();
+  const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
+
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Relatórios</h2>
     <div class="bg-white p-4 rounded shadow mb-4 space-y-3">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <label class="text-sm text-gray-600">Data Início</label>
-          <input type="date" id="rel-start" class="border p-2 rounded w-full">
-        </div>
-        <div>
-          <label class="text-sm text-gray-600">Data Fim</label>
-          <input type="date" id="rel-end" class="border p-2 rounded w-full">
+      <div>
+        <label class="text-sm text-gray-600">Mês</label>
+        <input type="month" id="rel-mes" value="${mesAtual}" class="border p-2 rounded w-full">
+      </div>
+
+      <div>
+        <p class="text-sm font-semibold text-gray-700 mb-1">Ou escolha um período personalizado</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div>
+            <label class="text-sm text-gray-600">Data Início</label>
+            <input type="date" id="rel-start" class="border p-2 rounded w-full">
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Data Fim</label>
+            <input type="date" id="rel-end" class="border p-2 rounded w-full">
+          </div>
         </div>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+
+      <div class="grid grid-cols-1 ${PERFIL === "admin" ? "md:grid-cols-2" : ""} gap-2">
         <div>
           <label class="text-sm text-gray-600">Cliente</label>
           <select id="rel-cliente" class="border p-2 rounded w-full">
-            <option value="">Todos</option>
+            <option value="">Todos os clientes</option>
           </select>
         </div>
-        <div>
-  <label class="text-sm text-gray-600">Representante</label>
-  <select id="rel-representante" class="border p-2 rounded w-full">
-    <option value="">Todos</option>
-  </select>
-</div>
+        ${PERFIL === "admin" ? `
+          <div>
+            <label class="text-sm text-gray-600">Representante</label>
+            <select id="rel-representante" class="border p-2 rounded w-full">
+              <option value="">Todos os representantes</option>
+            </select>
+          </div>
+        ` : ""}
       </div>
-      <button id="rel-filtrar" class="bg-blue-600 text-white p-2 rounded w-full">Filtrar</button>
+
+      <button id="rel-filtrar" class="bg-blue-600 text-white p-2 rounded w-full">Gerar relatório</button>
       <button id="rel-pdf" class="bg-green-600 text-white p-2 rounded w-full">Exportar PDF</button>
     </div>
+
     <div class="bg-white p-4 rounded shadow mb-4">
       <h3 class="text-lg font-semibold mb-2">Totais</h3>
-      <div id="rel-totais">Selecione um período.</div>
+      <div id="rel-totais">Carregando relatório...</div>
     </div>
-    <div class="bg-white p-4 rounded shadow mb-4">
-      <h3 class="text-lg font-semibold mb-2">Ranking Representantes</h3>
-      <canvas id="chart-reps" style="height:300px"></canvas>
-    </div>
+
+    ${PERFIL === "admin" ? `
+      <div class="bg-white p-4 rounded shadow mb-4">
+        <h3 class="text-lg font-semibold mb-2">Ranking Representantes</h3>
+        <canvas id="chart-reps" style="height:300px"></canvas>
+      </div>
+    ` : ""}
+
     <div class="bg-white p-4 rounded shadow">
-      <h3 class="text-lg font-semibold mb-2">Ranking Clientes</h3>
+      <h3 class="text-lg font-semibold mb-1">Ranking de Clientes</h3>
+      <p class="text-sm text-gray-500 mb-3">Classificação pela quantidade total carregada no período.</p>
+      <div id="ranking-clientes-lista" class="space-y-2 mb-4"></div>
       <canvas id="chart-clis" style="height:300px"></canvas>
     </div>
   `;
 
-  carregarFiltrosRelatorio();
+  aplicarMesRelatorio(mesAtual);
+
+  document.getElementById("rel-mes").addEventListener("change", (e) => {
+    aplicarMesRelatorio(e.target.value);
+  });
+  ["rel-start", "rel-end"].forEach(id => {
+    document.getElementById(id).addEventListener("change", () => {
+      document.getElementById("rel-mes").value = "";
+    });
+  });
+
   document.getElementById("rel-filtrar").addEventListener("click", gerarRelatorio);
   document.getElementById("rel-pdf").addEventListener("click", exportarPDF);
+  carregarFiltrosRelatorio()
+    .then(gerarRelatorio)
+    .catch(err => {
+      console.error("Erro ao preparar relatório:", err);
+      document.getElementById("rel-totais").textContent = "Não foi possível carregar o relatório.";
+    });
 }
 
 async function carregarFiltrosRelatorio() {
   const user = await waitForAuth();
-  const uid = user.uid;
-
-  const cliSnap = await db.collection("clientes").where("userId", "==", uid).get();
   const selCli = document.getElementById("rel-cliente");
+  let cliQuery = db.collection("clientes");
 
+  if (PERFIL === "representante") {
+    cliQuery = cliQuery.where("userId", "==", user.uid);
+  }
+
+  const cliSnap = await cliQuery.get();
+  const clientes = new Set();
   cliSnap.forEach(doc => {
-    const d = doc.data();
-    const opt = document.createElement("option");
-    opt.value = d.nome;
-    opt.textContent = d.nome;
-    selCli.appendChild(opt);
+    const nome = String(doc.data()?.nome || "").trim();
+    if (nome) clientes.add(nome);
   });
+
+  Array.from(clientes)
+    .sort((a, b) => a.localeCompare(b, "pt-BR"))
+    .forEach(nome => {
+      const opt = document.createElement("option");
+      opt.value = nome;
+      opt.textContent = nome;
+      selCli.appendChild(opt);
+    });
+
+  const selRep = document.getElementById("rel-representante");
+  if (PERFIL === "admin" && selRep) {
+    const repSnap = await db.collection("usuarios")
+      .where("perfil", "==", "representante")
+      .get();
+    const representantes = new Set();
+
+    repSnap.forEach(doc => {
+      const nome = String(doc.data()?.nome || "").trim();
+      if (nome) representantes.add(nome);
+    });
+
+    Array.from(representantes)
+      .sort((a, b) => a.localeCompare(b, "pt-BR"))
+      .forEach(nome => {
+        const opt = document.createElement("option");
+        opt.value = nome;
+        opt.textContent = nome;
+        selRep.appendChild(opt);
+      });
+  }
 }
 
 async function gerarRelatorio() {
   const user = await waitForAuth();
-  const uid = user.uid;
-
   const start = document.getElementById("rel-start").value;
-  const end   = document.getElementById("rel-end").value;
+  const end = document.getElementById("rel-end").value;
   const clienteSel = document.getElementById("rel-cliente").value;
- 
+  const representanteSel = document.getElementById("rel-representante")?.value || "";
+  const totaisEl = document.getElementById("rel-totais");
+  const rankingEl = document.getElementById("ranking-clientes-lista");
 
- let query = db.collection("agendamentos");
+  if (start && end && start > end) {
+    alert("A data inicial não pode ser posterior à data final.");
+    return;
+  }
 
-if (PERFIL === "representante") {
-  query = query.where("userId", "==", uid);
-}
-  if (start) query = query.where("data", ">=", start);
-  if (end)   query = query.where("data", "<=", end);
-  
+  totaisEl.textContent = "Carregando...";
+  rankingEl.innerHTML = "";
+
+  let query = db.collection("agendamentos");
+  if (PERFIL === "representante") {
+    query = query.where("userId", "==", user.uid);
+  }
+
   const snap = await query.get();
-  const docsFiltrados = clienteSel
-    ? snap.docs.filter(doc => (doc.data().clienteNome || "") === clienteSel)
-    : snap.docs;
-
+  const docsFiltrados = snap.docs.filter(doc => {
+    const d = doc.data() || {};
+    const data = String(d.data || "");
+    if (start && data < start) return false;
+    if (end && data > end) return false;
+    if (clienteSel && String(d.clienteNome || "") !== clienteSel) return false;
+    if (PERFIL === "admin" && representanteSel && String(d.representanteNome || "") !== representanteSel) return false;
+    return true;
+  });
 
   let totalGeral = 0;
   const porProduto = {};
@@ -1544,68 +1651,129 @@ if (PERFIL === "representante") {
   const porCli = {};
   const linhasTabela = [];
 
-  docsFiltrados.forEach(doc => { 
-  const d = doc.data();
-  const qtd = d.quantidade || 0;
+  docsFiltrados.forEach(doc => {
+    const d = doc.data() || {};
+    const qtd = Number(d.quantidade || 0);
+    const produto = d.produtoNome || "Não informado";
+    const representante = d.representanteNome || "Não informado";
+    const cliente = d.clienteNome || "Não informado";
 
-  totalGeral += qtd;
+    totalGeral += qtd;
+    porProduto[produto] = (porProduto[produto] || 0) + qtd;
+    porRep[representante] = (porRep[representante] || 0) + qtd;
+    porCli[cliente] = (porCli[cliente] || 0) + qtd;
 
-    // Totais
-    porProduto[d.produtoNome] = (porProduto[d.produtoNome] || 0) + qtd;
-    porRep[d.representanteNome] = (porRep[d.representanteNome] || 0) + qtd;
-    porCli[d.clienteNome] = (porCli[d.clienteNome] || 0) + qtd;
-
-  linhasTabela.push({ 
-  cliente: d.clienteNome || "-",
-  produto: d.produtoNome || "-",
-  representante: d.representanteNome || "-",
-  qtd: qtd,
- data: d.data || "-"
-});
+    linhasTabela.push({
+      cliente,
+      produto,
+      representante,
+      qtd,
+      data: d.data || "-"
+    });
   });
 
-  // Renderiza os totais na tela
- let html = `
-  <p><strong>Total Geral:</strong> ${formatQuantidade(totalGeral)}</p>
-  <ul>
-`;
-  for (const [prod, qtd] of Object.entries(porProduto)) {
-    html += `<li>${prod}: ${formatQuantidade(qtd)}</li>`;
+  const produtosOrdenados = Object.entries(porProduto)
+    .sort((a, b) => b[1] - a[1]);
+  let html = `<p><strong>Total carregado:</strong> ${formatQuantidade(totalGeral)}</p>`;
+
+  if (produtosOrdenados.length) {
+    html += `<ul class="mt-2 space-y-1">`;
+    produtosOrdenados.forEach(([produto, qtd]) => {
+      html += `<li>${escapeHtmlRelatorio(produto)}: ${formatQuantidade(qtd)}</li>`;
+    });
+    html += "</ul>";
+  } else {
+    html += `<p class="text-gray-500 mt-2">Nenhum carregamento encontrado no período.</p>`;
   }
-  html += "</ul>";
-  document.getElementById("rel-totais").innerHTML = html;
+  totaisEl.innerHTML = html;
 
-  // Gráficos
-  if (chartRepsInst) chartRepsInst.destroy();
-  if (chartClisInst) chartClisInst.destroy();
+  const rankingClientes = Object.entries(porCli)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"));
 
-  chartRepsInst = new Chart(document.getElementById("chart-reps"), {
-    type: "bar",
-    data: {
-      labels: Object.keys(porRep),
-      datasets: [{ label: "Qtd", data: Object.values(porRep), backgroundColor: "orange" }]
-    },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }} }
-  });
+  const classificacoes = [
+    { nome: "Diamante", icone: "💎", estilo: "background:#dbeafe;color:#1e3a8a;border-color:#93c5fd;" },
+    { nome: "Ouro", icone: "🥇", estilo: "background:#fef3c7;color:#92400e;border-color:#fbbf24;" },
+    { nome: "Prata", icone: "🥈", estilo: "background:#f1f5f9;color:#475569;border-color:#cbd5e1;" },
+    { nome: "Bronze", icone: "🥉", estilo: "background:#ffedd5;color:#9a3412;border-color:#fdba74;" },
+    { nome: "Cobre", icone: "🟤", estilo: "background:#f5e6dc;color:#7c2d12;border-color:#c08457;" }
+  ];
 
+  if (!rankingClientes.length) {
+    rankingEl.innerHTML = `<p class="text-gray-500">Nenhum cliente para classificar neste período.</p>`;
+  } else {
+    rankingEl.innerHTML = rankingClientes.map(([cliente, qtd], index) => {
+      const classificacao = classificacoes[index];
+      return `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border p-3 rounded-lg">
+          <div class="flex flex-wrap items-center gap-2 min-w-0">
+            <span class="font-bold text-gray-500">#${index + 1}</span>
+            ${classificacao ? `
+              <span class="inline-flex items-center px-2 py-1 rounded-full border text-xs font-bold" style="${classificacao.estilo}">
+                ${classificacao.icone} ${classificacao.nome}
+              </span>
+            ` : ""}
+            <span class="font-semibold break-words">${escapeHtmlRelatorio(cliente)}</span>
+          </div>
+          <strong class="whitespace-nowrap">${formatQuantidade(qtd)}</strong>
+        </div>
+      `;
+    }).join("");
+  }
+
+  if (chartRepsInst) {
+    chartRepsInst.destroy();
+    chartRepsInst = null;
+  }
+  if (chartClisInst) {
+    chartClisInst.destroy();
+    chartClisInst = null;
+  }
+
+  const canvasReps = document.getElementById("chart-reps");
+  if (PERFIL === "admin" && canvasReps) {
+    const rankingReps = Object.entries(porRep).sort((a, b) => b[1] - a[1]);
+    chartRepsInst = new Chart(canvasReps, {
+      type: "bar",
+      data: {
+        labels: rankingReps.map(item => item[0]),
+        datasets: [{
+          label: "Quantidade",
+          data: rankingReps.map(item => item[1]),
+          backgroundColor: "#f28c28"
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }} }
+    });
+  }
+
+  const coresRanking = ["#60a5fa", "#fbbf24", "#94a3b8", "#fb923c", "#b87333"];
   chartClisInst = new Chart(document.getElementById("chart-clis"), {
     type: "bar",
     data: {
-      labels: Object.keys(porCli),
-      datasets: [{ label: "Qtd", data: Object.values(porCli), backgroundColor: "blue" }]
+      labels: rankingClientes.map(item => item[0]),
+      datasets: [{
+        label: "Quantidade carregada",
+        data: rankingClientes.map(item => item[1]),
+        backgroundColor: rankingClientes.map((_, index) => coresRanking[index] || "#1f3b64")
+      }]
     },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }} }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true } }
+    }
   });
 
-  // Cache para exportar PDF
-  window.__REL_CACHE__ = { 
-  start, 
-  end, 
-  linhasTabela, 
-  totalGeral, 
-  porProduto, 
-  porRep 
-};
+  window.__REL_CACHE__ = {
+    start,
+    end,
+    linhasTabela,
+    totalGeral,
+    porProduto,
+    porRep,
+    porCli,
+    rankingClientes
+  };
 }
 
 // ================== EXPORTAR PDF ==================
