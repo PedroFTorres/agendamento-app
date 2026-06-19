@@ -1480,63 +1480,80 @@ function renderRelatorios(somenteRanking = false) {
   window.__MODO_RANKING_CLIENTES__ = somenteRanking;
   const hoje = new Date();
   const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
+  const colunasFiltro = PERFIL === "admin" ? "lg:grid-cols-4" : "md:grid-cols-3";
 
   pageContent.innerHTML = `
-    <h2 class="text-xl font-bold mb-4">Relatórios</h2>
-    <div class="bg-white p-4 rounded shadow mb-4 space-y-3">
-      <div>
-        <label class="text-sm text-gray-600">Mês</label>
-        <input type="month" id="rel-mes" value="${mesAtual}" class="border p-2 rounded w-full">
-      </div>
+    <h2 class="text-xl font-bold mb-3">${somenteRanking ? "Ranking de Clientes" : "Relatórios"}</h2>
 
-      <div>
-        <p class="text-sm font-semibold text-gray-700 mb-1">Ou escolha um período personalizado</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div>
-            <label class="text-sm text-gray-600">Data Início</label>
-            <input type="date" id="rel-start" class="border p-2 rounded w-full">
-          </div>
-          <div>
-            <label class="text-sm text-gray-600">Data Fim</label>
-            <input type="date" id="rel-end" class="border p-2 rounded w-full">
-          </div>
-        </div>
-      </div>
+    <div class="bg-white p-3 rounded shadow mb-4">
+      <div class="grid grid-cols-1 ${colunasFiltro} gap-2 items-end">
+        <label class="block">
+          <span class="block text-xs font-semibold text-gray-600 mb-1">Mês</span>
+          <input type="month" id="rel-mes" value="${mesAtual}" class="border p-2 rounded w-full">
+        </label>
 
-      <div class="grid grid-cols-1 ${PERFIL === "admin" ? "md:grid-cols-2" : ""} gap-2">
-        <div>
-          <label class="text-sm text-gray-600">Cliente</label>
+        <label class="block">
+          <span class="block text-xs font-semibold text-gray-600 mb-1">Cliente</span>
           <select id="rel-cliente" class="border p-2 rounded w-full">
             <option value="">Todos os clientes</option>
           </select>
-        </div>
+        </label>
+
         ${PERFIL === "admin" ? `
-          <div>
-            <label class="text-sm text-gray-600">Representante</label>
+          <label class="block">
+            <span class="block text-xs font-semibold text-gray-600 mb-1">Representante</span>
             <select id="rel-representante" class="border p-2 rounded w-full">
               <option value="">Todos os representantes</option>
             </select>
-          </div>
+          </label>
         ` : ""}
+
+        <button id="rel-filtrar" class="bg-blue-600 text-white px-4 py-2 rounded w-full">
+          Atualizar
+        </button>
       </div>
 
-      <button id="rel-filtrar" class="bg-blue-600 text-white p-2 rounded w-full">Gerar relatório</button>
-      <button id="rel-pdf" class="bg-green-600 text-white p-2 rounded w-full">Exportar PDF</button>
+      <details id="rel-periodo-detalhes" class="mt-2 border-t pt-2">
+        <summary class="text-sm font-semibold text-blue-700 cursor-pointer select-none">
+          Período personalizado
+        </summary>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+          <label class="block">
+            <span class="block text-xs text-gray-600 mb-1">Data inicial</span>
+            <input type="date" id="rel-start" class="border p-2 rounded w-full">
+          </label>
+          <label class="block">
+            <span class="block text-xs text-gray-600 mb-1">Data final</span>
+            <input type="date" id="rel-end" class="border p-2 rounded w-full">
+          </label>
+        </div>
+        <button id="rel-aplicar-periodo" class="mt-2 border border-blue-600 text-blue-700 px-4 py-2 rounded w-full md:w-auto">
+          Aplicar período
+        </button>
+      </details>
+
+      ${somenteRanking ? "" : `
+        <button id="rel-pdf" class="mt-2 bg-green-600 text-white px-4 py-2 rounded w-full md:w-auto">
+          Exportar PDF
+        </button>
+      `}
     </div>
 
-    <div class="bg-white p-4 rounded shadow mb-4">
-      <h3 class="text-lg font-semibold mb-2">Totais</h3>
-      <div id="rel-totais">Carregando relatório...</div>
-    </div>
+    ${somenteRanking ? `<div id="rel-totais" class="hidden"></div>` : `
+      <div class="bg-white p-4 rounded shadow mb-4">
+        <h3 class="text-lg font-semibold mb-2">Totais</h3>
+        <div id="rel-totais">Carregando relatório...</div>
+      </div>
+    `}
 
-    ${PERFIL === "admin" ? `
+    ${!somenteRanking && PERFIL === "admin" ? `
       <div class="bg-white p-4 rounded shadow mb-4">
         <h3 class="text-lg font-semibold mb-2">Ranking Representantes</h3>
         <canvas id="chart-reps" style="height:300px"></canvas>
       </div>
     ` : ""}
 
-    <div class="bg-white p-4 rounded shadow">
+    <div class="bg-white p-3 sm:p-4 rounded shadow">
       <h3 class="text-lg font-semibold mb-1">Ranking de Clientes</h3>
       <p class="text-sm text-gray-500 mb-3">Classificação pela quantidade total carregada no período.</p>
       <div id="ranking-clientes-lista" class="space-y-2 mb-4"></div>
@@ -1548,7 +1565,9 @@ function renderRelatorios(somenteRanking = false) {
 
   document.getElementById("rel-mes").addEventListener("change", (e) => {
     aplicarMesRelatorio(e.target.value);
+    document.getElementById("rel-periodo-detalhes").open = false;
   });
+
   ["rel-start", "rel-end"].forEach(id => {
     document.getElementById(id).addEventListener("change", () => {
       document.getElementById("rel-mes").value = "";
@@ -1556,12 +1575,17 @@ function renderRelatorios(somenteRanking = false) {
   });
 
   document.getElementById("rel-filtrar").addEventListener("click", gerarRelatorio);
-  document.getElementById("rel-pdf").addEventListener("click", exportarPDF);
+  document.getElementById("rel-aplicar-periodo").addEventListener("click", gerarRelatorio);
+  document.getElementById("rel-pdf")?.addEventListener("click", exportarPDF);
+
   carregarFiltrosRelatorio()
     .then(gerarRelatorio)
     .catch(err => {
       console.error("Erro ao preparar relatório:", err);
-      document.getElementById("rel-totais").textContent = "Não foi possível carregar o relatório.";
+      const totais = document.getElementById("rel-totais");
+      if (totais) totais.textContent = "Não foi possível carregar o relatório.";
+      const ranking = document.getElementById("ranking-clientes-lista");
+      if (ranking) ranking.innerHTML = `<p class="text-red-600">Não foi possível carregar o ranking.</p>`;
     });
 }
 
@@ -1750,8 +1774,8 @@ async function gerarRelatorio() {
           <div class="flex flex-wrap items-center gap-2 min-w-0">
             <span class="font-bold text-gray-500">#${index + 1}</span>
             ${classificacao ? `
-              <span class="inline-flex items-center px-2 py-1 rounded-full border text-xs font-bold" style="${classificacao.estilo}">
-                ${classificacao.icone} ${classificacao.nome}
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-full border text-sm" style="${classificacao.estilo}" title="${classificacao.nome}" aria-label="${classificacao.nome}">
+                ${classificacao.icone}
               </span>
             ` : ""}
             <span class="font-semibold break-words">${escapeHtmlRelatorio(cliente)}</span>
