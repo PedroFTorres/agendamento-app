@@ -2658,9 +2658,9 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
       </body>
     </html>
   `);
+  janela.onload = () => setTimeout(() => janela.print(), 250);
   janela.document.close();
   janela.focus();
-  janela.onload = () => setTimeout(() => janela.print(), 250);
 }
 
 async function abrirResumoDoDia(dataSelecionada) {
