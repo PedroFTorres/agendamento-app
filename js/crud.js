@@ -867,8 +867,257 @@ modal.remove();
   });   // fecha forEach
 }       // fecha bindBasicActions
 
+function renderProdutos() {
+  if (PERFIL !== "admin") {
+    pageContent.innerHTML = `<p class="text-red-600 font-semibold">Apenas administradores podem gerenciar produtos.</p>`;
+    return;
+  }
+
+  pageContent.innerHTML = `
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <div>
+        <h2 class="text-xl font-bold">Produtos</h2>
+        <p class="text-sm text-gray-500">Catálogo organizado por categoria.</p>
+      </div>
+      <button id="btn-novo-produto" class="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">
+        + Criar Produto
+      </button>
+    </div>
+
+    <div class="bg-white p-3 rounded shadow mb-4">
+      <input id="busca-produtos" type="search" class="border p-2 rounded w-full" placeholder="Buscar por produto ou categoria">
+    </div>
+
+    <div id="produtos-organizados" class="space-y-4"></div>
+
+    <div id="modal-produto" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 p-2 sm:p-4 overflow-y-auto">
+      <div class="bg-white w-full max-w-lg mx-auto my-8 rounded-xl shadow-lg overflow-hidden">
+        <div class="px-5 py-4 border-b flex items-center justify-between">
+          <div>
+            <h3 id="modal-produto-titulo" class="text-lg font-bold">Criar Produto</h3>
+            <p class="text-xs text-gray-500">Informe os dados do produto.</p>
+          </div>
+          <button id="fechar-modal-produto" type="button" class="text-gray-500 text-2xl leading-none" aria-label="Fechar">×</button>
+        </div>
+
+        <form id="modal-produto-form" class="p-5 space-y-4">
+          <label class="block">
+            <span class="block text-sm font-semibold mb-1">Nome do produto *</span>
+            <input id="modal-produto-nome" class="border p-2 rounded w-full" required placeholder="Ex.: Produto Premium">
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-semibold mb-1">Categoria</span>
+            <input id="modal-produto-categoria" class="border p-2 rounded w-full" placeholder="Ex.: Linha Tradicional">
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-semibold mb-1">Preço</span>
+            <input id="modal-produto-preco" type="text" inputmode="decimal" class="border p-2 rounded w-full" placeholder="Ex.: 12,5000">
+          </label>
+
+          <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <button id="cancelar-modal-produto" type="button" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+            <button id="salvar-modal-produto" type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Salvar Produto</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  const modal = document.getElementById("modal-produto");
+  const form = document.getElementById("modal-produto-form");
+  const campoNome = document.getElementById("modal-produto-nome");
+  const campoCategoria = document.getElementById("modal-produto-categoria");
+  const campoPreco = document.getElementById("modal-produto-preco");
+  const lista = document.getElementById("produtos-organizados");
+  const busca = document.getElementById("busca-produtos");
+  let produtoEmEdicao = null;
+  let produtosAtuais = [];
+
+  const escapar = (valor) => typeof escapeHtmlRelatorio === "function"
+    ? escapeHtmlRelatorio(valor)
+    : String(valor || "");
+
+  function fecharModal() {
+    modal.classList.add("hidden");
+    form.reset();
+    produtoEmEdicao = null;
+  }
+
+  function abrirModal(produto = null) {
+    produtoEmEdicao = produto?.id || null;
+    document.getElementById("modal-produto-titulo").textContent = produto ? "Editar Produto" : "Criar Produto";
+    campoNome.value = produto?.nome || "";
+    campoCategoria.value = produto?.categoria || "";
+    campoPreco.value = produto && Number.isFinite(Number(produto.preco))
+      ? Number(produto.preco).toFixed(4).replace(".", ",")
+      : "";
+    modal.classList.remove("hidden");
+    setTimeout(() => campoNome.focus(), 50);
+  }
+
+  function renderizarLista() {
+    const termo = String(busca.value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+    const collator = new Intl.Collator("pt-BR", { sensitivity: "base" });
+    const filtrados = produtosAtuais
+      .filter(produto => {
+        const texto = `${produto.nome || ""} ${produto.categoria || ""}`
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+        return !termo || texto.includes(termo);
+      })
+      .sort((a, b) => {
+        const categoriaA = String(a.categoria || "Sem categoria");
+        const categoriaB = String(b.categoria || "Sem categoria");
+        return collator.compare(categoriaA, categoriaB) ||
+          collator.compare(String(a.nome || ""), String(b.nome || ""));
+      });
+
+    if (!filtrados.length) {
+      lista.innerHTML = `<div class="bg-white p-5 rounded shadow text-gray-500">Nenhum produto encontrado.</div>`;
+      return;
+    }
+
+    const categorias = new Map();
+    filtrados.forEach(produto => {
+      const categoria = String(produto.categoria || "").trim() || "Sem categoria";
+      if (!categorias.has(categoria)) categorias.set(categoria, []);
+      categorias.get(categoria).push(produto);
+    });
+
+    lista.innerHTML = Array.from(categorias.entries()).map(([categoria, produtos]) => `
+      <section class="bg-white rounded shadow overflow-hidden">
+        <div class="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+          <h3 class="font-bold text-blue-900">${escapar(categoria)}</h3>
+          <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+            ${produtos.length} ${produtos.length === 1 ? "produto" : "produtos"}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 p-3">
+          ${produtos.map(produto => `
+            <article class="border rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-semibold break-words">${escapar(produto.nome || "Sem nome")}</div>
+                <div class="text-sm text-gray-500">Preço: ${formatPrecoProduto(produto.preco)}</div>
+              </div>
+              <div class="flex gap-2 shrink-0">
+                <button type="button" data-acao="editar-produto" data-id="${produto.id}" class="bg-yellow-500 text-white px-3 py-1 rounded">Editar</button>
+                <button type="button" data-acao="excluir-produto" data-id="${produto.id}" class="bg-red-600 text-white px-3 py-1 rounded">Excluir</button>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `).join("");
+  }
+
+  document.getElementById("btn-novo-produto").addEventListener("click", () => abrirModal());
+  document.getElementById("fechar-modal-produto").addEventListener("click", fecharModal);
+  document.getElementById("cancelar-modal-produto").addEventListener("click", fecharModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) fecharModal();
+  });
+  busca.addEventListener("input", renderizarLista);
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const nome = campoNome.value.trim();
+    const categoria = campoCategoria.value.trim();
+    const precoTexto = campoPreco.value.trim().replace(",", ".");
+    const preco = precoTexto ? Number(precoTexto) : 0;
+
+    if (!nome) {
+      alert("Informe o nome do produto.");
+      return;
+    }
+    if (!Number.isFinite(preco) || preco < 0) {
+      alert("Informe um preço válido.");
+      return;
+    }
+
+    const botaoSalvar = document.getElementById("salvar-modal-produto");
+    botaoSalvar.disabled = true;
+
+    try {
+      if (produtoEmEdicao) {
+        await db.collection("produtos").doc(produtoEmEdicao).update({
+          nome,
+          categoria,
+          preco,
+          editadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        const user = await waitForAuth();
+        await db.collection("produtos").add({
+          userId: user.uid,
+          nome,
+          categoria,
+          preco,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      fecharModal();
+      toast(produtoEmEdicao ? "Produto atualizado!" : "Produto criado!");
+    } catch (e) {
+      console.error("Erro ao salvar produto:", e);
+      alert("Não foi possível salvar o produto.");
+    } finally {
+      botaoSalvar.disabled = false;
+    }
+  });
+
+  lista.addEventListener("click", async (e) => {
+    const botao = e.target.closest("button[data-acao]");
+    if (!botao) return;
+
+    const produto = produtosAtuais.find(item => item.id === botao.dataset.id);
+    if (!produto) return;
+
+    if (botao.dataset.acao === "editar-produto") {
+      abrirModal(produto);
+      return;
+    }
+
+    if (botao.dataset.acao === "excluir-produto") {
+      if (!confirm(`Excluir o produto "${produto.nome}"?`)) return;
+
+      try {
+        await db.collection("produtos").doc(produto.id).delete();
+      } catch (e) {
+        console.error("Erro ao excluir produto:", e);
+        alert("Não foi possível excluir o produto.");
+      }
+    }
+  });
+
+  db.collection("produtos").onSnapshot(
+    (snap) => {
+      produtosAtuais = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+      renderizarLista();
+    },
+    (erro) => {
+      console.error("Erro ao carregar produtos:", erro);
+      lista.innerHTML = `<div class="bg-white p-5 rounded shadow text-red-600">Não foi possível carregar os produtos.</div>`;
+    }
+  );
+}
+
 // ================== RENDER FORM ==================
 function renderForm(type) {
+   if (type === "produtos") {
+    renderProdutos();
+    return;
+  }
+
    if (type === "usuarios" && PERFIL !== "admin") {
     pageContent.innerHTML = `<p class="text-red-600 font-semibold">Sem permissão para acessar usuários.</p>`;
     return;
@@ -2936,188 +3185,6 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     }
   });
 });
-
-function renderPrecosClientes() {
-  pageContent.innerHTML = `
-    <h2 class="text-xl font-bold mb-4">Preços por Cliente</h2>
-
-    <form id="form-preco" class="bg-white p-4 rounded shadow space-y-3">
-      <select id="pc-cliente" class="border p-2 w-full"></select>
-      <select id="pc-produto" class="border p-2 w-full"></select>
-      <input id="pc-preco" type="number" step="0.0001" class="border p-2 w-full" placeholder="Preço">
-
-      <button class="bg-blue-600 text-white p-2 rounded w-full">Salvar</button>
-    </form>
-
-    <ul id="pc-list" class="mt-4 space-y-2"></ul>
-  `;
-
-  const $cliente = document.getElementById("pc-cliente");
-  const $produto = document.getElementById("pc-produto");
-  const $form = document.getElementById("form-preco");
-  const $list = document.getElementById("pc-list");
-
- waitForAuth().then(user => {
-
-  let query = db.collection("clientes");
-
-  if (PERFIL === "representante") {
-    query = query.where("userId", "==", user.uid);
-  }
-
-  query.get().then(snap => {
-    $cliente.innerHTML = `<option value="">Selecione Cliente</option>`;
-
-    const lista = [];
-
-    snap.forEach(doc => {
-      lista.push(doc.data());
-    });
-
-    lista.sort((a,b)=> a.nome.localeCompare(b.nome, 'pt-BR'));
-
-    lista.forEach(d => {
-      const opt = document.createElement("option");
-      opt.value = d.nome;
-      opt.textContent = d.nome;
-      $cliente.appendChild(opt);
-    });
-  });
-
-});
-    db.collection("produtos")
-      .where("userId","==",user.uid)
-      .get()
-      .then(snap=>{
-        $produto.innerHTML = `<option value="">Selecione produto</option>`;
-        snap.forEach(doc=>{
-          const opt = document.createElement("option");
-          opt.value = doc.data().nome;
-          opt.textContent = doc.data().nome;
-          $produto.appendChild(opt);
-        });
-      });
-
-  // salvar preço
-  $form.addEventListener("submit", async (e)=>{
-    e.preventDefault();
-
-    const user = await waitForAuth();
-
-    const cliente = $cliente.value;
-    const produto = $produto.value;
-    const valorInput = document.getElementById("pc-preco").value.replace(",", ".");
-const preco = parseFloat(valorInput);
-
-    if (!cliente || !produto || isNaN(preco)) {
-      alert("Preencha tudo!");
-      return;
-    }
-
-    await db.collection("precos_clientes").add({
-      userId: user.uid,
-      clienteNome: cliente,
-      produtoNome: produto,
-      preco,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    $form.reset();
-  });
-
- waitForAuth().then(user=>{
-  let query = db.collection("precos_clientes");
-
-if (PERFIL === "representante") {
-  query = query.where("userId","==",user.uid);
-}
-
-query.onSnapshot(snap=>{
-      $list.innerHTML = "";
-
-      $list.innerHTML = "";
-
-const mapa = {};
-
-snap.forEach(doc=>{
-  const d = doc.data();
-
-  if (!mapa[d.clienteNome]) {
-    mapa[d.clienteNome] = [];
-  }
-
-  mapa[d.clienteNome].push({
-    id: doc.id,
-    produto: d.produtoNome,
-    preco: d.preco
-  });
-});
-
-// 🔥 render agrupado por cliente
-Object.entries(mapa).forEach(([cliente, itens])=>{
-
-  const box = document.createElement("div");
-  box.className = "bg-white p-3 rounded shadow";
-
-  let html = `<div class="font-bold mb-2">${cliente}</div>`;
-
-  itens.forEach(item=>{
-  html += `
-    <div class="flex justify-between items-center border-b py-1">
-      
-      <span>${item.produto}</span>
-
-      <div class="flex gap-2 items-center">
-        <span>${formatMoeda(item.preco)}</span>
-
-        <button data-id="${item.id}" class="bg-yellow-500 text-white px-2 py-1 rounded btn-edit">
-          Editar
-        </button>
-
-        <button data-id="${item.id}" class="bg-red-600 text-white px-2 py-1 rounded btn-del">
-          Excluir
-        </button>
-      </div>
-
-    </div>
-  `;
-});
-
-  box.innerHTML = html;
-  $list.appendChild(box);
-});
-        
-      });
-    });
-
-  $list.addEventListener("click", async e=>{
-
-  const id = e.target.dataset.id;
-  if (!id) return;
-
-  // EXCLUIR
-  if (e.target.classList.contains("btn-del")) {
-    if (confirm("Excluir?")) {
-      await db.collection("precos_clientes").doc(id).delete();
-    }
-  }
-
- if (e.target.classList.contains("btn-edit")) {
-  let novoPreco = prompt("Novo preço (ex: 0,700):");
-
-  if (novoPreco) {
-    novoPreco = novoPreco.replace(",", ".");
-  }
-
-  if (novoPreco && !isNaN(parseFloat(novoPreco))) {
-    await db.collection("precos_clientes").doc(id).update({
-      preco: parseFloat(novoPreco)
-    });
-  }
-}
-
-});
-}
 
 function renderPedidos() {
    const renderPedidosToken = Date.now() + Math.random();
