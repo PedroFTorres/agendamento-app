@@ -1969,7 +1969,9 @@ async function gerarRelatorio() {
     porProduto,
     porRep,
     porCli,
-    rankingClientes
+    rankingClientes,
+    clienteSel,
+    representanteSel
   };
 }
 
@@ -1980,171 +1982,155 @@ async function exportarPDF() {
     return;
   }
 
-  const { start, end, linhasTabela, totalGeral, porProduto, porRep } = window.__REL_CACHE__;
+  const {
+    start,
+    end,
+    totalGeral,
+    porProduto,
+    porRep,
+    porCli,
+    rankingClientes,
+    clienteSel,
+    representanteSel
+  } = window.__REL_CACHE__;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-    const formatDateBR = (dateStr) => {
+  const formatDateBR = (dateStr) => {
     if (!dateStr) return "";
-    const [y, m, d] = dateStr.split("-");
-    return `${d}/${m}/${y}`;
+    const [ano, mes, dia] = dateStr.split("-");
+    return `${dia}/${mes}/${ano}`;
   };
-
-    const brandBlue = [31, 59, 100];
+  const brandBlue = [31, 59, 100];
   const brandOrange = [242, 140, 40];
   const textDark = [31, 41, 55];
   const textMuted = [107, 114, 128];
+  const margemX = 14;
+  const largura = 182;
+  let y = 18;
 
-  
-  try {
-     const logo = await fetch("img/logo.png")
-      .then(r => r.blob())
-      .then(b => new Promise(res => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result);
-        reader.readAsDataURL(b);
-     }));
-    doc.addImage(logo, "PNG", 14, 10, 22, 22);
-  } catch (_) {}
-
-
-  doc.setTextColor(...brandBlue);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("Relatório de Agendamentos", 40, 18);
-  
-  doc.setFont("helvetica", "normal");
-   doc.setFontSize(10);
-  doc.setTextColor(...textMuted);
-  doc.text(`Emissão: ${new Date().toLocaleDateString("pt-BR")}`, 40, 24);
-
-  doc.setFontSize(10);
-  doc.setFont("courier", "normal");
-
-  let filtroTexto = "Agendamentos (todos os dias)";
-  if (start && end) filtroTexto = `Período: ${formatDateBR(start)} até ${formatDateBR(end)}`;
-  else if (start) filtroTexto = `Período: a partir de ${formatDateBR(start)}`;
-  else if (end) filtroTexto = `Período: até ${formatDateBR(end)}`;
-
-  doc.setDrawColor(...brandBlue);
-  doc.setLineWidth(0.5);
-  doc.line(14, 36, 196, 36);
-  doc.setFontSize(10);
-  doc.setTextColor(...textDark);
-  doc.text(filtroTexto, 14, 43);
-
-   const margemX = 14;
-  const larguraBox = 182;
-  let y = 50;
-
-   const garantirPagina = (alturaNecessaria = 10) => {
-    if (y + alturaNecessaria > 282) {
+  const garantirPagina = (altura = 10) => {
+    if (y + altura > 282) {
       doc.addPage();
-      y = 20;
-      }
+      y = 18;
+    }
   };
 
-    const desenharTituloSecao = (titulo) => {
+  const tituloSecao = (titulo) => {
     garantirPagina(14);
     doc.setFillColor(...brandBlue);
-    doc.roundedRect(margemX, y, larguraBox, 8, 2, 2, "F");
-    doc.setTextColor(255, 255, 255);
+    doc.roundedRect(margemX, y, largura, 8, 2, 2, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text(titulo, margemX + 3, y + 5.7);
-    y += 12;
+    doc.setTextColor(255, 255, 255);
+    doc.text(titulo, margemX + 3, y + 5.6);
+    y += 11;
   };
-     const desenharLinhaResumo = (label, valor) => {
-    garantirPagina(9);
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(margemX, y, larguraBox, 7, 1.5, 1.5, "F");
+
+  const linha = (posicao, nome, quantidade, indice = 0) => {
+    const prefixo = posicao ? `#${posicao}  ` : "";
+    const nomeLinhas = doc.splitTextToSize(`${prefixo}${nome || "-"}`, 143);
+    const altura = Math.max(8, nomeLinhas.length * 4.3 + 3);
+    garantirPagina(altura + 2);
+    doc.setFillColor(indice % 2 === 0 ? 248 : 255, indice % 2 === 0 ? 250 : 255, indice % 2 === 0 ? 252 : 255);
+    doc.roundedRect(margemX, y, largura, altura, 1.5, 1.5, "F");
+    doc.setFont("helvetica", posicao ? "bold" : "normal");
+    doc.setFontSize(9.5);
     doc.setTextColor(...textDark);
+    doc.text(nomeLinhas, margemX + 3, y + 5);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text(`${label}:`, margemX + 3, y + 4.8);
-    doc.setFont("helvetica", "normal");
-    doc.text(String(valor || "-"), margemX + 40, y + 4.8);
-    y += 8.5;
+    doc.text(formatQuantidade(quantidade), margemX + largura - 3, y + 5, { align: "right" });
+    y += altura + 1.5;
   };
-    desenharTituloSecao("Resumo");
-  desenharLinhaResumo("Total Geral", formatQuantidade(totalGeral));
+
+  try {
+    const logo = await fetch("img/logo.png")
+      .then(resposta => resposta.blob())
+      .then(blob => new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      }));
+    doc.addImage(logo, "PNG", margemX, 10, 22, 22);
+  } catch (_) {}
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(...brandBlue);
+  doc.text("Relatório Geral", 40, 18);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.setTextColor(...textMuted);
+  doc.text(`Emitido em ${new Date().toLocaleDateString("pt-BR")}`, 40, 24);
+
+  y = 38;
+  doc.setDrawColor(...brandOrange);
+  doc.setLineWidth(0.7);
+  doc.line(margemX, y, margemX + largura, y);
+  y += 7;
+
+  let periodo = "Todos os períodos";
+  if (start && end) periodo = `${formatDateBR(start)} a ${formatDateBR(end)}`;
+  else if (start) periodo = `A partir de ${formatDateBR(start)}`;
+  else if (end) periodo = `Até ${formatDateBR(end)}`;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.setTextColor(...textDark);
+  doc.text(`Período: ${periodo}`, margemX, y);
+  y += 5;
+  if (clienteSel) {
+    doc.text(`Cliente: ${clienteSel}`, margemX, y);
+    y += 5;
+  }
+  if (representanteSel) {
+    doc.text(`Representante: ${representanteSel}`, margemX, y);
+    y += 5;
+  }
   y += 2;
 
-  desenharTituloSecao("Agendamentos");
-  linhasTabela.forEach((row, idx) => {
-    const clienteLinhas = doc.splitTextToSize(`Cliente: ${row.cliente || "-"}`, 172);
-    const produtoLinhas = doc.splitTextToSize(`Produto: ${row.produto || "-"}`, 172);
-    const qtdTexto = `Quantidade: ${formatQuantidade(row.qtd)}`;
-    const dataTexto = `Data: ${formatDateBR(row.data) || "-"}`;
-    const altura = (clienteLinhas.length + produtoLinhas.length) * 4.4 + 14;
-
-    garantirPagina(altura + 4);
-    doc.setFillColor(idx % 2 === 0 ? 239 : 249, idx % 2 === 0 ? 246 : 250, 255);
-    doc.roundedRect(margemX, y, larguraBox, altura, 2, 2, "F");
-
-    let yLinha = y + 5;
-    doc.setTextColor(...textDark);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(clienteLinhas, margemX + 3, yLinha);
-    yLinha += clienteLinhas.length * 4.4;
-    doc.text(produtoLinhas, margemX + 3, yLinha);
-    yLinha += produtoLinhas.length * 4.4 + 1;
-    doc.setFont("helvetica", "bold");
-    doc.text(qtdTexto, margemX + 3, yLinha);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...textMuted);
-    doc.text(dataTexto, margemX + 120, yLinha);
-    y += altura + 4;
-  });
-
-y += 2;
-  desenharTituloSecao("Totais por Produto");
-  Object.entries(porProduto).forEach(([prod, qtd], idx) => {
-    garantirPagina(9);
-    doc.setFillColor(idx % 2 === 0 ? 255 : 249, idx % 2 === 0 ? 247 : 250, idx % 2 === 0 ? 237 : 241);
-    doc.roundedRect(margemX, y, larguraBox, 7, 1.5, 1.5, "F");
-    doc.setTextColor(...textDark);
-    doc.setFont("helvetica", "normal");
-    doc.text(String(prod || "-"), margemX + 3, y + 4.8);
-    doc.setFont("helvetica", "bold");
-    doc.text(formatQuantidade(qtd), margemX + larguraBox - 3, y + 4.8, { align: "right" });
-    y += 8.5;
-  });
-
- y += 2;
-  desenharTituloSecao("Totais por Representante");
-  Object.entries(porRep).forEach(([rep, qtd], idx) => {
-    garantirPagina(9);
-    doc.setFillColor(idx % 2 === 0 ? 255 : 249, idx % 2 === 0 ? 247 : 250, idx % 2 === 0 ? 237 : 241);
-    doc.roundedRect(margemX, y, larguraBox, 7, 1.5, 1.5, "F");
-    doc.setTextColor(...textDark);
-    doc.setFont("helvetica", "normal");
-    doc.text(String(rep || "-"), margemX + 3, y + 4.8);
-    doc.setFont("helvetica", "bold");
-    doc.text(formatQuantidade(qtd), margemX + larguraBox - 3, y + 4.8, { align: "right" });
-    y += 8.5;
-  });
-
-   y += 4;
-  garantirPagina(18);
-  doc.setDrawColor(...brandOrange);
-  doc.setLineWidth(0.6);
-  doc.line(margemX, y, margemX + larguraBox, y);
-  y += 6;
-   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(...brandBlue);
-  doc.text("Observação", margemX, y);
-  y += 5;
+  tituloSecao("Resumo");
+  doc.setFillColor(239, 246, 255);
+  doc.roundedRect(margemX, y, largura, 14, 2, 2, "F");
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(...textDark);
-  const obs = doc.splitTextToSize(
-    "Seu agendamento está sujeito a alterações, pois a disponibilidade pode variar devido a cronogramas de fabricação ou possíveis imprevistos na produção.",
-    178
-  );
-   doc.text(obs, margemX, y);
-   doc.save("relatorio-agendamentos.pdf");
+  doc.setFontSize(10);
+  doc.setTextColor(...textMuted);
+  doc.text("Quantidade total carregada", margemX + 4, y + 5);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(...brandBlue);
+  doc.text(formatQuantidade(totalGeral), margemX + 4, y + 11.5);
+  y += 18;
+
+  tituloSecao("Totais por Produto");
+  const produtosOrdenados = Object.entries(porProduto || {}).sort((a, b) => b[1] - a[1]);
+  if (!produtosOrdenados.length) linha("", "Nenhum produto no período", 0);
+  produtosOrdenados.forEach(([nome, quantidade], indice) => linha("", nome, quantidade, indice));
+  y += 3;
+
+  tituloSecao("Ranking de Representantes");
+  const representantesOrdenados = Object.entries(porRep || {}).sort((a, b) => b[1] - a[1]);
+  if (!representantesOrdenados.length) linha("", "Nenhum representante no período", 0);
+  representantesOrdenados.forEach(([nome, quantidade], indice) => linha(indice + 1, nome, quantidade, indice));
+  y += 3;
+
+  tituloSecao("Ranking de Clientes");
+  const clientesOrdenados = Array.isArray(rankingClientes) && rankingClientes.length
+    ? rankingClientes
+    : Object.entries(porCli || {}).sort((a, b) => b[1] - a[1]);
+  if (!clientesOrdenados.length) linha("", "Nenhum cliente no período", 0);
+  clientesOrdenados.forEach(([nome, quantidade], indice) => linha(indice + 1, nome, quantidade, indice));
+
+  const totalPaginas = doc.internal.getNumberOfPages();
+  for (let pagina = 1; pagina <= totalPaginas; pagina += 1) {
+    doc.setPage(pagina);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...textMuted);
+    doc.text(`Página ${pagina} de ${totalPaginas}`, 196, 290, { align: "right" });
+  }
+
+  doc.save("relatorio-geral.pdf");
 }
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
@@ -2483,6 +2469,200 @@ listaProdutos.forEach(nome => {
     }
   };
 }
+function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, lista) {
+  const janela = window.open("", "", "width=1000,height=750");
+  if (!janela) {
+    alert("Permita a abertura de janelas para imprimir o relatório.");
+    return;
+  }
+
+  const escapar = (valor) => typeof escapeHtmlRelatorio === "function"
+    ? escapeHtmlRelatorio(valor)
+    : String(valor || "");
+  const formatarData = (data) => {
+    const [ano, mes, dia] = String(data || "").split("-");
+    return dia && mes && ano ? `${dia}/${mes}/${ano}` : data;
+  };
+  const logoUrl = new URL("img/logo.png", window.location.href).href;
+  const produtos = Object.entries(porProduto || {}).sort((a, b) => b[1] - a[1]);
+  const representantes = Object.entries(porRep || {}).sort((a, b) => b[1] - a[1]);
+  const agendamentos = [...(lista || [])].sort((a, b) =>
+    String(a.clienteNome || "").localeCompare(String(b.clienteNome || ""), "pt-BR")
+  );
+
+  const linhasResumo = (itens) => itens.map(([nome, quantidade]) => `
+    <div class="resumo-linha">
+      <span>${escapar(nome)}</span>
+      <strong>${formatQuantidade(quantidade)}</strong>
+    </div>
+  `).join("") || `<p class="vazio">Nenhum registro.</p>`;
+
+  const linhasTabela = agendamentos.map((item, indice) => `
+    <tr>
+      <td>${indice + 1}</td>
+      <td>${escapar(item.clienteNome || "-")}</td>
+      <td>${escapar(item.produtoNome || "-")}</td>
+      <td class="numero">${formatQuantidade(item.quantidade || 0)}</td>
+      <td>${escapar(item.representanteNome || "-")}</td>
+      <td>${escapar(item.observacao || "-")}</td>
+    </tr>
+  `).join("");
+
+  janela.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8">
+        <title>Agendamentos de ${formatarData(dataSelecionada)}</title>
+        <style>
+          @page { size: A4; margin: 14mm; }
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            color: #1f2937;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            background: #fff;
+          }
+          .cabecalho {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 3px solid #f28c28;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+          }
+          .cabecalho img { width: 54px; height: 54px; object-fit: contain; }
+          h1 { margin: 0 0 4px; color: #1f3b64; font-size: 21px; }
+          .subtitulo { color: #6b7280; font-size: 12px; }
+          .total {
+            background: #eef4ff;
+            border: 1px solid #c7d7f2;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+          }
+          .total span { display: block; color: #6b7280; margin-bottom: 3px; }
+          .total strong { color: #1f3b64; font-size: 22px; }
+          .resumos {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+          }
+          .card {
+            border: 1px solid #dfe6f1;
+            border-radius: 8px;
+            overflow: hidden;
+          }
+          .card h2 {
+            margin: 0;
+            padding: 7px 9px;
+            color: #fff;
+            background: #1f3b64;
+            font-size: 12px;
+          }
+          .resumo-linha {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 6px 9px;
+            border-bottom: 1px solid #edf0f5;
+          }
+          .resumo-linha:last-child { border-bottom: 0; }
+          .vazio { padding: 8px; color: #6b7280; }
+          h2.tabela-titulo { color: #1f3b64; font-size: 14px; margin: 0 0 7px; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          thead { display: table-header-group; }
+          th {
+            background: #1f3b64;
+            color: #fff;
+            text-align: left;
+            padding: 7px 5px;
+            font-size: 9px;
+          }
+          td {
+            border-bottom: 1px solid #dfe6f1;
+            padding: 6px 5px;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+          }
+          tbody tr:nth-child(even) { background: #f8fafc; }
+          th:nth-child(1), td:nth-child(1) { width: 5%; }
+          th:nth-child(2), td:nth-child(2) { width: 24%; }
+          th:nth-child(3), td:nth-child(3) { width: 20%; }
+          th:nth-child(4), td:nth-child(4) { width: 12%; }
+          th:nth-child(5), td:nth-child(5) { width: 19%; }
+          th:nth-child(6), td:nth-child(6) { width: 20%; }
+          .numero { text-align: right; font-weight: bold; }
+          .rodape {
+            margin-top: 12px;
+            padding-top: 7px;
+            border-top: 1px solid #dfe6f1;
+            color: #6b7280;
+            font-size: 9px;
+            text-align: right;
+          }
+          @media (max-width: 700px) {
+            .resumos { grid-template-columns: 1fr; }
+          }
+          @media print {
+            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            tr { break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <header class="cabecalho">
+          <img src="${logoUrl}" alt="Logo">
+          <div>
+            <h1>Relatório Diário de Agendamentos</h1>
+            <div class="subtitulo">Data: ${formatarData(dataSelecionada)}</div>
+          </div>
+        </header>
+
+        <section class="total">
+          <span>Quantidade total agendada</span>
+          <strong>${formatQuantidade(totalGeral)}</strong>
+        </section>
+
+        <section class="resumos">
+          <div class="card">
+            <h2>Totais por Produto</h2>
+            ${linhasResumo(produtos)}
+          </div>
+          <div class="card">
+            <h2>Totais por Representante</h2>
+            ${linhasResumo(representantes)}
+          </div>
+        </section>
+
+        <h2 class="tabela-titulo">Agendamentos do dia</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Cliente</th>
+              <th>Produto</th>
+              <th>Qtd.</th>
+              <th>Representante</th>
+              <th>Observação</th>
+            </tr>
+          </thead>
+          <tbody>${linhasTabela || `<tr><td colspan="6">Nenhum agendamento.</td></tr>`}</tbody>
+        </table>
+
+        <footer class="rodape">
+          Emitido em ${new Date().toLocaleString("pt-BR")}
+        </footer>
+      </body>
+    </html>
+  `);
+  janela.document.close();
+  janela.focus();
+  janela.onload = () => setTimeout(() => janela.print(), 250);
+}
+
 async function abrirResumoDoDia(dataSelecionada) {
   const user = await waitForAuth();
   const representanteSomenteConsulta = PERFIL === "representante";
@@ -2612,19 +2792,7 @@ const snap = await query.get();
 
   // IMPRIMIR
     modal.querySelector("#imprimir").onclick = () => {
-      const w = window.open("", "", "width=800,height=600");
-      w.document.write(`
-        <html>
-          <head>
-            <title>Resumo ${dataSelecionada}</title>
-          </head>
-          <body>
-            ${modal.innerHTML}
-          </body>
-        </html>
-      `);
-      w.document.close();
-      w.print();
+      imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, lista);
     };
   }
 }
