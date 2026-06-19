@@ -592,11 +592,37 @@ async function cancelarPedido(id, btn) {
       return;
     }
 
-    await db.collection("pedidos").doc(id).update({
+    if (!docPedido.exists || !p) {
+      alert("Pedido não encontrado");
+      if (btn) btn.disabled = false;
+      return;
+    }
+
+    if (!["pendente", "aprovado"].includes(p.status)) {
+      alert("Este pedido não pode ser cancelado");
+      if (btn) btn.disabled = false;
+      return;
+    }
+
+    const pedidoRef = db.collection("pedidos").doc(id);
+    const agendamentoIds = p.status === "aprovado"
+      ? (Array.isArray(p.agendamentoIds) && p.agendamentoIds.length
+        ? p.agendamentoIds
+        : (p.agendamentoId ? [p.agendamentoId] : []))
+      : [];
+
+    const batch = db.batch();
+    agendamentoIds.forEach((agendamentoId) => {
+      batch.delete(db.collection("agendamentos").doc(agendamentoId));
+    });
+    batch.update(pedidoRef, {
       status: "cancelado",
       motivoCancelamento: motivo,
-      notificadoCancelado: true
+      notificadoCancelado: true,
+      agendamentoId: "",
+      agendamentoIds: []
     });
+    await batch.commit();
 
     // 🔔 MARCAR NOTIFICAÇÃO DO ADMIN COMO LIDA
     const notifSnap = await db.collection("notificacoes")
