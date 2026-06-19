@@ -588,6 +588,7 @@ async function aprovarPedido(id, btn) {
                 criadoPor: p.userId,
                 pedidoId: p.codigo || id,
                 data: dataEscolhida,
+                observacao: p.observacao || "",
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
               });
               agRefs.push(agRef.id);
@@ -950,6 +951,7 @@ async function editarPedidoAprovado(id) {
             representanteNome: p.representanteNome,
             pedidoId: codigoVinculo,
             data: novaData,
+            observacao: novaObs,
             editadoPor: user.uid,
             editadoEm: firebase.firestore.FieldValue.serverTimestamp()
           };
