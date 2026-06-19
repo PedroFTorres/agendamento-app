@@ -430,17 +430,97 @@ async function aprovarPedido(id, btn) {
     }
 
     const modal = document.createElement("div");
-    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4";
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto";
 
     modal.innerHTML = `
-      <div class="bg-white p-3 sm:p-4 rounded shadow w-full max-w-3xl max-h-[95vh] overflow-y-auto">
-        <h3 class="text-lg font-bold mb-2">Escolher data do agendamento</h3>
-         <div class="w-full overflow-x-auto">
-          <div id="calendar-aprovacao" class="min-w-[280px]"></div>
+      <style>
+        #modal-aprovacao-conteudo {
+          width: min(100%, 48rem);
+          max-width: calc(100vw - 1rem);
+          min-width: 0;
+          overflow-x: hidden;
+        }
+        #calendar-aprovacao,
+        #calendar-aprovacao .fc,
+        #calendar-aprovacao .fc-view-harness,
+        #calendar-aprovacao .fc-view,
+        #calendar-aprovacao .fc-scrollgrid {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+        }
+        #calendar-aprovacao table {
+          width: 100% !important;
+          table-layout: fixed;
+        }
+        #calendar-aprovacao .fc-toolbar {
+          flex-wrap: wrap;
+          gap: .5rem;
+        }
+        #calendar-aprovacao .fc-toolbar-title {
+          font-size: 1.1rem;
+          line-height: 1.25;
+          text-align: center;
+          overflow-wrap: anywhere;
+        }
+        #calendar-aprovacao .fc-daygrid-day-frame {
+          min-width: 0;
+          min-height: 70px;
+        }
+        #calendar-aprovacao .fc-daygrid-event,
+        #calendar-aprovacao .fc-event-main,
+        #calendar-aprovacao .fc-event-title {
+          max-width: 100%;
+          min-width: 0;
+          white-space: normal !important;
+          overflow: hidden;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+        @media (max-width: 640px) {
+          #modal-aprovacao-conteudo {
+            max-width: calc(100vw - 1rem);
+            padding: .75rem;
+          }
+          #calendar-aprovacao .fc-toolbar {
+            display: grid;
+            grid-template-columns: 1fr;
+            justify-items: center;
+          }
+          #calendar-aprovacao .fc-toolbar-chunk {
+            max-width: 100%;
+          }
+          #calendar-aprovacao .fc-toolbar-title {
+            font-size: 1rem;
+          }
+          #calendar-aprovacao .fc-button {
+            padding: .3rem .5rem;
+            font-size: .8rem;
+          }
+          #calendar-aprovacao .fc-col-header-cell-cushion,
+          #calendar-aprovacao .fc-daygrid-day-number {
+            font-size: .72rem;
+            padding: 2px;
+          }
+          #calendar-aprovacao .fc-daygrid-day-frame {
+            min-height: 52px;
+          }
+          #calendar-aprovacao .fc-daygrid-event {
+            font-size: .65rem;
+            margin: 1px;
+          }
+        }
+      </style>
+      <div id="modal-aprovacao-conteudo" class="bg-white rounded shadow max-h-[95vh] overflow-y-auto">
+        <div class="p-3 sm:p-4">
+          <h3 class="text-lg font-bold mb-2">Escolher data do agendamento</h3>
+          <div class="w-full min-w-0 overflow-hidden">
+            <div id="calendar-aprovacao" class="w-full max-w-full min-w-0"></div>
+          </div>
         </div>
 
 
-        <div class="text-right mt-3">
+        <div class="text-right px-3 sm:px-4 pb-3 sm:pb-4">
           <button id="fechar-modal" class="bg-gray-400 text-white px-3 py-1 rounded">
             Cancelar
           </button>
