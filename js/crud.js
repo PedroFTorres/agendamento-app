@@ -2736,8 +2736,78 @@ const snap = await query.get();
     porRep[d.representanteNome || "Sem rep"] =
       (porRep[d.representanteNome || "Sem rep"] || 0) + qtd;
 
-    lista.push(d);
+    lista.push({ id: doc.id, ...d });
   });
+
+  const observacoesPorVinculo = new Map();
+
+  async function buscarObservacaoPedido(agendamento) {
+    const chave = agendamento.pedidoId
+      ? `pedido:${agendamento.pedidoId}`
+      : `agendamento:${agendamento.id}`;
+
+    if (observacoesPorVinculo.has(chave)) {
+      return observacoesPorVinculo.get(chave);
+    }
+
+    const consulta = (async () => {
+      let pedidoDoc = null;
+
+      if (agendamento.pedidoId) {
+        const porCodigo = await db.collection("pedidos")
+          .where("codigo", "==", agendamento.pedidoId)
+          .limit(1)
+          .get();
+
+        if (!porCodigo.empty) {
+          pedidoDoc = porCodigo.docs[0];
+        } else {
+          const porId = await db.collection("pedidos").doc(String(agendamento.pedidoId)).get();
+          if (porId.exists) pedidoDoc = porId;
+        }
+      }
+
+      if (!pedidoDoc && agendamento.id) {
+        const porListaIds = await db.collection("pedidos")
+          .where("agendamentoIds", "array-contains", agendamento.id)
+          .limit(1)
+          .get();
+
+        if (!porListaIds.empty) {
+          pedidoDoc = porListaIds.docs[0];
+        }
+      }
+
+      if (!pedidoDoc && agendamento.id) {
+        const porIdPrincipal = await db.collection("pedidos")
+          .where("agendamentoId", "==", agendamento.id)
+          .limit(1)
+          .get();
+
+        if (!porIdPrincipal.empty) {
+          pedidoDoc = porIdPrincipal.docs[0];
+        }
+      }
+
+      return String(pedidoDoc?.data()?.observacao || "").trim();
+    })();
+
+    observacoesPorVinculo.set(chave, consulta);
+    return consulta;
+  }
+
+  await Promise.all(lista.map(async (agendamento) => {
+    if (String(agendamento.observacao || "").trim()) return;
+
+    try {
+      const observacaoPedido = await buscarObservacaoPedido(agendamento);
+      if (observacaoPedido) {
+        agendamento.observacao = observacaoPedido;
+      }
+    } catch (e) {
+      console.warn("Não foi possível recuperar a observação do pedido.", e);
+    }
+  }));
 
   const modal = document.createElement("div");
  modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto";
