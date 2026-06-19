@@ -1743,9 +1743,14 @@ async function carregarFiltrosRelatorio() {
     if (nome) clientes.add(nome);
   });
 
-  Array.from(clientes)
-    .sort((a, b) => a.localeCompare(b, "pt-BR"))
-    .forEach(nome => {
+  const clientesOrdenados = Array.from(clientes)
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  if (PERFIL === "representante") {
+    window.__REL_CLIENTES_REPRESENTANTE__ = clientesOrdenados;
+  }
+
+  clientesOrdenados.forEach(nome => {
       const opt = document.createElement("option");
       opt.value = nome;
       opt.textContent = nome;
@@ -1792,13 +1797,42 @@ async function gerarRelatorio() {
   totaisEl.textContent = "Carregando...";
   rankingEl.innerHTML = "";
 
-  let query = db.collection("agendamentos");
+  let documentosAgendamentos = [];
+
   if (PERFIL === "representante") {
-    query = query.where("userId", "==", user.uid);
+    const documentosPorId = new Map();
+    const snapProprios = await db.collection("agendamentos")
+      .where("userId", "==", user.uid)
+      .get();
+
+    snapProprios.docs.forEach(doc => documentosPorId.set(doc.id, doc));
+
+    const clientesDoRepresentante = Array.isArray(window.__REL_CLIENTES_REPRESENTANTE__)
+      ? window.__REL_CLIENTES_REPRESENTANTE__
+      : [];
+
+    try {
+      for (let inicio = 0; inicio < clientesDoRepresentante.length; inicio += 10) {
+        const loteNomes = clientesDoRepresentante.slice(inicio, inicio + 10);
+        if (!loteNomes.length) continue;
+
+        const snapClientes = await db.collection("agendamentos")
+          .where("clienteNome", "in", loteNomes)
+          .get();
+
+        snapClientes.docs.forEach(doc => documentosPorId.set(doc.id, doc));
+      }
+    } catch (e) {
+      console.warn("Agendamentos antigos serão exibidos após serem vinculados ao representante.", e);
+    }
+
+    documentosAgendamentos = Array.from(documentosPorId.values());
+  } else {
+    const snap = await db.collection("agendamentos").get();
+    documentosAgendamentos = snap.docs;
   }
 
-  const snap = await query.get();
-  const docsFiltrados = snap.docs.filter(doc => {
+  const docsFiltrados = documentosAgendamentos.filter(doc => {
     const d = doc.data() || {};
     const data = String(d.data || "");
     if (start && data < start) return false;
