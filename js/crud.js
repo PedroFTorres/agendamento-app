@@ -1345,22 +1345,30 @@ return;
   $form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const user = await waitForAuth();
+    const clienteId = $selCliente.value;
     const clienteNome = $selCliente.selectedOptions[0]?.textContent || "";
-    const repNome = REPRESENTANTE_ATUAL;
-    const prodNome    = $selProd.selectedOptions[0]?.textContent || "";
-    const data        = document.getElementById("ag-data").value;
-    const quantidade  = parseInt(document.getElementById("ag-qtd").value);
-    const observacao  = document.getElementById("ag-obs").value;
+    const prodNome = $selProd.selectedOptions[0]?.textContent || "";
+    const data = document.getElementById("ag-data").value;
+    const quantidade = parseInt(document.getElementById("ag-qtd").value);
+    const observacao = document.getElementById("ag-obs").value;
+    const clienteSnap = clienteId
+      ? await db.collection("clientes").doc(clienteId).get()
+      : null;
+    const clienteDados = clienteSnap?.exists ? (clienteSnap.data() || {}) : {};
+    const representanteUid = clienteDados.userId || user.uid;
+    const representanteNome = clienteDados.vinculadoPor || REPRESENTANTE_ATUAL;
 
     await db.collection("agendamentos").add({
-      userId: user.uid,
+      userId: representanteUid,
+      criadoPor: user.uid,
+      origem: "dashboard",
       clienteNome,
-      representanteNome: REPRESENTANTE_ATUAL,
+      representanteNome,
       produtoNome: prodNome,
       data,
       quantidade,
       observacao,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     $form.reset();
   });
@@ -1784,26 +1792,21 @@ async function gerarRelatorio() {
   totaisEl.textContent = "Carregando...";
   rankingEl.innerHTML = "";
 
-  const somenteRanking = window.__MODO_RANKING_CLIENTES__ === true;
-  let docsFiltrados = [];
-
-  if (!somenteRanking) {
-    let query = db.collection("agendamentos");
-    if (PERFIL === "representante") {
-      query = query.where("userId", "==", user.uid);
-    }
-
-    const snap = await query.get();
-    docsFiltrados = snap.docs.filter(doc => {
-      const d = doc.data() || {};
-      const data = String(d.data || "");
-      if (start && data < start) return false;
-      if (end && data > end) return false;
-      if (clienteSel && String(d.clienteNome || "") !== clienteSel) return false;
-      if (PERFIL === "admin" && representanteSel && String(d.representanteNome || "") !== representanteSel) return false;
-      return true;
-    });
+  let query = db.collection("agendamentos");
+  if (PERFIL === "representante") {
+    query = query.where("userId", "==", user.uid);
   }
+
+  const snap = await query.get();
+  const docsFiltrados = snap.docs.filter(doc => {
+    const d = doc.data() || {};
+    const data = String(d.data || "");
+    if (start && data < start) return false;
+    if (end && data > end) return false;
+    if (clienteSel && String(d.clienteNome || "") !== clienteSel) return false;
+    if (PERFIL === "admin" && representanteSel && String(d.representanteNome || "") !== representanteSel) return false;
+    return true;
+  });
 
   let totalGeral = 0;
   const porProduto = {};
@@ -1821,6 +1824,7 @@ async function gerarRelatorio() {
     totalGeral += qtd;
     porProduto[produto] = (porProduto[produto] || 0) + qtd;
     porRep[representante] = (porRep[representante] || 0) + qtd;
+    porCli[cliente] = (porCli[cliente] || 0) + qtd;
 
     linhasTabela.push({
       cliente,
@@ -1829,33 +1833,6 @@ async function gerarRelatorio() {
       qtd,
       data: d.data || "-"
     });
-  });
-
-  let pedidosQuery = db.collection("pedidos");
-  if (PERFIL === "representante") {
-    pedidosQuery = pedidosQuery.where("userId", "==", user.uid);
-  }
-
-  const pedidosSnap = await pedidosQuery.get();
-  pedidosSnap.forEach(doc => {
-    const pedido = doc.data() || {};
-    if (String(pedido.status || "").toLowerCase() !== "aprovado") return;
-
-    const dataPedido = String(pedido.data || "");
-    const clientePedido = String(pedido.clienteNome || "Não informado");
-    const representantePedido = String(pedido.representanteNome || "");
-
-    if (start && dataPedido < start) return;
-    if (end && dataPedido > end) return;
-    if (clienteSel && clientePedido !== clienteSel) return;
-    if (PERFIL === "admin" && representanteSel && representantePedido !== representanteSel) return;
-
-    const quantidadePedido = Number(pedido.quantidade || 0) ||
-      (Array.isArray(pedido.itens)
-        ? pedido.itens.reduce((total, item) => total + Number(item?.quantidade || 0), 0)
-        : 0);
-
-    porCli[clientePedido] = (porCli[clientePedido] || 0) + quantidadePedido;
   });
 
   const produtosOrdenados = Object.entries(porProduto)
@@ -2309,16 +2286,22 @@ clientesSnap.forEach(doc => {
 
   if (!d.nome || d.nome.trim() === "") return;
 
-  lista.push(d.nome);
+  lista.push({
+    id: doc.id,
+    nome: d.nome,
+    userId: d.userId || "",
+    representanteNome: d.vinculadoPor || ""
+  });
 });
-  // 🔥 ORDENA
-lista.sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-// 🔥 MONTA SELECT
-lista.forEach(nome => {
+lista.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+
+lista.forEach(cliente => {
   const opt = document.createElement("option");
-  opt.value = nome;
-  opt.textContent = nome;
+  opt.value = cliente.id;
+  opt.textContent = cliente.nome;
+  opt.dataset.userId = cliente.userId;
+  opt.dataset.representanteNome = cliente.representanteNome;
   selCliente.appendChild(opt);
 });
 
@@ -2331,20 +2314,25 @@ lista.forEach(nome => {
 
   modal.querySelector("#cancelar").onclick = ()=>modal.remove();
 
-  modal.querySelector("#salvar").onclick = async ()=>{
-    const cliente = selCliente.value;
+  modal.querySelector("#salvar").onclick = async () => {
+    const clienteOption = selCliente.selectedOptions[0];
+    const cliente = clienteOption?.textContent || "";
     const produto = selProduto.value;
     const qtd = parseInt(modal.querySelector("#m-qtd").value);
+    const representanteUid = clienteOption?.dataset.userId || user.uid;
+    const representanteNome = clienteOption?.dataset.representanteNome || REPRESENTANTE_ATUAL;
 
-   await db.collection("agendamentos").add({
-  userId: user.uid,
-  clienteNome: cliente,
-  representanteNome: REPRESENTANTE_ATUAL,
-  produtoNome: produto,
-  quantidade: qtd,
-  data: dataSelecionada,
-  createdAt: firebase.firestore.FieldValue.serverTimestamp()
-});
+    await db.collection("agendamentos").add({
+      userId: representanteUid,
+      criadoPor: user.uid,
+      origem: "dashboard",
+      clienteNome: cliente,
+      representanteNome,
+      produtoNome: produto,
+      quantidade: qtd,
+      data: dataSelecionada,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
 
     modal.remove();
   };
@@ -2444,7 +2432,7 @@ listaProdutos.forEach(nome => {
   modal.querySelector("#salvar").onclick = async () => {
     await db.collection("agendamentos").doc(id).update({
       clienteNome: selCliente.value,
-      representanteNome: REPRESENTANTE_ATUAL,
+      representanteNome: d.representanteNome || REPRESENTANTE_ATUAL,
       produtoNome: selProduto.value,
       quantidade: parseInt(modal.querySelector("#edit-qtd").value) || 0,
       data: modal.querySelector("#edit-data").value
