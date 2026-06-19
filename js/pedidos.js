@@ -884,46 +884,15 @@ async function editarPedidoAprovado(id) {
 
     try {
       const quantidadeTotal = novosItens.reduce((total, item) => total + item.quantidade, 0);
-      const agendamentoIdsAtuais = Array.isArray(p.agendamentoIds) && p.agendamentoIds.length
-        ? p.agendamentoIds
-        : (p.agendamentoId ? [p.agendamentoId] : []);
-      const agendamentoIdsFinais = [];
-
-      if (p.status === "aprovado") {
-        for (let index = 0; index < novosItens.length; index += 1) {
-          const item = novosItens[index];
-          const dadosAgendamento = {
-            userId: p.userId,
-            clienteNome: p.clienteNome,
-            produtoNome: item.produtoNome,
-            quantidade: item.quantidade,
-            representanteNome: p.representanteNome,
-            criadoPor: p.userId,
-            pedidoId: p.codigo || id,
-            data: novaData
-          };
-
-          if (agendamentoIdsAtuais[index]) {
-            await db.collection("agendamentos").doc(agendamentoIdsAtuais[index]).update(dadosAgendamento);
-            agendamentoIdsFinais.push(agendamentoIdsAtuais[index]);
-          } else {
-            const novoAgendamento = await db.collection("agendamentos").add({
-              ...dadosAgendamento,
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            agendamentoIdsFinais.push(novoAgendamento.id);
-          }
-        }
-
-        const agendamentosRemovidos = agendamentoIdsAtuais.slice(novosItens.length);
-        await Promise.all(agendamentosRemovidos.map((agId) => db.collection("agendamentos").doc(agId).delete()));
-      }
-
+      const statusAprovado = String(p.status || "").toLowerCase() === "aprovado";
+      const pedidoRef = db.collection("pedidos").doc(id);
       const atualizacaoPedido = {
         dataAnterior: dataAtual,
         data: novaData,
         produtoNome: novosItens[0].produtoNome,
-        produtosResumo: novosItens.map((item) => `${item.produtoNome} (${typeof formatQuantidade === "function" ? formatQuantidade(item.quantidade) : item.quantidade})`).join(", "),
+        produtosResumo: novosItens
+          .map((item) => `${item.produtoNome} (${typeof formatQuantidade === "function" ? formatQuantidade(item.quantidade) : item.quantidade})`)
+          .join(", "),
         itens: novosItens,
         quantidade: quantidadeTotal,
         qtdAnterior: p.quantidade,
@@ -932,17 +901,79 @@ async function editarPedidoAprovado(id) {
         notificadoData: dataAtual !== novaData,
         notificadoQtd: Number(p.quantidade || 0) !== quantidadeTotal,
         editadoPor: user.uid,
-        editadoEm: new Date()
+        editadoEm: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-       if (p.status === "aprovado") {
+      if (statusAprovado) {
+        const agendamentosPorId = new Map();
+        const idsSalvos = Array.isArray(p.agendamentoIds) && p.agendamentoIds.length
+          ? p.agendamentoIds
+          : (p.agendamentoId ? [p.agendamentoId] : []);
+
+        const snapsIdsSalvos = await Promise.all(
+          idsSalvos.map((agendamentoId) =>
+            db.collection("agendamentos").doc(agendamentoId).get()
+          )
+        );
+
+        snapsIdsSalvos.forEach((agendamentoSnap) => {
+          if (agendamentoSnap.exists) {
+            agendamentosPorId.set(agendamentoSnap.id, agendamentoSnap);
+          }
+        });
+
+        const codigoVinculo = p.codigo || id;
+        const vinculadosPorCodigo = await db.collection("agendamentos")
+          .where("pedidoId", "==", codigoVinculo)
+          .get();
+
+        vinculadosPorCodigo.docs.forEach((agendamentoDoc) => {
+          if (!agendamentosPorId.has(agendamentoDoc.id)) {
+            agendamentosPorId.set(agendamentoDoc.id, agendamentoDoc);
+          }
+        });
+
+        const agendamentosAtuais = Array.from(agendamentosPorId.values());
+        const agendamentoIdsFinais = [];
+        const batch = db.batch();
+
+        novosItens.forEach((item, index) => {
+          const agendamentoExistente = agendamentosAtuais[index];
+          const agendamentoRef = agendamentoExistente
+            ? agendamentoExistente.ref
+            : db.collection("agendamentos").doc();
+          const dadosAgendamento = {
+            userId: p.userId,
+            clienteNome: p.clienteNome,
+            produtoNome: item.produtoNome,
+            quantidade: item.quantidade,
+            representanteNome: p.representanteNome,
+            pedidoId: codigoVinculo,
+            data: novaData,
+            editadoPor: user.uid,
+            editadoEm: firebase.firestore.FieldValue.serverTimestamp()
+          };
+
+          if (!agendamentoExistente) {
+            dadosAgendamento.criadoPor = p.userId;
+            dadosAgendamento.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          }
+
+          batch.set(agendamentoRef, dadosAgendamento, { merge: true });
+          agendamentoIdsFinais.push(agendamentoRef.id);
+        });
+
+        agendamentosAtuais
+          .slice(novosItens.length)
+          .forEach((agendamentoDoc) => batch.delete(agendamentoDoc.ref));
+
         atualizacaoPedido.agendamentoId = agendamentoIdsFinais[0] || "";
         atualizacaoPedido.agendamentoIds = agendamentoIdsFinais;
+        batch.update(pedidoRef, atualizacaoPedido);
+        await batch.commit();
+      } else {
+        await pedidoRef.update(atualizacaoPedido);
       }
-
-      
-       // 🔥 atualiza pedido
-      await db.collection("pedidos").doc(id).update(atualizacaoPedido);
 
       
       modal.remove();
