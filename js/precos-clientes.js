@@ -11,7 +11,8 @@ function formatarMoedaPrecoCliente(valor) {
 function inserirMenuPrecosClientes() {
   if (document.querySelector('[data-page="precos-clientes"]')) return;
 
-  const menu = document.querySelector("#sidebar ul.space-y-2");
+  const produtos = document.querySelector('#sidebar [data-page="produtos"]')?.closest("li");
+  const menu = produtos?.parentElement || document.querySelector("#sidebar ul.space-y-2");
   if (!menu) return;
 
   const item = document.createElement("li");
@@ -22,7 +23,6 @@ function inserirMenuPrecosClientes() {
     </button>
   `;
 
-  const produtos = menu.querySelector('[data-page="produtos"]')?.closest("li");
   if (produtos?.nextSibling) {
     menu.insertBefore(item, produtos.nextSibling);
   } else {
