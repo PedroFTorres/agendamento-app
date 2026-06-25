@@ -7,12 +7,11 @@ function normalizarChavePrecoRelatorio(valor) {
 }
 
 function formatMoedaRelatorio(valor) {
-  if (typeof formatMoeda === "function") return formatMoeda(valor);
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
     minimumFractionDigits: 2,
-    maximumFractionDigits: 3
+    maximumFractionDigits: 2
   });
 }
 
@@ -126,8 +125,10 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
           .subtitulo { color: #6b7280; font-size: 12px; }
           .totais { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
           .total { background: #eef4ff; border: 1px solid #c7d7f2; border-radius: 8px; padding: 12px; }
+          .total-faturamento { background: #ecfdf5; border-color: #86efac; }
           .total span { display: block; color: #6b7280; margin-bottom: 3px; }
           .total strong { color: #1f3b64; font-size: 22px; }
+          .total-faturamento strong { color: #047857; }
           .resumos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
           .card { border: 1px solid #dfe6f1; border-radius: 8px; overflow: hidden; }
           .card h2 { margin: 0; padding: 7px 9px; color: #fff; background: #1f3b64; font-size: 12px; }
@@ -167,7 +168,7 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
             <span>Quantidade total agendada</span>
             <strong>${formatQuantidade(totalGeral)}</strong>
           </div>
-          <div class="total">
+          <div class="total total-faturamento">
             <span>Previs&atilde;o de faturamento</span>
             <strong>${formatMoedaRelatorio(previsaoFaturamento)}</strong>
           </div>
