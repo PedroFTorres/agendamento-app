@@ -1,6 +1,7 @@
 (() => {
   let pedidosDataAtual = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let pedidosFiltroStatus = "todos";
+  let pedidosFiltroCliente = "";
   let pedidosFiltroRepresentante = "";
   let unsubscribePedidos = null;
 
@@ -29,6 +30,30 @@
       .replace(/[\u0300-\u036f]/g, "")
       .trim()
       .toLowerCase();
+  }
+
+  function preencherSelectClientesPedidos(nomes) {
+    const select = document.getElementById("filtro-cliente-pedidos");
+    if (!select) return;
+
+    const valorAtual = pedidosFiltroCliente;
+    select.innerHTML = `<option value="">Todos os clientes</option>`;
+
+    Array.from(nomes)
+      .filter(Boolean)
+      .sort((a, b) => String(a).localeCompare(String(b), "pt-BR"))
+      .forEach(nome => {
+        const option = document.createElement("option");
+        option.value = nome;
+        option.textContent = nome;
+        select.appendChild(option);
+      });
+
+    if (valorAtual && Array.from(select.options).some(option => option.value === valorAtual)) {
+      select.value = valorAtual;
+    } else if (valorAtual) {
+      pedidosFiltroCliente = "";
+    }
   }
 
   function preencherSelectProduto(select, listaProdutos) {
@@ -214,7 +239,7 @@
     document.getElementById("p-responsavel").value = REPRESENTANTE_ATUAL || "";
 
     function adicionarLinhaProduto() {
-      const containerItens = document.getElementById("p-itens");
+      containerItens = document.getElementById("p-itens");
       const primeiraLinha = containerItens?.querySelector(".pedido-item");
       if (!containerItens || !primeiraLinha) return;
 
@@ -422,7 +447,7 @@
       </div>
 
       <div class="bg-white p-3 rounded shadow mb-3">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-${PERFIL === "admin" ? "3" : "2"} gap-3">
           <label class="block">
             <span class="block text-sm font-semibold text-gray-700 mb-1">Status</span>
             <select id="filtro-status-pedidos" class="border p-2 rounded w-full">
@@ -430,6 +455,13 @@
               <option value="pendente" ${pedidosFiltroStatus === "pendente" ? "selected" : ""}>Pendente</option>
               <option value="aprovado" ${pedidosFiltroStatus === "aprovado" ? "selected" : ""}>Aprovado</option>
               <option value="cancelado" ${pedidosFiltroStatus === "cancelado" ? "selected" : ""}>Cancelado</option>
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-semibold text-gray-700 mb-1">Cliente</span>
+            <select id="filtro-cliente-pedidos" class="border p-2 rounded w-full">
+              <option value="">Todos os clientes</option>
             </select>
           </label>
 
@@ -462,6 +494,11 @@
 
     document.getElementById("filtro-status-pedidos").addEventListener("change", (e) => {
       pedidosFiltroStatus = e.target.value;
+      window.renderPedidos();
+    });
+
+    document.getElementById("filtro-cliente-pedidos")?.addEventListener("change", (e) => {
+      pedidosFiltroCliente = e.target.value;
       window.renderPedidos();
     });
 
@@ -515,6 +552,7 @@
         }
 
         const pedidos = [];
+        const clientesDisponiveis = new Set();
         const anoSelecionado = pedidosDataAtual.getFullYear();
         const mesSelecionadoIndex = pedidosDataAtual.getMonth();
 
@@ -529,16 +567,25 @@
           const mesmoStatus =
             pedidosFiltroStatus === "todos" ||
             String(p.status || "").toLowerCase() === pedidosFiltroStatus;
+          if (mesmoMes && p.clienteNome) {
+            clientesDisponiveis.add(p.clienteNome);
+          }
+          const termoCliente = normalizarNomeRepresentante(pedidosFiltroCliente);
+          const mesmoCliente =
+            !termoCliente ||
+            normalizarNomeRepresentante(p.clienteNome) === termoCliente;
           const termoRepresentante = normalizarNomeRepresentante(pedidosFiltroRepresentante);
           const mesmoRepresentante =
             PERFIL !== "admin" ||
             !termoRepresentante ||
             normalizarNomeRepresentante(p.representanteNome).includes(termoRepresentante);
 
-          if (mesmoMes && mesmoStatus && mesmoRepresentante) {
+          if (mesmoMes && mesmoStatus && mesmoCliente && mesmoRepresentante) {
             pedidos.push({ id: doc.id, ...p });
           }
         });
+
+        preencherSelectClientesPedidos(clientesDisponiveis);
 
         if (!pedidos.length) {
           lista.innerHTML = `<p class="text-gray-500">Nenhum pedido encontrado para os filtros selecionados.</p>`;
