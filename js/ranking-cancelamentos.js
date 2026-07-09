@@ -44,21 +44,69 @@
     ).trim() || "Motivo não informado";
   }
 
-  function garantirBlocoCancelamentos() {
+  function ativarAbaRanking(tipo) {
+    const normalPanel = document.getElementById("ranking-clientes-normal-panel");
+    const cancelPanel = document.getElementById("ranking-clientes-cancelamentos-panel");
+    const btnNormal = document.getElementById("tab-ranking-clientes-normal");
+    const btnCancel = document.getElementById("tab-ranking-clientes-cancelamentos");
+    if (!normalPanel || !cancelPanel || !btnNormal || !btnCancel) return;
+
+    const cancelamentos = tipo === "cancelamentos";
+    normalPanel.classList.toggle("hidden", cancelamentos);
+    cancelPanel.classList.toggle("hidden", !cancelamentos);
+
+    btnNormal.className = cancelamentos
+      ? "px-3 py-2 rounded border text-sm font-semibold text-gray-600 bg-white"
+      : "px-3 py-2 rounded border text-sm font-semibold text-white bg-blue-600";
+    btnCancel.className = cancelamentos
+      ? "px-3 py-2 rounded border text-sm font-semibold text-white bg-red-600"
+      : "px-3 py-2 rounded border text-sm font-semibold text-gray-600 bg-white";
+
+    if (cancelamentos) renderRankingCancelamentos(true);
+  }
+
+  function garantirAbasRanking() {
     if (document.getElementById("ranking-clientes-cancelamentos")) return true;
 
     const rankingAtual = document.getElementById("ranking-clientes-lista");
     const cardRanking = rankingAtual?.closest(".bg-white");
     if (!cardRanking) return false;
 
-    cardRanking.insertAdjacentHTML("afterend", `
-      <div class="bg-white p-3 sm:p-4 rounded shadow mt-4">
-        <h3 class="text-lg font-semibold mb-1">Clientes que Mais Cancelam</h3>
-        <p class="text-sm text-gray-500 mb-3">Ranking por pedidos cancelados no período selecionado, com os motivos informados.</p>
-        <div id="ranking-clientes-cancelamentos" class="space-y-2"></div>
-      </div>
-    `);
+    const normalPanel = document.createElement("div");
+    normalPanel.id = "ranking-clientes-normal-panel";
+    normalPanel.className = "space-y-0";
 
+    while (cardRanking.firstChild) {
+      normalPanel.appendChild(cardRanking.firstChild);
+    }
+
+    const abas = document.createElement("div");
+    abas.id = "ranking-clientes-tabs";
+    abas.className = "flex flex-col sm:flex-row gap-2 mb-3";
+    abas.innerHTML = `
+      <button id="tab-ranking-clientes-normal" type="button" class="px-3 py-2 rounded border text-sm font-semibold text-white bg-blue-600">
+        Ranking de Clientes
+      </button>
+      <button id="tab-ranking-clientes-cancelamentos" type="button" class="px-3 py-2 rounded border text-sm font-semibold text-gray-600 bg-white">
+        Clientes que Mais Cancelam
+      </button>
+    `;
+
+    const cancelPanel = document.createElement("div");
+    cancelPanel.id = "ranking-clientes-cancelamentos-panel";
+    cancelPanel.className = "hidden";
+    cancelPanel.innerHTML = `
+      <h3 class="text-lg font-semibold mb-1">Clientes que Mais Cancelam</h3>
+      <p class="text-sm text-gray-500 mb-3">Ranking por pedidos cancelados no período selecionado, com os motivos informados.</p>
+      <div id="ranking-clientes-cancelamentos" class="space-y-2"></div>
+    `;
+
+    cardRanking.appendChild(abas);
+    cardRanking.appendChild(normalPanel);
+    cardRanking.appendChild(cancelPanel);
+
+    document.getElementById("tab-ranking-clientes-normal")?.addEventListener("click", () => ativarAbaRanking("normal"));
+    document.getElementById("tab-ranking-clientes-cancelamentos")?.addEventListener("click", () => ativarAbaRanking("cancelamentos"));
     return true;
   }
 
@@ -93,10 +141,7 @@
       if (!temProduto) return false;
     }
 
-    if (PERFIL === "admin" && filtros.representante && String(pedido.representanteNome || "") !== filtros.representante) {
-      return false;
-    }
-
+    if (PERFIL === "admin" && filtros.representante && String(pedido.representanteNome || "") !== filtros.representante) return false;
     return true;
   }
 
@@ -155,7 +200,7 @@
 
   async function renderRankingCancelamentos(forcar = false) {
     if (renderizando) return;
-    if (!garantirBlocoCancelamentos()) return;
+    if (!garantirAbasRanking()) return;
 
     const rankingEl = document.getElementById("ranking-clientes-cancelamentos");
     if (!rankingEl) return;
@@ -182,8 +227,14 @@
   }
 
   function agendarRender(forcar = false) {
-    setTimeout(() => renderRankingCancelamentos(forcar), 300);
-    setTimeout(() => renderRankingCancelamentos(forcar), 1200);
+    setTimeout(() => {
+      garantirAbasRanking();
+      renderRankingCancelamentos(forcar);
+    }, 300);
+    setTimeout(() => {
+      garantirAbasRanking();
+      renderRankingCancelamentos(forcar);
+    }, 1200);
   }
 
   document.addEventListener("click", (event) => {
@@ -203,9 +254,7 @@
   }, true);
 
   const observer = new MutationObserver(() => {
-    if (document.getElementById("ranking-clientes-lista")) {
-      agendarRender(false);
-    }
+    if (document.getElementById("ranking-clientes-lista")) agendarRender(false);
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
