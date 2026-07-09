@@ -12,6 +12,28 @@
       .replace(/'/g, "&#039;");
   }
 
+  function dataParaISO(valor) {
+    if (!valor) return "";
+    if (valor?.toDate) return valor.toDate().toISOString().slice(0, 10);
+    if (valor instanceof Date) return valor.toISOString().slice(0, 10);
+    if (typeof valor === "string") return valor.slice(0, 10);
+    return "";
+  }
+
+  function obterDataReferencia(pedido = {}) {
+    return dataParaISO(
+      pedido.dataCancelamento ||
+      pedido.canceladoEm ||
+      pedido.canceladoAt ||
+      pedido.updatedAt ||
+      pedido.editadoEm ||
+      pedido.createdAt ||
+      pedido.data ||
+      pedido.dataPedido ||
+      pedido.dataEntrega
+    );
+  }
+
   function obterMotivo(pedido = {}) {
     return String(
       pedido.motivoCancelamento ||
@@ -32,7 +54,7 @@
     cardRanking.insertAdjacentHTML("afterend", `
       <div class="bg-white p-3 sm:p-4 rounded shadow mt-4">
         <h3 class="text-lg font-semibold mb-1">Clientes que Mais Cancelam</h3>
-        <p class="text-sm text-gray-500 mb-3">Ranking pelo histórico de pedidos cancelados, com os motivos informados.</p>
+        <p class="text-sm text-gray-500 mb-3">Ranking por pedidos cancelados no período selecionado, com os motivos informados.</p>
         <div id="ranking-clientes-cancelamentos" class="space-y-2"></div>
       </div>
     `);
@@ -42,6 +64,8 @@
 
   function filtrosAtuais() {
     return {
+      start: document.getElementById("rel-start")?.value || "",
+      end: document.getElementById("rel-end")?.value || "",
       cliente: document.getElementById("rel-cliente")?.value || "",
       produto: document.getElementById("rel-produto")?.value || "",
       representante: document.getElementById("rel-representante")?.value || ""
@@ -55,6 +79,11 @@
 
   function pedidoPassaFiltros(pedido, filtros) {
     if (!pedidoCancelado(pedido)) return false;
+
+    const data = obterDataReferencia(pedido);
+    if ((filtros.start || filtros.end) && !data) return false;
+    if (filtros.start && data < filtros.start) return false;
+    if (filtros.end && data > filtros.end) return false;
     if (filtros.cliente && String(pedido.clienteNome || "") !== filtros.cliente) return false;
 
     if (filtros.produto) {
@@ -93,7 +122,7 @@
       .sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0], "pt-BR"));
 
     if (!ranking.length) {
-      rankingEl.innerHTML = `<p class="text-gray-500">Nenhum pedido cancelado encontrado.</p>`;
+      rankingEl.innerHTML = `<p class="text-gray-500">Nenhum pedido cancelado neste período.</p>`;
       return;
     }
 
