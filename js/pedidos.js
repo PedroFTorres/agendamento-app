@@ -155,6 +155,21 @@ async function abrirWhatsappPedidoAprovado(pedido, dataAgendada) {
   }
 }
 
+
+async function abrirWhatsappPedidoCancelado(pedido, motivo) {
+  const cliente = await buscarDadosClientePedido(pedido);
+  const mensagem = [
+    `Olá, ${pedido.clienteNome || "cliente"}.`,
+    `Seu pedido ${pedido.codigo || ""} foi cancelado.`,
+    `Motivo: ${motivo}.`,
+    "Em caso de dúvida, entre em contato com seu representante."
+  ].join("\n");
+
+  if (!abrirUrlWhatsapp(cliente.whatsapp || pedido.clienteWhatsapp, mensagem)) {
+    alert("Pedido cancelado, mas este cliente não tem WhatsApp cadastrado.");
+  }
+}
+
 async function abrirWhatsappPedidoAtualizado(pedidoAnterior, pedidoAtualizado, dataAnterior, novaData) {
   const cliente = await buscarDadosClientePedido(pedidoAtualizado);
   const itensAntes = formatarItensPedidoTexto(pedidoAnterior);
@@ -726,6 +741,14 @@ async function cancelarPedido(id, btn) {
 
 
     alert("Pedido cancelado!");
+    await abrirWhatsappPedidoCancelado({
+      id,
+      ...p,
+      status: "cancelado",
+      motivoCancelamento: motivo,
+      agendamentoId: "",
+      agendamentoIds: []
+    }, motivo);
 
   } catch (e) {
     if (btn) btn.disabled = false;
