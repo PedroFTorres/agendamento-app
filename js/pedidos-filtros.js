@@ -296,7 +296,7 @@
 
         const codigo = await gerarCodigoPedidoUnico();
         let clienteSnapshot = {};
-        let pedidoUserId = user.uid;
+        let representanteUserId = "";
 
         try {
           let clienteDoc = null;
@@ -318,7 +318,7 @@
           }
 
           if (clienteDoc) {
-            pedidoUserId = clienteDoc.userId || user.uid;
+            representanteUserId = clienteDoc.userId || "";
             clienteSnapshot = {
               clienteCnpj: clienteDoc.cnpj || "",
               clienteWhatsapp: clienteDoc.whatsapp || "",
@@ -337,7 +337,9 @@
         const quantidade = itens.reduce((total, item) => total + item.quantidade, 0);
         await db.collection("pedidos").add({
           codigo,
-          userId: pedidoUserId,
+          userId: user.uid,
+          criadoPor: user.uid,
+          representanteUserId,
           clienteNome: cliente,
           produtoNome: itens[0]?.produtoNome || "",
           produtosResumo: itens.map((item) => `${item.produtoNome} (${formatQuantidade(item.quantidade)})`).join(", "),
@@ -558,6 +560,7 @@
 
         snap.forEach(doc => {
           const p = doc.data();
+          if (PERFIL === "representante" && p.criadoPor !== user.uid) return;
           const data = dataCriacaoPedido(p);
           if (!data || Number.isNaN(data.getTime())) return;
 
