@@ -560,7 +560,12 @@
 
         snap.forEach(doc => {
           const p = doc.data();
-          if (PERFIL === "representante" && p.criadoPor !== user.uid) return;
+          if (PERFIL === "representante") {
+            const autoriaCompativel = p.criadoPor
+              ? p.criadoPor === user.uid
+              : p.criadoPorAdmin !== true && p.userId === user.uid;
+            if (!autoriaCompativel) return;
+          }
           const data = dataCriacaoPedido(p);
           if (!data || Number.isNaN(data.getTime())) return;
 
