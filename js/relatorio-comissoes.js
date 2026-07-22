@@ -38,13 +38,35 @@
 
   async function obterValorPedido(pedido) {
     const salvo = valorPedidoSalvo(pedido);
-    if (salvo > 0 || typeof enriquecerPedidoComValoresPorPrazo !== "function") return salvo;
+    if (!Array.isArray(pedido.itens) || !pedido.itens.length || typeof buscarPrecoUnitarioPedido !== "function") {
+      return salvo;
+    }
+
     try {
-      const enriquecido = await enriquecerPedidoComValoresPorPrazo(pedido);
-      return valorPedidoSalvo(enriquecido);
+      let total = 0;
+      for (const item of pedido.itens) {
+        const qtd = Number(item.quantidade || 0);
+        const valorItemSalvo = Number(item.valorTotal);
+        const precoSalvo = Number.isFinite(valorItemSalvo) && qtd > 0
+          ? valorItemSalvo / qtd
+          : Number(item.precoUnitario);
+        const resultadoAtual = await buscarPrecoUnitarioPedido(
+          pedido.clienteNome,
+          item.produtoNome || item.produto,
+          pedido.prazoPagamento,
+          pedido.userId || ""
+        );
+
+        // Preço por cliente tem prioridade; sem preço especial, preserva o valor do pedido.
+        const precoAplicado = resultadoAtual.origem === "cliente"
+          ? resultadoAtual.preco
+          : (Number.isFinite(precoSalvo) ? precoSalvo : resultadoAtual.preco);
+        total += Number(precoAplicado || 0) * qtd;
+      }
+      return total;
     } catch (e) {
       console.warn("Não foi possível calcular o valor do pedido.", pedido.codigo, e);
-      return 0;
+      return salvo;
     }
   }
 
