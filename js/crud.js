@@ -1597,12 +1597,14 @@ return;
       ? await db.collection("clientes").doc(clienteId).get()
       : null;
     const clienteDados = clienteSnap?.exists ? (clienteSnap.data() || {}) : {};
-    const representanteUid = clienteDados.userId || user.uid;
+    const representanteUid = clienteDados.userId || "";
     const representanteNome = clienteDados.vinculadoPor || REPRESENTANTE_ATUAL;
 
     await db.collection("agendamentos").add({
-      userId: representanteUid,
+      userId: user.uid,
       criadoPor: user.uid,
+      representanteUserId: representanteUid,
+      criadoPorAdmin: PERFIL === "admin",
       origem: "dashboard",
       clienteNome,
       representanteNome,
@@ -2428,6 +2430,10 @@ if (PERFIL === "representante") {
 }
 
 query.onSnapshot(snap => {
+        const docsVisiveis = snap.docs.filter(doc =>
+          PERFIL !== "representante" || doc.data().criadoPorAdmin !== true
+        );
+
         // Paleta de cores para eventos
         const cores = [
           "#f87171", // vermelho
@@ -2440,7 +2446,7 @@ query.onSnapshot(snap => {
         ];
         let corIndex = 0;
 
-        const eventos = snap.docs.map(doc => {
+        const eventos = docsVisiveis.map(doc => {
   const d = doc.data();
   const cor = cores[corIndex % cores.length];
   corIndex++;
@@ -2462,11 +2468,11 @@ query.onSnapshot(snap => {
     }
   };
 });
-        window.agendamentos = snap.docs.map(doc => doc.data());
+        window.agendamentos = docsVisiveis.map(doc => doc.data());
 
         // Resumo por dia → produtos e quantidades
         const resumoPorDia = {};
-        snap.docs.forEach(doc => {
+        docsVisiveis.forEach(doc => {
           const d = doc.data();
           const data = d.data;
           if (!resumoPorDia[data]) resumoPorDia[data] = {};
@@ -3427,7 +3433,7 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
 
  const codigo = await gerarCodigoPedidoUnico();
       let clienteSnapshot = {};
-      let pedidoUserId = user.uid;
+      let representanteUserId = "";
       try {
        let clienteDoc = null;
         if (clienteDocId) {
@@ -3450,7 +3456,7 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
 
         if (clienteDoc) {
           const c = clienteDoc;
-          pedidoUserId = c.userId || user.uid;
+          representanteUserId = c.userId || "";
           clienteSnapshot = {
             clienteCnpj: c.cnpj || "",
             clienteWhatsapp: c.whatsapp || "",
@@ -3469,7 +3475,9 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
       
       const pedidoPayload = {
         codigo,
-        userId: pedidoUserId,
+        userId: user.uid,
+        criadoPor: user.uid,
+        representanteUserId,
         clienteNome: cliente,
         produtoNome: produto,
         produtosResumo: itens.map((item) => `${item.produtoNome} (${typeof formatQuantidade === "function" ? formatQuantidade(item.quantidade) : item.quantidade})`).join(", "),
@@ -3545,6 +3553,7 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
 
         snap.forEach(doc => {
           const p = doc.data();
+          if (PERFIL === "representante" && p.criadoPorAdmin === true) return;
           const data = p.createdAt?.toDate?.() || new Date();
 
           const mes = data.toLocaleString("pt-BR", { month: "long", year: "numeric" });
