@@ -113,6 +113,7 @@
   }
 
   async function gerarRelatorioComissoes() {
+    const user = await waitForAuth();
     const lista = document.getElementById("comissao-lista");
     const resumo = document.getElementById("comissao-resumo");
     const mes = document.getElementById("comissao-mes")?.value;
@@ -131,6 +132,14 @@
 
     snap.forEach(doc => {
       const pedido = { id: doc.id, ...(doc.data() || {}) };
+
+      if (PERFIL === "representante") {
+        const criadoPeloRepresentante = pedido.criadoPor
+          ? pedido.criadoPor === user.uid
+          : pedido.criadoPorAdmin !== true && pedido.userId === user.uid;
+        if (!criadoPeloRepresentante) return;
+      }
+
       const data = dataPedido(pedido);
       if (!data || data.getFullYear() !== ano || data.getMonth() !== numeroMes - 1) return;
       if (status !== "todos" && String(pedido.status || "").toLowerCase() !== status) return;
@@ -232,7 +241,7 @@
   }
 
   window.renderRelatorios = function renderRelatorioComissoes() {
-    if (PERFIL !== "admin") {
+    if (!["admin", "representante"].includes(PERFIL)) {
       renderDashboard();
       return;
     }
@@ -246,10 +255,10 @@
         <p class="text-sm text-gray-500">Pedidos agrupados por representante para conferência mensal.</p>
       </div>
       <div class="bg-white p-4 rounded shadow mb-4">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+        <div class="grid grid-cols-1 md:grid-cols-${PERFIL === "admin" ? "5" : "4"} gap-3 items-end">
           <label><span class="block text-sm font-semibold mb-1">Mês</span><input id="comissao-mes" type="month" value="${mesAtual}" class="border p-2 rounded w-full"></label>
           <label><span class="block text-sm font-semibold mb-1">Pedidos</span><select id="comissao-status" class="border p-2 rounded w-full"><option value="aprovado">Aprovados</option><option value="todos">Todos</option><option value="pendente">Pendentes</option><option value="cancelado">Cancelados</option></select></label>
-          <label><span class="block text-sm font-semibold mb-1">Representante</span><select id="comissao-representante" class="border p-2 rounded w-full"><option value="">Todos os representantes</option></select></label>
+          ${PERFIL === "admin" ? '<label><span class="block text-sm font-semibold mb-1">Representante</span><select id="comissao-representante" class="border p-2 rounded w-full"><option value="">Todos os representantes</option></select></label>' : ""}
           <label><span class="block text-sm font-semibold mb-1">Comissão (%)</span><input id="comissao-percentual" type="number" min="0" step="0.01" value="0" class="border p-2 rounded w-full"></label>
           <button id="comissao-atualizar" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Atualizar relatório</button>
         </div>
@@ -262,7 +271,8 @@
     document.getElementById("comissao-atualizar").onclick = gerarRelatorioComissoes;
     document.getElementById("comissao-csv").onclick = exportarCsvComissoes;
     document.getElementById("comissao-percentual").onchange = gerarRelatorioComissoes;
-    document.getElementById("comissao-representante").onchange = gerarRelatorioComissoes;
+    const filtroRepresentante = document.getElementById("comissao-representante");
+    if (filtroRepresentante) filtroRepresentante.onchange = gerarRelatorioComissoes;
     gerarRelatorioComissoes().catch(e => {
       console.error(e);
       document.getElementById("comissao-lista").innerHTML = '<div class="bg-white p-5 rounded shadow text-red-600">Não foi possível gerar o relatório.</div>';
