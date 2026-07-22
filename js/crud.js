@@ -1969,6 +1969,11 @@ function renderRelatorios(somenteRanking = false) {
 }
 
 function renderRankingClientes() {
+  if (PERFIL !== "admin") {
+    renderDashboard();
+    return;
+  }
+
   renderRelatorios(true);
 
   const titulo = pageContent.querySelector("h2");
