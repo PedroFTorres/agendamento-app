@@ -184,13 +184,20 @@ function instalarRelatorioComPrecoDoPedido() {
       const quantidadeItemPedido = Number(itemPedido?.quantidade || item.quantidade || 0);
       let precoUnitario = Number.isFinite(valorItemPedido) && quantidadeItemPedido > 0
         ? valorItemPedido / quantidadeItemPedido
-        : null;
+        : Number(itemPedido?.precoUnitario);
       let origem = Number.isFinite(precoUnitario) ? (itemPedido?.precoOrigem || "pedido") : "";
 
-      if (!Number.isFinite(precoUnitario)) {
-        const resultado = await buscarPrecoUnitarioPedido(item.clienteNome, item.produtoNome, prazo, item.userId || user?.uid || "");
-        precoUnitario = resultado.preco;
-        origem = resultado.origem;
+      const resultadoAtual = await buscarPrecoUnitarioPedido(
+        item.clienteNome,
+        item.produtoNome,
+        prazo,
+        item.userId || user?.uid || ""
+      );
+
+      // Preço especial do cliente sempre prevalece sobre o valor normal salvo.
+      if (resultadoAtual.origem === "cliente" || !Number.isFinite(precoUnitario)) {
+        precoUnitario = resultadoAtual.preco;
+        origem = resultadoAtual.origem;
       }
 
       item.prazoPagamento = prazo;
