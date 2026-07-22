@@ -60,8 +60,8 @@ async function buscarPrecoUnitarioPedido(clienteNome, produtoNome, prazoPagament
   });
 
   try {
-    let query = db.collection("precos_clientes");
-    if (PERFIL === "representante" && userId) query = query.where("userId", "==", userId);
+    // O preço pertence ao cliente/produto; quem cadastrou não altera a regra comercial.
+    const query = db.collection("precos_clientes");
     const snap = await query.get();
     let especial = null;
     snap.forEach(doc => {
