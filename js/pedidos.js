@@ -592,15 +592,18 @@ async function aprovarPedido(id, btn) {
 
            const itensPedido = normalizarItensPedido(p);
             const agRefs = [];
+            const pedidoCriadorUid = p.criadoPor || (p.criadoPorAdmin ? user.uid : p.userId);
 
             for (const item of itensPedido) {
               const agRef = await db.collection("agendamentos").add({
-                userId: p.userId,
+                userId: pedidoCriadorUid,
                 clienteNome: p.clienteNome,
                 produtoNome: item.produtoNome,
                 quantidade: item.quantidade,
                 representanteNome: p.representanteNome,
-                criadoPor: p.userId,
+                representanteUserId: p.representanteUserId || (p.criadoPorAdmin ? p.userId : ""),
+                criadoPor: pedidoCriadorUid,
+                criadoPorAdmin: p.criadoPorAdmin === true,
                 pedidoId: p.codigo || id,
                 data: dataEscolhida,
                 observacao: p.observacao || "",
@@ -627,9 +630,9 @@ async function aprovarPedido(id, btn) {
               doc.ref.update({ lida: true });
             });
             
-            // 🔔 Notificar representante
+            // 🔔 Notificar o autor do pedido
             await db.collection("notificacoes").add({
-              userId: p.userId,
+              userId: pedidoCriadorUid,
               pedidoId: p.codigo,
               texto: `✅ Pedido ${p.codigo} foi aprovado para o dia ${dataEscolhida}.`,
               lida: false,
