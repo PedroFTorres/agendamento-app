@@ -32,11 +32,8 @@ async function aplicarValoresAgendamentosRelatorio(lista, user) {
   }
 
   try {
-    let precosQuery = db.collection("precos_clientes");
-    if (PERFIL === "representante") {
-      precosQuery = precosQuery.where("userId", "==", user.uid);
-    }
-
+    // Preços especiais são definidos pelo admin, mas pertencem ao cliente/produto.
+    const precosQuery = db.collection("precos_clientes");
     const precosSnap = await precosQuery.get();
     precosSnap.forEach(doc => {
       const item = doc.data() || {};
