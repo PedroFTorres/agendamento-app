@@ -51,22 +51,36 @@ async function aplicarValoresAgendamentosRelatorio(lista, user) {
     console.warn("Nao foi possivel carregar precos diferenciados por cliente.", e);
   }
 
-  return lista.reduce((total, item) => {
+  let total = 0;
+  for (const item of lista) {
     const cliente = normalizarChavePrecoRelatorio(item.clienteNome);
     const produto = normalizarChavePrecoRelatorio(item.produtoNome);
     const precoDiferenciado = precosPorClienteProduto.get(`${cliente}::${produto}`);
     const precoProduto = produtosPorNome.get(produto);
-    const precoUnitario = Number.isFinite(precoDiferenciado)
+    let precoUnitario = Number.isFinite(precoDiferenciado)
       ? precoDiferenciado
       : (Number.isFinite(precoProduto) ? precoProduto : 0);
-    const valorVenda = precoUnitario * Number(item.quantidade || 0);
+    let origem = Number.isFinite(precoDiferenciado) ? "cliente" : "produto";
 
+    // Consulta novamente o preço atual para refletir cadastros feitos após a aprovação.
+    if (typeof buscarPrecoUnitarioPedido === "function") {
+      const resultadoAtual = await buscarPrecoUnitarioPedido(
+        item.clienteNome,
+        item.produtoNome,
+        item.prazoPagamento || "",
+        item.userId || user?.uid || ""
+      );
+      precoUnitario = Number(resultadoAtual.preco || 0);
+      origem = resultadoAtual.origem;
+    }
+
+    const valorVenda = precoUnitario * Number(item.quantidade || 0);
     item.precoUnitario = precoUnitario;
     item.valorVenda = valorVenda;
-    item.precoOrigem = Number.isFinite(precoDiferenciado) ? "cliente" : "produto";
-
-    return total + valorVenda;
-  }, 0);
+    item.precoOrigem = origem;
+    total += valorVenda;
+  }
+  return total;
 }
 
 function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, lista, previsaoFaturamento = 0) {
