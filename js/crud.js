@@ -2413,13 +2413,30 @@ async function exportarPDF() {
 }
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
+async function obterPedidosAdminOcultosDoRepresentante(user) {
+  if (PERFIL !== "representante" || !user?.uid) return new Set();
+
+  const snap = await db.collection("pedidos")
+    .where("userId", "==", user.uid)
+    .get();
+
+  return new Set(
+    snap.docs
+      .map(doc => doc.data() || {})
+      .filter(pedido => pedido.criadoPorAdmin === true)
+      .map(pedido => pedido.codigo)
+      .filter(Boolean)
+  );
+}
+
 function renderDashboard() {
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Calendário de Agendamentos</h2>
    <div id="calendar" class="bg-white p-4 rounded shadow w-full overflow-x-auto"></div>
   `;
 
-  waitForAuth().then(user => {
+  waitForAuth().then(async user => {
+const pedidosAdminOcultos = await obterPedidosAdminOcultosDoRepresentante(user);
 let query;
 
 if (PERFIL === "representante") {
@@ -2430,9 +2447,12 @@ if (PERFIL === "representante") {
 }
 
 query.onSnapshot(snap => {
-        const docsVisiveis = snap.docs.filter(doc =>
-          PERFIL !== "representante" || doc.data().criadoPorAdmin !== true
-        );
+        const docsVisiveis = snap.docs.filter(doc => {
+          if (PERFIL !== "representante") return true;
+          const agendamento = doc.data();
+          return agendamento.criadoPorAdmin !== true
+            && !pedidosAdminOcultos.has(agendamento.pedidoId);
+        });
 
         // Paleta de cores para eventos
         const cores = [
@@ -2964,6 +2984,13 @@ if (PERFIL === "representante") {
 }
 
 const snap = await query.get();
+const pedidosAdminOcultos = await obterPedidosAdminOcultosDoRepresentante(user);
+const docsVisiveis = snap.docs.filter(doc => {
+  if (PERFIL !== "representante") return true;
+  const agendamento = doc.data();
+  return agendamento.criadoPorAdmin !== true
+    && !pedidosAdminOcultos.has(agendamento.pedidoId);
+});
 
   let totalGeral = 0;
   const porProduto = {};
@@ -2971,7 +2998,7 @@ const snap = await query.get();
 
   const lista = [];
 
-  snap.forEach(doc => {
+  docsVisiveis.forEach(doc => {
     const d = doc.data();
     const qtd = d.quantidade || 0;
 
