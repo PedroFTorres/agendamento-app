@@ -38,13 +38,20 @@
 
   async function obterValorPedido(pedido) {
     const salvo = valorPedidoSalvo(pedido);
-    if (!Array.isArray(pedido.itens) || !pedido.itens.length || typeof buscarPrecoUnitarioPedido !== "function") {
-      return salvo;
-    }
+    if (typeof buscarPrecoUnitarioPedido !== "function") return salvo;
+
+    const itensPedido = Array.isArray(pedido.itens) && pedido.itens.length
+      ? pedido.itens
+      : [{
+          produtoNome: pedido.produtoNome,
+          quantidade: pedido.quantidade,
+          precoUnitario: pedido.precoUnitario,
+          valorTotal: pedido.valorTotal
+        }];
 
     try {
       let total = 0;
-      for (const item of pedido.itens) {
+      for (const item of itensPedido) {
         const qtd = Number(item.quantidade || 0);
         const valorItemSalvo = Number(item.valorTotal);
         const precoSalvo = Number.isFinite(valorItemSalvo) && qtd > 0
