@@ -3224,20 +3224,8 @@ function pedidoPertenceAoCriador(pedido, user) {
   if (PERFIL !== "representante") return true;
   if (!pedido || !user?.uid) return false;
 
-  if (pedido.criadoPor) {
-    return pedido.criadoPor === user.uid;
-  }
-
-  if (pedido.criadoPorAdmin === true || pedido.userId !== user.uid) {
-    return false;
-  }
-
-  const responsavelPedido = normalizarIdentidadePedido(pedido.representanteNome);
-  const representanteAtual = normalizarIdentidadePedido(REPRESENTANTE_ATUAL);
-
-  return !responsavelPedido
-    || !representanteAtual
-    || responsavelPedido === representanteAtual;
+  // O representante só vê pedidos com autoria explicitamente comprovada.
+  return pedido.criadoPor === user.uid;
 }
 
 function renderPedidos() {
