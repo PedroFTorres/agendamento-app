@@ -3212,6 +3212,34 @@ document.querySelectorAll(".menu-item").forEach(btn => {
   });
 });
 
+function normalizarIdentidadePedido(valor) {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function pedidoPertenceAoCriador(pedido, user) {
+  if (PERFIL !== "representante") return true;
+  if (!pedido || !user?.uid) return false;
+
+  if (pedido.criadoPor) {
+    return pedido.criadoPor === user.uid;
+  }
+
+  if (pedido.criadoPorAdmin === true || pedido.userId !== user.uid) {
+    return false;
+  }
+
+  const responsavelPedido = normalizarIdentidadePedido(pedido.representanteNome);
+  const representanteAtual = normalizarIdentidadePedido(REPRESENTANTE_ATUAL);
+
+  return !responsavelPedido
+    || !representanteAtual
+    || responsavelPedido === representanteAtual;
+}
+
 function renderPedidos() {
    const renderPedidosToken = Date.now() + Math.random();
   window.__renderPedidosToken = renderPedidosToken;
@@ -3580,7 +3608,7 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
 
         snap.forEach(doc => {
           const p = doc.data();
-          if (PERFIL === "representante" && p.criadoPorAdmin === true) return;
+          if (!pedidoPertenceAoCriador(p, user)) return;
           const data = p.createdAt?.toDate?.() || new Date();
 
           const mes = data.toLocaleString("pt-BR", { month: "long", year: "numeric" });
