@@ -112,6 +112,100 @@
     URL.revokeObjectURL(url);
   }
 
+  function exportarPdfComissoes() {
+    if (!window.jspdf?.jsPDF) {
+      alert("Gerador de PDF não está disponível.");
+      return;
+    }
+    if (!dadosRelatorioComissao.length) {
+      alert("Não há pedidos no relatório para exportar.");
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const mes = document.getElementById("comissao-mes")?.value || "";
+    const status = document.getElementById("comissao-status")?.selectedOptions?.[0]?.textContent || "";
+    const percentual = Math.max(0, Number(document.getElementById("comissao-percentual")?.value || 0));
+    const totalVendas = dadosRelatorioComissao.reduce((soma, grupo) => soma + grupo.total, 0);
+    const totalComissao = totalVendas * percentual / 100;
+    let y = 16;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(17);
+    doc.setTextColor(31, 59, 100);
+    doc.text("Relatório de Vendas e Comissões", 14, y);
+    y += 7;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(70, 70, 70);
+    doc.text(`Mês: ${mes || "-"}   |   Pedidos: ${status}   |   Comissão: ${percentual.toLocaleString("pt-BR")}%`, 14, y);
+    y += 6;
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total vendido: ${moeda(totalVendas)}   |   Comissão estimada: ${moeda(totalComissao)}`, 14, y);
+    y += 8;
+
+    dadosRelatorioComissao.forEach((grupo, indice) => {
+      if (indice > 0 && y > 175) {
+        doc.addPage();
+        y = 16;
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(31, 59, 100);
+      doc.text(grupo.nome, 14, y);
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 60);
+      doc.text(
+        `${grupo.pedidos.length} pedido(s) | Vendas: ${moeda(grupo.total)} | Comissão: ${moeda(grupo.total * percentual / 100)}`,
+        14,
+        y + 5
+      );
+
+      doc.autoTable({
+        startY: y + 8,
+        margin: { left: 14, right: 14 },
+        head: [["Data", "Pedido", "Cliente", "Produtos", "Qtd.", "Valor"]],
+        body: grupo.pedidos
+          .slice()
+          .sort((a, b) => b.data - a.data)
+          .map(pedido => [
+            pedido.dataFormatada,
+            pedido.codigo || pedido.id,
+            pedido.clienteNome || "-",
+            pedido.produtosResumo || pedido.produtoNome || "-",
+            quantidade(pedido.quantidade),
+            moeda(pedido.valorVenda)
+          ]),
+        theme: "striped",
+        styles: { fontSize: 7, cellPadding: 1.8, overflow: "linebreak" },
+        headStyles: { fillColor: [31, 59, 100], textColor: 255 },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 48 },
+          2: { cellWidth: 62 },
+          3: { cellWidth: 85 },
+          4: { cellWidth: 18, halign: "right" },
+          5: { cellWidth: 27, halign: "right" }
+        }
+      });
+
+      y = Number(doc.lastAutoTable?.finalY || y + 15) + 10;
+    });
+
+    const totalPaginas = doc.internal.getNumberOfPages();
+    for (let pagina = 1; pagina <= totalPaginas; pagina += 1) {
+      doc.setPage(pagina);
+      doc.setFontSize(8);
+      doc.setTextColor(110, 110, 110);
+      doc.text(`Página ${pagina} de ${totalPaginas}`, 283, 200, { align: "right" });
+    }
+
+    doc.save(`relatorio-comissoes-${mes || "periodo"}.pdf`);
+  }
+
   async function gerarRelatorioComissoes() {
     const user = await waitForAuth();
     const lista = document.getElementById("comissao-lista");
@@ -262,7 +356,10 @@
           <label><span class="block text-sm font-semibold mb-1">Comissão (%)</span><input id="comissao-percentual" type="number" min="0" step="0.01" value="0" class="border p-2 rounded w-full"></label>
           <button id="comissao-atualizar" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Atualizar relatório</button>
         </div>
-        <button id="comissao-csv" class="mt-3 border border-green-700 text-green-700 px-4 py-2 rounded w-full md:w-auto">Exportar CSV</button>
+        <div class="mt-3 flex flex-col md:flex-row gap-2">
+          <button id="comissao-csv" class="border border-green-700 text-green-700 px-4 py-2 rounded w-full md:w-auto">Exportar CSV</button>
+          <button id="comissao-pdf" class="border border-red-700 text-red-700 px-4 py-2 rounded w-full md:w-auto">Exportar PDF</button>
+        </div>
       </div>
       <div id="comissao-resumo"></div>
       <div id="comissao-lista" class="space-y-4"></div>
@@ -270,6 +367,7 @@
 
     document.getElementById("comissao-atualizar").onclick = gerarRelatorioComissoes;
     document.getElementById("comissao-csv").onclick = exportarCsvComissoes;
+    document.getElementById("comissao-pdf").onclick = exportarPdfComissoes;
     document.getElementById("comissao-percentual").onchange = gerarRelatorioComissoes;
     const filtroRepresentante = document.getElementById("comissao-representante");
     if (filtroRepresentante) filtroRepresentante.onchange = gerarRelatorioComissoes;
