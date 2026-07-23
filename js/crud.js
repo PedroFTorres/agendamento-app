@@ -1127,18 +1127,30 @@ function renderForm(type) {
     ` : ""}
     <ul id="${type}-list" class="space-y-2"></ul>
   `;
+  let aplicarFiltroClientes = () => {};
+
   if (type === "clientes") {
-  const searchInput = document.getElementById("clientes-search");
-  searchInput.addEventListener("input", () => {
-    const termo = searchInput.value.toLowerCase();
-    const list = document.getElementById(`${type}-list`);
-const items = list.querySelectorAll("li");
-    items.forEach(li => {
-      const txt = li.textContent.toLowerCase();
-      li.style.display = txt.includes(termo) ? "" : "none";
-    });
-  });
-}
+    const searchInput = document.getElementById("clientes-search");
+    const normalizarBuscaCliente = valor => String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+
+    aplicarFiltroClientes = () => {
+      const termo = normalizarBuscaCliente(searchInput.value);
+      const list = document.getElementById(`${type}-list`);
+      if (!list) return;
+
+      list.querySelectorAll("li").forEach(li => {
+        const texto = normalizarBuscaCliente(li.textContent);
+        li.style.display = !termo || texto.includes(termo) ? "" : "none";
+      });
+    };
+
+    searchInput.addEventListener("input", aplicarFiltroClientes);
+  }
 
   const form = document.getElementById(`${type}-form`);
   if (type === "clientes") {
@@ -1321,6 +1333,7 @@ payload.uid = cred.user.uid;
 
       snap.forEach(doc => list.appendChild(listItem(type, doc.id, doc.data())));
       bindBasicActions(list);
+      if (type === "clientes") aplicarFiltroClientes();
     },
     err => {
       console.error("🔥 ERRO SNAP:", err);
