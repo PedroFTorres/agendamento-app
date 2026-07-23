@@ -28,6 +28,8 @@
     return String(valor || "")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
       .trim()
       .toLowerCase();
   }
@@ -39,20 +41,26 @@
     const valorAtual = pedidosFiltroCliente;
     select.innerHTML = `<option value="">Todos os clientes</option>`;
 
-    Array.from(nomes)
-      .filter(Boolean)
-      .sort((a, b) => String(a).localeCompare(String(b), "pt-BR"))
-      .forEach(nome => {
+    const clientesUnicos = new Map();
+    Array.from(nomes).filter(Boolean).forEach(nome => {
+      const chave = normalizarNomeRepresentante(nome);
+      if (chave && !clientesUnicos.has(chave)) clientesUnicos.set(chave, String(nome).trim());
+    });
+
+    Array.from(clientesUnicos.entries())
+      .sort(([, nomeA], [, nomeB]) => nomeA.localeCompare(nomeB, "pt-BR"))
+      .forEach(([chave, nome]) => {
         const option = document.createElement("option");
-        option.value = nome;
+        option.value = chave;
         option.textContent = nome;
         select.appendChild(option);
       });
 
-    if (valorAtual && Array.from(select.options).some(option => option.value === valorAtual)) {
+    if (valorAtual && clientesUnicos.has(valorAtual)) {
       select.value = valorAtual;
     } else if (valorAtual) {
       pedidosFiltroCliente = "";
+      select.value = "";
     }
   }
 
