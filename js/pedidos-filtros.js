@@ -238,10 +238,16 @@
     const cliSnap = await cliQuery.orderBy("nome").get();
     clienteSelect.innerHTML = `<option value="">Selecione cliente</option>`;
     cliSnap.forEach(doc => {
+      const clienteDados = doc.data() || {};
       const opt = document.createElement("option");
-      opt.value = doc.data().nome;
-      opt.textContent = doc.data().nome;
+      opt.value = clienteDados.nome;
+      opt.textContent = clienteDados.bloqueado && PERFIL === "representante"
+        ? `${clienteDados.nome} — BLOQUEADO`
+        : clienteDados.nome;
       opt.dataset.id = doc.id;
+      opt.dataset.bloqueado = clienteDados.bloqueado ? "true" : "false";
+      opt.dataset.motivoBloqueio = clienteDados.motivoBloqueio || "";
+      if (clienteDados.bloqueado && PERFIL === "representante") opt.disabled = true;
       clienteSelect.appendChild(opt);
     });
 
@@ -329,6 +335,12 @@
           }
 
           if (clienteDoc) {
+            if (PERFIL === "representante" && clienteDoc.bloqueado === true) {
+              const motivo = clienteDoc.motivoBloqueio ? ` Motivo: ${clienteDoc.motivoBloqueio}` : "";
+              alert(`Este cliente está bloqueado para novos pedidos.${motivo}`);
+              return;
+            }
+
             representanteUserId = clienteDoc.userId || "";
             clienteSnapshot = {
               clienteCnpj: clienteDoc.cnpj || "",
