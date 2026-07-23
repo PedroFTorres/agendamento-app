@@ -104,7 +104,10 @@
       "red";
 
     const item = document.createElement("div");
-    item.className = "bg-white p-3 rounded shadow cursor-pointer";
+    item.className = "pedido-card bg-white p-3 rounded shadow cursor-pointer";
+    item.dataset.cliente = normalizarNomeRepresentante(p.clienteNome);
+    item.dataset.representante = normalizarNomeRepresentante(p.representanteNome);
+    item.dataset.status = String(p.status || "").toLowerCase();
     item.innerHTML = `
       <div style="font-size:12px; color:#666;">
         Pedido: <b>${p.codigo || "-"}</b>
@@ -492,6 +495,34 @@
     const lista = document.getElementById("lista-pedidos");
     const mesAtualEl = document.getElementById("mes-atual");
 
+    function aplicarFiltrosCardsPedidos() {
+      const cliente = normalizarNomeRepresentante(pedidosFiltroCliente);
+      const representante = normalizarNomeRepresentante(pedidosFiltroRepresentante);
+      const status = String(pedidosFiltroStatus || "todos").toLowerCase();
+      let visiveis = 0;
+
+      lista.querySelectorAll(".pedido-card").forEach(card => {
+        const correspondeCliente = !cliente || card.dataset.cliente === cliente;
+        const correspondeRepresentante = PERFIL !== "admin"
+          || !representante
+          || card.dataset.representante === representante;
+        const correspondeStatus = status === "todos" || card.dataset.status === status;
+        const mostrar = correspondeCliente && correspondeRepresentante && correspondeStatus;
+        card.classList.toggle("hidden", !mostrar);
+        if (mostrar) visiveis += 1;
+      });
+
+      let vazio = document.getElementById("pedidos-filtro-vazio");
+      if (!vazio) {
+        vazio = document.createElement("p");
+        vazio.id = "pedidos-filtro-vazio";
+        vazio.className = "text-gray-500";
+        vazio.textContent = "Nenhum pedido encontrado para os filtros selecionados.";
+        lista.appendChild(vazio);
+      }
+      vazio.classList.toggle("hidden", visiveis > 0);
+    }
+
     document.getElementById("mes-anterior").onclick = () => {
       pedidosDataAtual = new Date(pedidosDataAtual.getFullYear(), pedidosDataAtual.getMonth() - 1, 1);
       window.renderPedidos();
@@ -504,17 +535,17 @@
 
     document.getElementById("filtro-status-pedidos").addEventListener("change", (e) => {
       pedidosFiltroStatus = e.target.value;
-      window.renderPedidos();
+      aplicarFiltrosCardsPedidos();
     });
 
     document.getElementById("filtro-cliente-pedidos")?.addEventListener("change", (e) => {
       pedidosFiltroCliente = e.target.value;
-      window.renderPedidos();
+      aplicarFiltrosCardsPedidos();
     });
 
     document.getElementById("filtro-representante-pedidos")?.addEventListener("change", (e) => {
       pedidosFiltroRepresentante = e.target.value;
-      window.renderPedidos();
+      aplicarFiltrosCardsPedidos();
     });
 
     document.getElementById("btn-abrir-modal-pedido")?.addEventListener("click", () => {
@@ -596,7 +627,8 @@
             !termoRepresentante ||
             normalizarNomeRepresentante(p.representanteNome).includes(termoRepresentante);
 
-          if (mesmoMes && mesmoStatus && mesmoCliente && mesmoRepresentante) {
+          // Mantém todos os pedidos do mês no DOM; os três filtros atuam localmente.
+          if (mesmoMes) {
             pedidos.push({ id: doc.id, ...p });
           }
         });
@@ -618,6 +650,7 @@
 
         lista.appendChild(header);
         lista.appendChild(container);
+        aplicarFiltrosCardsPedidos();
       });
     });
   };
