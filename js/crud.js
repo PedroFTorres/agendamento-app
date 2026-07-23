@@ -3245,7 +3245,13 @@ document.querySelectorAll(".menu-item").forEach(btn => {
 
    if (page === "agendamentos") renderAgendamentos();
     else if (page === "pedidos") renderPedidos();
-    else if (page === "relatorios") renderRelatorios();
+    else if (page === "relatorios") {
+      if (typeof window.renderRelatorioComissoes === "function") {
+        window.renderRelatorioComissoes();
+      } else {
+        renderRelatorios();
+      }
+    }
     else if (page === "ranking-clientes") renderRankingClientes();
     else if (page === "dashboard") renderDashboard();
     else if (page === "notificacoes") renderNotificacoes();
