@@ -2069,6 +2069,16 @@ async function carregarFiltrosRelatorio() {
   }
 }
 
+function normalizarFiltroRelatorio(valor) {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 async function gerarRelatorio() {
   const user = await waitForAuth();
   const start = document.getElementById("rel-start").value;
@@ -2127,7 +2137,10 @@ async function gerarRelatorio() {
     const data = String(d.data || "");
     if (start && data < start) return false;
     if (end && data > end) return false;
-    if (clienteSel && String(d.clienteNome || "") !== clienteSel) return false;
+    if (
+      clienteSel &&
+      normalizarFiltroRelatorio(d.clienteNome) !== normalizarFiltroRelatorio(clienteSel)
+    ) return false;
     if (produtoSel && String(d.produtoNome || "") !== produtoSel) return false;
     if (PERFIL === "admin" && representanteSel && String(d.representanteNome || "") !== representanteSel) return false;
     return true;
