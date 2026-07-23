@@ -240,7 +240,7 @@
     }).join("");
   }
 
-  window.renderRelatorios = function renderRelatorioComissoes() {
+  window.renderRelatorioComissoes = function renderRelatorioComissoes() {
     if (!["admin", "representante"].includes(PERFIL)) {
       renderDashboard();
       return;
@@ -279,5 +279,4 @@
     });
   };
 
-  try { renderRelatorios = window.renderRelatorios; } catch (_) {}
 })();
