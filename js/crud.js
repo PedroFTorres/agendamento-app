@@ -2006,22 +2006,42 @@ async function carregarFiltrosRelatorio() {
   }
 
   const cliSnap = await cliQuery.get();
-  const clientes = new Set();
+  const clientesPorChave = new Map();
+
   cliSnap.forEach(doc => {
     const nome = String(doc.data()?.nome || "").trim();
-    if (nome) clientes.add(nome);
+    const chave = normalizarFiltroRelatorio(nome);
+    if (nome && chave && !clientesPorChave.has(chave)) clientesPorChave.set(chave, nome);
   });
 
-  const clientesOrdenados = Array.from(clientes)
+  // Inclui os nomes realmente gravados nos agendamentos, evitando divergência com o cadastro.
+  try {
+    let agendamentosQuery = db.collection("agendamentos");
+    if (PERFIL === "representante") {
+      agendamentosQuery = agendamentosQuery.where("userId", "==", user.uid);
+    }
+    const agendamentosSnap = await agendamentosQuery.get();
+    agendamentosSnap.forEach(doc => {
+      const nome = String(doc.data()?.clienteNome || "").trim();
+      const chave = normalizarFiltroRelatorio(nome);
+      if (nome && chave && !clientesPorChave.has(chave)) clientesPorChave.set(chave, nome);
+    });
+  } catch (e) {
+    console.warn("Não foi possível complementar o filtro com os clientes dos agendamentos.", e);
+  }
+
+  const clientesOrdenados = Array.from(clientesPorChave.values())
     .sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   if (PERFIL === "representante") {
     window.__REL_CLIENTES_REPRESENTANTE__ = clientesOrdenados;
   }
 
-  clientesOrdenados.forEach(nome => {
+  Array.from(clientesPorChave.entries())
+    .sort(([, nomeA], [, nomeB]) => nomeA.localeCompare(nomeB, "pt-BR"))
+    .forEach(([chave, nome]) => {
       const opt = document.createElement("option");
-      opt.value = nome;
+      opt.value = chave;
       opt.textContent = nome;
       selCli.appendChild(opt);
     });
@@ -2139,7 +2159,7 @@ async function gerarRelatorio() {
     if (end && data > end) return false;
     if (
       clienteSel &&
-      normalizarFiltroRelatorio(d.clienteNome) !== normalizarFiltroRelatorio(clienteSel)
+      normalizarFiltroRelatorio(d.clienteNome) !== clienteSel
     ) return false;
     if (produtoSel && String(d.produtoNome || "") !== produtoSel) return false;
     if (PERFIL === "admin" && representanteSel && String(d.representanteNome || "") !== representanteSel) return false;
