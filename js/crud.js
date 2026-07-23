@@ -482,10 +482,11 @@ function bindModalNovoClienteRepresentante() {
 function listItem(type, id, data) {
   let main = "";
   if (type === "clientes") {
-    main = `<div class="font-semibold">${data.nome || "—"}</div>
+    main = `<div class="font-semibold">${data.nome || "—"} ${data.bloqueado ? '<span class="ml-2 text-xs bg-red-100 text-red-700 px-2 py-1 rounded">BLOQUEADO</span>' : ""}</div>
         <div class="text-sm text-gray-500">
           WhatsApp: ${data.whatsapp || "—"} • Vinculado a: ${data.vinculadoPor || "—"}
-        </div>`;
+        </div>
+        ${data.bloqueado && data.motivoBloqueio ? `<div class="text-sm text-red-600">Motivo: ${data.motivoBloqueio}</div>` : ""}`;
   } else if (type === "representantes") {
     main = `<div class="font-semibold">${data.nome || "—"}</div>`;
     } else if (type === "usuarios") {
@@ -601,6 +602,11 @@ if (type === "clientes") {
 <input id="edit-cep" class="border p-2 rounded" value="${d.cep || ""}" placeholder="CEP">
           ${PERFIL === "admin" ? `
 <select id="edit-user" class="border p-2 rounded"></select>
+<label class="flex items-center gap-2 border border-red-200 bg-red-50 p-3 rounded">
+  <input id="edit-bloqueado" type="checkbox" ${d.bloqueado ? "checked" : ""}>
+  <span class="font-semibold text-red-700">Bloquear cliente para novos pedidos</span>
+</label>
+<input id="edit-motivo-bloqueio" class="border p-2 rounded" value="${d.motivoBloqueio || ""}" placeholder="Motivo do bloqueio (ex.: inadimplente)">
 ` : ""}
           
            
@@ -696,6 +702,14 @@ if (PERFIL === "representante") {
   ie,
   cep
 };
+
+if (PERFIL === "admin") {
+  updateData.bloqueado = modal.querySelector("#edit-bloqueado")?.checked === true;
+  updateData.motivoBloqueio = modal.querySelector("#edit-motivo-bloqueio")?.value.trim() || "";
+  updateData.bloqueadoEm = updateData.bloqueado
+    ? firebase.firestore.FieldValue.serverTimestamp()
+    : null;
+}
      const userIdDestino = (PERFIL === "admin" && $user) ? $user.value : d.userId;
 const clienteDuplicado = await encontrarClienteDuplicado({
   cnpj,
