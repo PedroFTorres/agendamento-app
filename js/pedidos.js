@@ -158,10 +158,13 @@ async function abrirWhatsappPedidoAprovado(pedido, dataAgendada) {
 
 async function abrirWhatsappPedidoCancelado(pedido, motivo) {
   const cliente = await buscarDadosClientePedido(pedido);
+  await imprimirPedidoPdf(pedido, cliente);
+
   const mensagem = [
     `Olá, ${pedido.clienteNome || "cliente"}.`,
     `Seu pedido ${pedido.codigo || ""} foi cancelado.`,
     `Motivo: ${motivo}.`,
+    "O PDF cancelado foi gerado para anexar nesta conversa.",
     "Em caso de dúvida, entre em contato com seu representante."
   ].join("\n");
 
@@ -355,6 +358,36 @@ const logo = await carregarLogoDataUrl();
     y
   );
   y = desenharCampo("Endereço", formatarEnderecoCliente(cliente), margemX, y, larguraPagina);
+
+  if (String(pedido.status || "").toLowerCase() === "cancelado") {
+    const totalPaginas = doc.internal.getNumberOfPages();
+
+    for (let pagina = 1; pagina <= totalPaginas; pagina += 1) {
+      doc.setPage(pagina);
+
+      let transparenciaAplicada = false;
+      try {
+        if (typeof doc.GState === "function" && typeof doc.setGState === "function") {
+          doc.setGState(new doc.GState({ opacity: 0.18 }));
+          transparenciaAplicada = true;
+        }
+      } catch (_) {}
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(52);
+      doc.setTextColor(220, 38, 38);
+      doc.text("CANCELADO", 105, 158, {
+        align: "center",
+        angle: 35
+      });
+
+      if (transparenciaAplicada) {
+        try {
+          doc.setGState(new doc.GState({ opacity: 1 }));
+        } catch (_) {}
+      }
+    }
+  }
 
   doc.save(`pedido-${pedido.codigo || pedido.id || "sem-codigo"}.pdf`);
 }
