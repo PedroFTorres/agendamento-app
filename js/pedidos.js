@@ -39,6 +39,7 @@ function normalizarItensPedido(pedido = {}) {
   if (Array.isArray(pedido.itens) && pedido.itens.length) {
     return pedido.itens
       .map((item) => ({
+        ...item,
         produtoNome: String(item.produtoNome || item.produto || "").trim(),
         quantidade: Number(item.quantidade || 0)
       }))
@@ -864,15 +865,19 @@ async function editarPedidoAprovado(id) {
   function montarLinhaItem(item) {
     return `
       <div class="edit-item grid grid-cols-1 sm:grid-cols-12 gap-2 items-end border rounded p-2">
-        <label class="sm:col-span-7 text-sm">
+        <label class="sm:col-span-5 text-sm">
           <span class="block mb-1">Produto</span>
           <select class="edit-produto w-full border p-2">
             ${montarOpcoesProdutos(item.produtoNome)}
           </select>
         </label>
-        <label class="sm:col-span-4 text-sm">
+        <label class="sm:col-span-3 text-sm">
           <span class="block mb-1">Quantidade</span>
           <input class="edit-qtd w-full border p-2" type="number" min="1" value="${Number(item.quantidade || 0)}" placeholder="Quantidade">
+        </label>
+        <label class="sm:col-span-3 text-sm">
+          <span class="block mb-1">Preço negociado</span>
+          <input class="edit-preco-negociado w-full border p-2" type="text" inputmode="decimal" value="${item.precoManual === true ? escapeHtml(String(item.precoNegociado ?? item.precoUnitario ?? "").replace(".", ",")) : ""}" placeholder="Opcional">
         </label>
         <button type="button" class="remover-edit-item bg-red-600 text-white px-2 py-2 rounded sm:col-span-1">×</button>
       </div>
@@ -960,9 +965,38 @@ async function editarPedidoAprovado(id) {
     const novosItens = Array.from(modal.querySelectorAll(".edit-item"))
       .map((linha) => ({
         produtoNome: linha.querySelector(".edit-produto")?.value.trim() || "",
-        quantidade: Number(linha.querySelector(".edit-qtd")?.value || 0)
+        quantidade: Number(linha.querySelector(".edit-qtd")?.value || 0),
+        precoNegociadoTexto: linha.querySelector(".edit-preco-negociado")?.value.trim() || ""
       }))
+      .map((item) => {
+        if (!item.precoNegociadoTexto) {
+          const anterior = itensPedido.find(
+            (existente) => String(existente.produtoNome).toLowerCase() === item.produtoNome.toLowerCase()
+          );
+          return anterior ? { ...anterior, produtoNome: item.produtoNome, quantidade: item.quantidade } : {
+            produtoNome: item.produtoNome,
+            quantidade: item.quantidade
+          };
+        }
+        const texto = item.precoNegociadoTexto.includes(",")
+          ? item.precoNegociadoTexto.replace(/\./g, "").replace(",", ".")
+          : item.precoNegociadoTexto;
+        const precoNegociado = Number(texto);
+        return {
+          produtoNome: item.produtoNome,
+          quantidade: item.quantidade,
+          precoNegociado,
+          precoUnitario: precoNegociado,
+          valorTotal: precoNegociado * item.quantidade,
+          precoOrigem: "negociado",
+          precoManual: true
+        };
+      })
       .filter((item) => item.produtoNome && item.quantidade > 0);
+    if (novosItens.some((item) => item.precoManual === true && (!Number.isFinite(item.precoNegociado) || item.precoNegociado <= 0))) {
+      alert("Informe um preço negociado válido.");
+      return;
+    }
     const novaData = modal.querySelector("#edit-data").value;
     const novoPrazo = modal.querySelector("#edit-prazo").value;
     const novaObs = modal.querySelector("#edit-obs").value.trim();
