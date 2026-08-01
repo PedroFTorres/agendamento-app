@@ -367,13 +367,37 @@ function instalarProdutosPorPrazo() {
         editadoEm: firebase.firestore.FieldValue.serverTimestamp()
       };
       if (!nome) { alert("Informe o nome do produto."); return; }
-      if (produtoEmEdicao) {
-        // Antes do reajuste, congela os preços dos pedidos aprovados antigos.
-        await congelarPedidosAprovadosSemPreco();
-        await db.collection("produtos").doc(produtoEmEdicao).update(payload);
+
+      const botaoSalvar = document.getElementById("salvar-modal-produto");
+      const textoOriginal = botaoSalvar?.textContent || "Salvar Produto";
+      if (botaoSalvar) {
+        botaoSalvar.disabled = true;
+        botaoSalvar.textContent = "Salvando...";
       }
-      else { const user = await waitForAuth(); await db.collection("produtos").add({ ...payload, userId: user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
-      fecharModal();
+
+      try {
+        if (produtoEmEdicao) {
+          // Os pedidos já conservam o preço histórico; o reajuste do produto pode ser salvo imediatamente.
+          await db.collection("produtos").doc(produtoEmEdicao).update(payload);
+        } else {
+          const user = await waitForAuth();
+          await db.collection("produtos").add({
+            ...payload,
+            userId: user.uid,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        fecharModal();
+        if (typeof toast === "function") toast(produtoEmEdicao ? "Produto atualizado!" : "Produto criado!");
+      } catch (erro) {
+        console.error("Erro ao salvar produto.", erro);
+        alert("Não foi possível salvar o produto. Tente novamente.");
+      } finally {
+        if (botaoSalvar) {
+          botaoSalvar.disabled = false;
+          botaoSalvar.textContent = textoOriginal;
+        }
+      }
     };
     lista.onclick = async e => {
       const botao = e.target.closest("button[data-acao]");
