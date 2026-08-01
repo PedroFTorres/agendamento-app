@@ -827,16 +827,35 @@ async function editarPedidoAprovado(id) {
   });
   nomesProdutos.sort((a, b) => a.localeCompare(b, "pt-BR"));
 
-  const optionsProdutos = nomesProdutos
-    .map((nome) => `<option value="${escapeHtml(nome)}"></option>`)
-    .join("");
+  function montarOpcoesProdutos(produtoAtual = "") {
+    const atual = String(produtoAtual || "").trim();
+    const produtoAindaCadastrado = nomesProdutos.some(
+      (nome) => nome.toLowerCase() === atual.toLowerCase()
+    );
+    const opcoes = [];
+
+    if (!atual) {
+      opcoes.push('<option value="">Selecione o produto</option>');
+    } else if (!produtoAindaCadastrado) {
+      opcoes.push(`<option value="${escapeHtml(atual)}" selected>${escapeHtml(atual)} (produto antigo)</option>`);
+    }
+
+    nomesProdutos.forEach((nome) => {
+      const selecionado = atual && nome.toLowerCase() === atual.toLowerCase() ? " selected" : "";
+      opcoes.push(`<option value="${escapeHtml(nome)}"${selecionado}>${escapeHtml(nome)}</option>`);
+    });
+
+    return opcoes.join("");
+  }
 
   function montarLinhaItem(item) {
     return `
       <div class="edit-item grid grid-cols-1 sm:grid-cols-12 gap-2 items-end border rounded p-2">
         <label class="sm:col-span-7 text-sm">
           <span class="block mb-1">Produto</span>
-          <input class="edit-produto w-full border p-2" list="edit-produtos-lista" value="${escapeHtml(item.produtoNome)}" placeholder="Produto">
+          <select class="edit-produto w-full border p-2">
+            ${montarOpcoesProdutos(item.produtoNome)}
+          </select>
         </label>
         <label class="sm:col-span-4 text-sm">
           <span class="block mb-1">Quantidade</span>
@@ -856,8 +875,6 @@ async function editarPedidoAprovado(id) {
       <h3 class="text-lg font-bold mb-3">Editar Pedido</h3>
       <p class="text-xs text-gray-500 mb-3">Edição permitida somente para administradores.</p>
       <h3 class="text-lg font-bold mb-3">Editar Pedido</h3>
-
-      <datalist id="edit-produtos-lista">${optionsProdutos}</datalist>
 
       <div id="edit-itens" class="space-y-2 mb-3">
         ${itensEditaveis.map(montarLinhaItem).join("")}
@@ -922,10 +939,10 @@ async function editarPedidoAprovado(id) {
   };
 
   // cancelar
-  document.getElementById("cancelar-edit").onclick = () => modal.remove();
+  modal.querySelector("#cancelar-edit").onclick = () => modal.remove();
 
   // salvar
-  document.getElementById("salvar-edit").onclick = async () => {
+  modal.querySelector("#salvar-edit").onclick = async () => {
 
     const novosItens = Array.from(modal.querySelectorAll(".edit-item"))
       .map((linha) => ({
@@ -933,9 +950,9 @@ async function editarPedidoAprovado(id) {
         quantidade: Number(linha.querySelector(".edit-qtd")?.value || 0)
       }))
       .filter((item) => item.produtoNome && item.quantidade > 0);
-    const novaData = document.getElementById("edit-data").value;
-    const novoPrazo = document.getElementById("edit-prazo").value;
-    const novaObs = document.getElementById("edit-obs").value.trim();
+    const novaData = modal.querySelector("#edit-data").value;
+    const novoPrazo = modal.querySelector("#edit-prazo").value;
+    const novaObs = modal.querySelector("#edit-obs").value.trim();
 
   if (!novosItens.length || !novaData || !novoPrazo) {
       alert("Preencha produto, quantidade, data e prazo");
