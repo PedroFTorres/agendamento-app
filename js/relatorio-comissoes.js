@@ -174,7 +174,7 @@
       doc.autoTable({
         startY: y + 8,
         margin: { left: 14, right: 14 },
-        head: [["Carregamento", "Pedido", "Cliente", "Produtos", "Qtd.", "Valor"]],
+        head: [["Carregamento", "Pedido", "Cliente", "Produtos", "Qtd.", "Valor", "Comissão"]],
         body: grupo.pedidos
           .slice()
           .sort((a, b) => b.data - a.data)
@@ -184,18 +184,20 @@
             pedido.clienteNome || "-",
             pedido.produtosResumo || pedido.produtoNome || "-",
             quantidade(pedido.quantidade),
-            moeda(pedido.valorVenda)
+            moeda(pedido.valorVenda),
+            moeda(pedido.valorVenda * percentual / 100)
           ]),
         theme: "striped",
         styles: { fontSize: 7, cellPadding: 1.8, overflow: "linebreak" },
         headStyles: { fillColor: [31, 59, 100], textColor: 255 },
         columnStyles: {
           0: { cellWidth: 20 },
-          1: { cellWidth: 48 },
-          2: { cellWidth: 62 },
-          3: { cellWidth: 85 },
-          4: { cellWidth: 18, halign: "right" },
-          5: { cellWidth: 27, halign: "right" }
+          1: { cellWidth: 43 },
+          2: { cellWidth: 55 },
+          3: { cellWidth: 60 },
+          4: { cellWidth: 15, halign: "right" },
+          5: { cellWidth: 25, halign: "right" },
+          6: { cellWidth: 25, halign: "right" }
         }
       });
 
@@ -315,6 +317,7 @@
             <td class="p-2">${escapar(pedido.produtosResumo || pedido.produtoNome || "-")}</td>
             <td class="p-2 text-right whitespace-nowrap">${quantidade(pedido.quantidade)}</td>
             <td class="p-2 text-right font-semibold whitespace-nowrap">${moeda(pedido.valorVenda)}</td>
+            <td class="p-2 text-right font-semibold text-green-700 whitespace-nowrap">${moeda(pedido.valorVenda * percentual / 100)}</td>
           </tr>
         `).join("");
 
@@ -332,7 +335,7 @@
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
-              <thead><tr class="text-left bg-white"><th class="p-2">Carregamento</th><th class="p-2">Pedido</th><th class="p-2">Cliente</th><th class="p-2">Produtos</th><th class="p-2 text-right">Qtd.</th><th class="p-2 text-right">Valor</th></tr></thead>
+              <thead><tr class="text-left bg-white"><th class="p-2">Carregamento</th><th class="p-2">Pedido</th><th class="p-2">Cliente</th><th class="p-2">Produtos</th><th class="p-2 text-right">Qtd.</th><th class="p-2 text-right">Valor</th><th class="p-2 text-right">Comissão</th></tr></thead>
               <tbody>${pedidos}</tbody>
             </table>
           </div>
