@@ -18,10 +18,17 @@
   const quantidade = valor => Math.floor(Number(valor || 0)).toLocaleString("pt-BR");
 
   function dataPedido(pedido) {
-    if (pedido.createdAt?.toDate) return pedido.createdAt.toDate();
-    if (pedido.createdAt?.seconds) return new Date(pedido.createdAt.seconds * 1000);
-    if (pedido.data) return new Date(String(pedido.data) + "T00:00:00");
-    return null;
+    // A venda pertence ao mês do carregamento, nunca ao mês de criação do pedido.
+    const valor = pedido.dataCarregamento || pedido.dataAgendada || pedido.data;
+    if (!valor) return null;
+    if (typeof valor.toDate === "function") return valor.toDate();
+    if (valor.seconds) return new Date(valor.seconds * 1000);
+    if (valor instanceof Date) return valor;
+
+    const texto = String(valor).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) return new Date(texto + "T00:00:00");
+    const data = new Date(texto);
+    return Number.isNaN(data.getTime()) ? null : data;
   }
 
   function valorPedidoSalvo(pedido) {
@@ -84,7 +91,7 @@
   function exportarCsvComissoes() {
     const mes = document.getElementById("comissao-mes")?.value || "";
     const percentual = Number(document.getElementById("comissao-percentual")?.value || 0);
-    const linhas = [["Representante", "Pedido", "Data", "Cliente", "Produtos", "Status", "Quantidade", "Valor", "Comissão"]];
+    const linhas = [["Representante", "Pedido", "Data de carregamento", "Cliente", "Produtos", "Status", "Quantidade", "Valor", "Comissão"]];
 
     dadosRelatorioComissao.forEach(grupo => {
       grupo.pedidos.forEach(pedido => {
@@ -140,7 +147,7 @@
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(70, 70, 70);
-    doc.text(`Mês: ${mes || "-"}   |   Pedidos: ${status}   |   Comissão: ${percentual.toLocaleString("pt-BR")}%`, 14, y);
+    doc.text(`Mês do carregamento: ${mes || "-"}   |   Pedidos: ${status}   |   Comissão: ${percentual.toLocaleString("pt-BR")}%`, 14, y);
     y += 6;
     doc.setFont("helvetica", "bold");
     doc.text(`Total vendido: ${moeda(totalVendas)}   |   Comissão estimada: ${moeda(totalComissao)}`, 14, y);
@@ -167,7 +174,7 @@
       doc.autoTable({
         startY: y + 8,
         margin: { left: 14, right: 14 },
-        head: [["Data", "Pedido", "Cliente", "Produtos", "Qtd.", "Valor"]],
+        head: [["Carregamento", "Pedido", "Cliente", "Produtos", "Qtd.", "Valor"]],
         body: grupo.pedidos
           .slice()
           .sort((a, b) => b.data - a.data)
@@ -325,7 +332,7 @@
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
-              <thead><tr class="text-left bg-white"><th class="p-2">Data</th><th class="p-2">Pedido</th><th class="p-2">Cliente</th><th class="p-2">Produtos</th><th class="p-2 text-right">Qtd.</th><th class="p-2 text-right">Valor</th></tr></thead>
+              <thead><tr class="text-left bg-white"><th class="p-2">Carregamento</th><th class="p-2">Pedido</th><th class="p-2">Cliente</th><th class="p-2">Produtos</th><th class="p-2 text-right">Qtd.</th><th class="p-2 text-right">Valor</th></tr></thead>
               <tbody>${pedidos}</tbody>
             </table>
           </div>
@@ -350,7 +357,7 @@
       </div>
       <div class="bg-white p-4 rounded shadow mb-4">
         <div class="grid grid-cols-1 md:grid-cols-${PERFIL === "admin" ? "5" : "4"} gap-3 items-end">
-          <label><span class="block text-sm font-semibold mb-1">Mês</span><input id="comissao-mes" type="month" value="${mesAtual}" class="border p-2 rounded w-full"></label>
+          <label><span class="block text-sm font-semibold mb-1">Mês do carregamento</span><input id="comissao-mes" type="month" value="${mesAtual}" class="border p-2 rounded w-full"></label>
           <label><span class="block text-sm font-semibold mb-1">Pedidos</span><select id="comissao-status" class="border p-2 rounded w-full"><option value="aprovado">Aprovados</option><option value="todos">Todos</option><option value="pendente">Pendentes</option><option value="cancelado">Cancelados</option></select></label>
           ${PERFIL === "admin" ? '<label><span class="block text-sm font-semibold mb-1">Representante</span><select id="comissao-representante" class="border p-2 rounded w-full"><option value="">Todos os representantes</option></select></label>' : ""}
           <label><span class="block text-sm font-semibold mb-1">Comissão (%)</span><input id="comissao-percentual" type="number" min="0" step="0.01" value="0" class="border p-2 rounded w-full"></label>
