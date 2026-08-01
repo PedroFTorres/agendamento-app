@@ -82,13 +82,26 @@ async function buscarPrecoUnitarioPedido(clienteNome, produtoNome, prazoPagament
 async function enriquecerPedidoComValoresPorPrazo(pedido = {}) {
   if (!Array.isArray(pedido.itens) || !pedido.itens.length) return pedido;
   const itens = await Promise.all(pedido.itens.map(async item => {
+    const quantidade = Number(item.quantidade || 0);
+    const precoNegociado = Number(item.precoNegociado ?? item.precoUnitario);
+    if (item.precoManual === true && Number.isFinite(precoNegociado) && precoNegociado > 0) {
+      return {
+        ...item,
+        precoNegociado,
+        precoUnitario: precoNegociado,
+        valorTotal: precoNegociado * quantidade,
+        precoOrigem: "negociado",
+        precoManual: true,
+        prazoPagamento: pedido.prazoPagamento || ""
+      };
+    }
+
     const resultado = await buscarPrecoUnitarioPedido(
       pedido.clienteNome,
       item.produtoNome,
       pedido.prazoPagamento,
       pedido.userId
     );
-    const quantidade = Number(item.quantidade || 0);
     return {
       ...item,
       precoUnitario: resultado.preco,
