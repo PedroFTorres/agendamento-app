@@ -623,7 +623,15 @@ async function aprovarPedido(id, btn) {
 
           try {
 
-           const itensPedido = normalizarItensPedido(p);
+           let itensPedido = normalizarItensPedido(p);
+            if (typeof enriquecerPedidoComValoresPorPrazo === "function") {
+              const pedidoComValores = await enriquecerPedidoComValoresPorPrazo({ ...p, itens: itensPedido });
+              itensPedido = pedidoComValores.itens || itensPedido;
+            }
+            const valorTotalPedido = itensPedido.reduce(
+              (total, item) => total + Number(item.valorTotal || (Number(item.precoUnitario || 0) * Number(item.quantidade || 0))),
+              0
+            );
             const agRefs = [];
             const pedidoCriadorUid = p.criadoPor || (p.criadoPorAdmin ? user.uid : p.userId);
 
@@ -650,6 +658,11 @@ async function aprovarPedido(id, btn) {
               agendamentoId: agRefs[0] || "",
               agendamentoIds: agRefs,
               data: dataEscolhida,
+              itens: itensPedido,
+              produtoNome: itensPedido[0]?.produtoNome || p.produtoNome || "",
+              precoUnitario: Number(itensPedido[0]?.precoUnitario || 0),
+              valorTotal: valorTotalPedido,
+              precoCongeladoEm: firebase.firestore.FieldValue.serverTimestamp(),
               notificadoAprovado: true
             });
 
