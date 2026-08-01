@@ -194,8 +194,8 @@ function instalarRelatorioComPrecoDoPedido() {
         item.userId || user?.uid || ""
       );
 
-      // Preço especial do cliente sempre prevalece sobre o valor normal salvo.
-      if (resultadoAtual.origem === "cliente" || !Number.isFinite(precoUnitario)) {
+      // O preço gravado no pedido é histórico e não pode mudar após reajustes.
+      if (!Number.isFinite(precoUnitario)) {
         precoUnitario = resultadoAtual.preco;
         origem = resultadoAtual.origem;
       }
@@ -211,6 +211,68 @@ function instalarRelatorioComPrecoDoPedido() {
     return total;
   };
   try { aplicarValoresAgendamentosRelatorio = window.aplicarValoresAgendamentosRelatorio; } catch (_) {}
+}
+
+async function congelarPedidosAprovadosSemPreco() {
+  const snap = await db.collection("pedidos").get();
+  let batch = db.batch();
+  let operacoes = 0;
+
+  async function confirmarBatch() {
+    if (!operacoes) return;
+    await batch.commit();
+    batch = db.batch();
+    operacoes = 0;
+  }
+
+  for (const doc of snap.docs) {
+    const pedido = doc.data() || {};
+    if (normalizarPrecoPrazo(pedido.status) !== "aprovado") continue;
+
+    const itensOriginais = Array.isArray(pedido.itens) && pedido.itens.length
+      ? pedido.itens
+      : [{ produtoNome: pedido.produtoNome, quantidade: pedido.quantidade }];
+    let precisaCongelar = false;
+    const itens = [];
+
+    for (const item of itensOriginais) {
+      const qtd = Number(item.quantidade || 0);
+      const precoSalvo = Number(item.precoUnitario);
+      const totalSalvo = Number(item.valorTotal);
+      if (Number.isFinite(precoSalvo) || (Number.isFinite(totalSalvo) && qtd > 0)) {
+        const precoUnitario = Number.isFinite(precoSalvo) ? precoSalvo : totalSalvo / qtd;
+        itens.push({ ...item, precoUnitario, valorTotal: precoUnitario * qtd });
+        continue;
+      }
+
+      const resultado = await buscarPrecoUnitarioPedido(
+        pedido.clienteNome,
+        item.produtoNome || item.produto,
+        pedido.prazoPagamento,
+        pedido.userId || ""
+      );
+      precisaCongelar = true;
+      itens.push({
+        ...item,
+        precoUnitario: Number(resultado.preco || 0),
+        valorTotal: Number(resultado.preco || 0) * qtd,
+        precoOrigem: resultado.origem,
+        prazoPagamento: pedido.prazoPagamento || ""
+      });
+    }
+
+    if (!precisaCongelar) continue;
+    batch.update(doc.ref, {
+      itens,
+      precoUnitario: itens[0]?.precoUnitario || 0,
+      valorTotal: itens.reduce((total, item) => total + Number(item.valorTotal || 0), 0),
+      precoCongeladoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    operacoes++;
+    if (operacoes >= 400) await confirmarBatch();
+  }
+
+  await confirmarBatch();
 }
 
 function formatarPrecoPrazoProduto(valor) {
@@ -292,7 +354,11 @@ function instalarProdutosPorPrazo() {
         editadoEm: firebase.firestore.FieldValue.serverTimestamp()
       };
       if (!nome) { alert("Informe o nome do produto."); return; }
-      if (produtoEmEdicao) await db.collection("produtos").doc(produtoEmEdicao).update(payload);
+      if (produtoEmEdicao) {
+        // Antes do reajuste, congela os preços dos pedidos aprovados antigos.
+        await congelarPedidosAprovadosSemPreco();
+        await db.collection("produtos").doc(produtoEmEdicao).update(payload);
+      }
       else { const user = await waitForAuth(); await db.collection("produtos").add({ ...payload, userId: user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
       fecharModal();
     };
