@@ -973,9 +973,17 @@ async function editarPedidoAprovado(id) {
           const anterior = itensPedido.find(
             (existente) => String(existente.produtoNome).toLowerCase() === item.produtoNome.toLowerCase()
           );
-          return anterior ? { ...anterior, produtoNome: item.produtoNome, quantidade: item.quantidade } : {
+          if (!anterior) return { produtoNome: item.produtoNome, quantidade: item.quantidade };
+          const quantidadeAnterior = Number(anterior.quantidade || 0);
+          const precoAnterior = Number.isFinite(Number(anterior.precoUnitario))
+            ? Number(anterior.precoUnitario)
+            : (quantidadeAnterior > 0 ? Number(anterior.valorTotal || 0) / quantidadeAnterior : 0);
+          return {
+            ...anterior,
             produtoNome: item.produtoNome,
-            quantidade: item.quantidade
+            quantidade: item.quantidade,
+            precoUnitario: precoAnterior,
+            valorTotal: precoAnterior * item.quantidade
           };
         }
         const texto = item.precoNegociadoTexto.includes(",")
