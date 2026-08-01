@@ -3314,8 +3314,9 @@ function renderPedidos() {
           <select id="p-cliente" class="border p-2 w-full"></select>
            <div id="p-itens" class="space-y-2">
             <div class="pedido-item grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
-              <select id="p-produto" class="pedido-produto border p-2 w-full md:col-span-7"></select>
-              <input id="p-qtd" type="text" class="pedido-qtd border p-2 w-full md:col-span-4" placeholder="Quantidade">
+              <select id="p-produto" class="pedido-produto border p-2 w-full ${PERFIL === "admin" ? "md:col-span-5" : "md:col-span-7"}"></select>
+              <input id="p-qtd" type="text" class="pedido-qtd border p-2 w-full ${PERFIL === "admin" ? "md:col-span-3" : "md:col-span-4"}" placeholder="Quantidade">
+              ${PERFIL === "admin" ? '<input type="text" inputmode="decimal" class="pedido-preco-negociado border p-2 w-full md:col-span-3" placeholder="Preço negociado (opcional)">' : ""}
               <button type="button" class="btn-remover-produto hidden bg-red-600 text-white p-2 rounded md:col-span-1">×</button>
             </div>
           </div>
@@ -3374,6 +3375,14 @@ function formatarInputQuantidadePedido(input) {
 }
 
 formatarInputQuantidadePedido(inputQtd);
+
+function lerPrecoNegociadoPedido(valor) {
+  const texto = String(valor || "").trim();
+  if (!texto) return null;
+  const normalizado = texto.includes(",") ? texto.replace(/\./g, "").replace(",", ".") : texto;
+  const preco = Number(normalizado);
+  return Number.isFinite(preco) && preco > 0 ? preco : null;
+}
 
   // 🔥 CONTROLE DE DATA
   let dataAtual = new Date();
@@ -3472,8 +3481,10 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
       novaLinha.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
       const selectProduto = novaLinha.querySelector(".pedido-produto");
       const inputQuantidade = novaLinha.querySelector(".pedido-qtd");
+      const inputPrecoNegociado = novaLinha.querySelector(".pedido-preco-negociado");
       preencherSelectProduto(selectProduto);
       if (inputQuantidade) inputQuantidade.value = "";
+      if (inputPrecoNegociado) inputPrecoNegociado.value = "";
       formatarInputQuantidadePedido(inputQuantidade);
       novaLinha.querySelector(".btn-remover-produto")?.addEventListener("click", () => {
         novaLinha.remove();
@@ -3515,7 +3526,13 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
       .map((linha) => {
         const produtoNome = linha.querySelector(".pedido-produto")?.value || "";
         const valor = (linha.querySelector(".pedido-qtd")?.value || "").replace(/\./g, "");
-        return { produtoNome, quantidade: parseInt(valor) || 0 };
+        const quantidade = parseInt(valor) || 0;
+        const precoNegociado = PERFIL === "admin"
+          ? lerPrecoNegociadoPedido(linha.querySelector(".pedido-preco-negociado")?.value)
+          : null;
+        return precoNegociado == null
+          ? { produtoNome, quantidade }
+          : { produtoNome, quantidade, precoNegociado, precoUnitario: precoNegociado, valorTotal: precoNegociado * quantidade, precoOrigem: "negociado", precoManual: true };
       })
       .filter((item) => item.produtoNome && item.quantidade > 0);
     const prazo = document.getElementById("p-prazo").value;
