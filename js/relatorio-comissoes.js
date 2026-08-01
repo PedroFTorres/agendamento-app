@@ -71,10 +71,10 @@
           pedido.userId || ""
         );
 
-        // Preço por cliente tem prioridade; sem preço especial, preserva o valor do pedido.
-        const precoAplicado = resultadoAtual.origem === "cliente"
-          ? resultadoAtual.preco
-          : (Number.isFinite(precoSalvo) ? precoSalvo : resultadoAtual.preco);
+        // O valor salvo no pedido é o histórico da venda; preço atual só cobre pedidos antigos sem valor gravado.
+        const precoAplicado = Number.isFinite(precoSalvo)
+          ? precoSalvo
+          : resultadoAtual.preco;
         total += Number(precoAplicado || 0) * qtd;
       }
       return total;
