@@ -2496,13 +2496,8 @@ async function obterPedidosAdminOcultosDoRepresentante(user) {
 
 function renderDashboard() {
   pageContent.innerHTML = `
-    <div class="mb-4"><h2 class="text-xl font-bold text-blue-900">Dashboard</h2><p class="text-sm text-gray-500">Agendamentos e capacidade de produção no período.</p></div>
-    <section class="bg-white p-4 rounded-xl shadow mb-4">
-      <div class="flex items-center justify-between gap-3 mb-3"><div><h3 class="font-bold text-blue-900">Produção do mês</h3><p id="dashboard-producao-periodo" class="text-xs text-gray-500"></p></div><button type="button" class="dashboard-ir-producao text-sm text-blue-700 border border-blue-200 px-3 py-1 rounded">Abrir Produção</button></div>
-      <div id="dashboard-producao-resumo"><div class="text-sm text-gray-500">Carregando produção...</div></div>
-    </section>
-    <h3 class="font-bold text-blue-900 mb-3">Calendário de agendamentos</h3>
-   <div id="calendar" class="bg-white p-4 rounded shadow w-full overflow-x-auto"></div>
+    <h2 class="text-xl font-bold mb-4">Calendário de Agendamentos</h2>
+    <div id="calendar" class="bg-white p-4 rounded shadow w-full overflow-x-auto"></div>
   `;
 
   waitForAuth().then(async user => {
@@ -2523,16 +2518,6 @@ query.onSnapshot(async snap => {
           return agendamento.criadoPorAdmin !== true
             && !pedidosAdminOcultos.has(agendamento.pedidoId);
         });
-
-        let producaoQuery = db.collection("producao");
-        if (PERFIL === "representante") producaoQuery = producaoQuery.where("userId", "==", user.uid);
-        let producoesDashboard = [];
-        try {
-          const producaoSnap = await producaoQuery.get();
-          producoesDashboard = producaoSnap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
-        } catch (erro) {
-          console.warn("Não foi possível carregar a produção na Dashboard.", erro);
-        }
 
         // Paleta de cores para eventos
         const cores = [
@@ -2580,50 +2565,6 @@ query.onSnapshot(async snap => {
             (resumoPorDia[data][d.produtoNome] || 0) + (d.quantidade || 0);
         });
 
-        function renderizarProducaoDashboard(inicio, fim) {
-          const resumo = document.getElementById("dashboard-producao-resumo");
-          const periodo = document.getElementById("dashboard-producao-periodo");
-          if (!resumo || !inicio || !fim) return;
-          const inicioIso = new Date(inicio).toISOString().slice(0, 10);
-          const fimIso = new Date(fim).toISOString().slice(0, 10);
-          const dentroPeriodo = data => data && data >= inicioIso && data < fimIso;
-          const porProduto = new Map();
-
-          producoesDashboard.filter(item => dentroPeriodo(item.data)).forEach(item => {
-            const nome = String(item.produto || "Sem produto").trim();
-            const chave = nome.toLowerCase();
-            if (!porProduto.has(chave)) porProduto.set(chave, { nome, produzido: 0, agendado: 0 });
-            porProduto.get(chave).produzido += Number(item.quantidade || 0);
-          });
-          docsVisiveis.map(doc => doc.data()).filter(item => dentroPeriodo(formatarDataISO(item.data))).forEach(item => {
-            const nome = String(item.produtoNome || "Sem produto").trim();
-            const chave = nome.toLowerCase();
-            if (!porProduto.has(chave)) porProduto.set(chave, { nome, produzido: 0, agendado: 0 });
-            porProduto.get(chave).agendado += Number(item.quantidade || 0);
-          });
-
-          const produtos = [...porProduto.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-          const produzido = produtos.reduce((soma, item) => soma + item.produzido, 0);
-          const agendado = produtos.reduce((soma, item) => soma + item.agendado, 0);
-          const saldo = produzido - agendado;
-          if (periodo) periodo.textContent = new Date(inicio).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-          resumo.innerHTML = `
-            <div class="grid grid-cols-3 gap-2 mb-3">
-              <div class="bg-blue-50 border border-blue-100 rounded-lg p-3"><div class="text-xs text-blue-700">Produzido</div><strong class="text-lg text-blue-900">${formatQuantidade(produzido)}</strong></div>
-              <div class="bg-orange-50 border border-orange-100 rounded-lg p-3"><div class="text-xs text-orange-700">Agendado</div><strong class="text-lg text-orange-900">${formatQuantidade(agendado)}</strong></div>
-              <div class="${saldo < 0 ? "bg-red-50 border-red-100" : "bg-green-50 border-green-100"} border rounded-lg p-3"><div class="text-xs">Saldo</div><strong class="text-lg ${saldo < 0 ? "text-red-700" : "text-green-700"}">${formatQuantidade(saldo)}</strong></div>
-            </div>
-            ${produtos.length ? `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">${produtos.map(item => {
-              const disponivel = item.produzido - item.agendado;
-              return `<div class="border rounded-lg p-3"><div class="font-semibold truncate" title="${item.nome}">${item.nome}</div><div class="mt-2 grid grid-cols-3 gap-1 text-xs"><span>Prod.<strong class="block text-blue-800">${formatQuantidade(item.produzido)}</strong></span><span>Agend.<strong class="block text-orange-700">${formatQuantidade(item.agendado)}</strong></span><span>Saldo<strong class="block ${disponivel < 0 ? "text-red-600" : "text-green-600"}">${formatQuantidade(disponivel)}</strong></span></div></div>`;
-            }).join("")}</div>` : '<div class="text-sm text-gray-500">Sem produção ou agendamentos neste mês.</div>'}
-          `;
-        }
-
-        document.querySelector(".dashboard-ir-producao")?.addEventListener("click", () => {
-          document.querySelector('[data-page="producao"]')?.click();
-        });
-
         // Tooltip container
         const tooltip = document.createElement("div");
         tooltip.className = "tooltip-custom";
@@ -2639,9 +2580,6 @@ calendarEl.innerHTML = "";
         const calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: "dayGridMonth",
           locale: "pt-br",
-          datesSet: function(info) {
-            renderizarProducaoDashboard(info.start, info.end);
-          },
           // ✅ Registra o clique no dia do calendário
 dateClick: function(info) {
   abrirResumoDoDia(info.dateStr);
