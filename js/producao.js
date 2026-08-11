@@ -1,7 +1,10 @@
 // ================== PRODUÇÃO ==================
 function renderProducao() {
   pageContent.innerHTML = `
-    <h2 class="text-xl font-bold mb-4">Produção</h2>
+    <div class="mb-4">
+      <h2 class="text-xl font-bold text-blue-900">Produção</h2>
+      <p class="text-sm text-gray-500">Registre a produção e acompanhe rapidamente o saldo disponível.</p>
+    </div>
 
     <!-- FORM -->
     <form id="prod-form" class="bg-white p-4 rounded shadow space-y-3 mb-6">
@@ -22,8 +25,24 @@ function renderProducao() {
       </button>
     </form>
 
-    <!-- LISTAGEM -->
-    <div id="prod-list" class="space-y-4"></div>
+    <section class="bg-white rounded-xl shadow p-4 mb-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h3 class="font-bold text-blue-900">Resumo da produção</h3>
+          <p class="text-xs text-gray-500">Produzido menos o que está agendado no período.</p>
+        </div>
+        <input id="prod-mes-filtro" type="month" class="border p-2 rounded">
+      </div>
+      <div id="prod-resumo" class="mt-4"></div>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-blue-900">Lançamentos por dia</h3>
+        <span class="text-xs text-gray-500">Clique em um dia para abrir</span>
+      </div>
+      <div id="prod-list" class="space-y-2"></div>
+    </section>
   `;
 
   const $form = document.getElementById("prod-form");
@@ -33,6 +52,9 @@ function renderProducao() {
   const $btnAdd = document.getElementById("btn-add");
   const $temp = document.getElementById("lista-temp");
   const $list = document.getElementById("prod-list");
+  const $resumo = document.getElementById("prod-resumo");
+  const $mesFiltro = document.getElementById("prod-mes-filtro");
+  $mesFiltro.value = new Date().toISOString().slice(0, 7);
 
   let buffer = [];
 
@@ -118,98 +140,146 @@ function renderProducao() {
     $form.reset();
   };
 
-  // ================== LISTAGEM ==================
+  // ================== RESUMO E LISTAGEM ==================
   waitForAuth().then(user => {
-    db.collection("producao")
-      .where("userId","==",user.uid)
-      .orderBy("data","desc")
-      .onSnapshot(async snap => {
-        $list.innerHTML = "";
-        if (snap.empty) return;
+    let producoes = [];
+    let agendamentos = [];
+    let carregouProducoes = false;
+    let carregouAgendamentos = false;
 
-        const porDia = {};
-        snap.forEach(doc => {
-          const d = { id: doc.id, ...doc.data() };
-          if (!porDia[d.data]) porDia[d.data] = [];
-          porDia[d.data].push(d);
-        });
+    const producaoQuery = PERFIL === "representante"
+      ? db.collection("producao").where("userId", "==", user.uid)
+      : db.collection("producao");
+    const agendamentoQuery = PERFIL === "representante"
+      ? db.collection("agendamentos").where("userId", "==", user.uid)
+      : db.collection("agendamentos");
 
-        for (const dia of Object.keys(porDia)) {
-          const header = document.createElement("div");
-          header.className = "font-bold bg-blue-50 p-2 cursor-pointer";
-          header.textContent = `${dataBR(dia)} — ${diaSemana(dia)}`;
+    function chaveProduto(data, produto) {
+      return `${data || ""}::${String(produto || "").trim().toLowerCase()}`;
+    }
 
-          const box = document.createElement("div");
-          box.className = "ml-4 mt-2 space-y-2 hidden";
+    function renderizarPainel() {
+      if (!carregouProducoes || !carregouAgendamentos) return;
+      const mes = $mesFiltro.value;
+      const producoesMes = producoes.filter(item => String(item.data || "").startsWith(mes));
+      const agendamentosMes = agendamentos.filter(item => String(item.data || "").startsWith(mes));
 
-          // agrupar por produto
-          const porProduto = {};
-          porDia[dia].forEach(p => {
-            if (!porProduto[p.produto]) porProduto[p.produto] = { qtd: 0, ids: [] };
-            porProduto[p.produto].qtd += p.quantidade;
-            porProduto[p.produto].ids.push(p.id);
-          });
-
-          for (const prod in porProduto) {
-            const produzido = porProduto[prod].qtd;
-
-            const ag = await db.collection("agendamentos")
-              .where("userId","==",user.uid)
-              .where("data","==",dia)
-              .where("produtoNome","==",prod)
-              .get();
-
-            let agendado = 0;
-            ag.forEach(a => agendado += a.data().quantidade || 0);
-
-            const disp = produzido - agendado;
-
-            const card = document.createElement("div");
-            card.className = "bg-white p-3 rounded shadow";
-            card.innerHTML = `
-              <div class="font-semibold">${prod}</div>
-              <div>Produzido: ${formatQuantidade(produzido)}</div>
-              <div>Agendado: ${formatQuantidade(agendado)}</div>
-              <div class="${disp < 0 ? "text-red-600" : "text-green-600"} font-bold">
-                Disponível: ${formatQuantidade(disp)}
-              </div>
-              <div class="flex gap-2 mt-2">
-                <button class="btn-edit bg-yellow-500 text-white px-2 rounded">Editar</button>
-                <button class="btn-del bg-red-600 text-white px-2 rounded">Excluir</button>
-              </div>
-            `;
-
-            // EDITAR
-            card.querySelector(".btn-edit").onclick = async () => {
-              const novaQtd = prompt("Nova quantidade produzida:", produzido);
-              if (!novaQtd) return;
-
-              const qtdPorDoc = Math.floor(novaQtd / porProduto[prod].ids.length);
-
-              for (const id of porProduto[prod].ids) {
-                await db.collection("producao").doc(id).update({
-                  quantidade: qtdPorDoc
-                });
-              }
-            };
-
-            // EXCLUIR
-            card.querySelector(".btn-del").onclick = async () => {
-              if (!confirm("Excluir esta produção?")) return;
-              for (const id of porProduto[prod].ids) {
-                await db.collection("producao").doc(id).delete();
-              }
-            };
-
-            box.appendChild(card);
-          }
-
-          header.onclick = () => box.classList.toggle("hidden");
-
-          $list.appendChild(header);
-          $list.appendChild(box);
-        }
+      const porProduto = new Map();
+      producoesMes.forEach(item => {
+        const nome = String(item.produto || "Sem produto").trim();
+        const chave = nome.toLowerCase();
+        if (!porProduto.has(chave)) porProduto.set(chave, { nome, produzido: 0, agendado: 0 });
+        porProduto.get(chave).produzido += Number(item.quantidade || 0);
       });
+      agendamentosMes.forEach(item => {
+        const nome = String(item.produtoNome || "Sem produto").trim();
+        const chave = nome.toLowerCase();
+        if (!porProduto.has(chave)) porProduto.set(chave, { nome, produzido: 0, agendado: 0 });
+        porProduto.get(chave).agendado += Number(item.quantidade || 0);
+      });
+
+      const produtos = [...porProduto.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      const totalProduzido = produtos.reduce((soma, item) => soma + item.produzido, 0);
+      const totalAgendado = produtos.reduce((soma, item) => soma + item.agendado, 0);
+      const saldoTotal = totalProduzido - totalAgendado;
+
+      $resumo.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div class="rounded-lg bg-blue-50 border border-blue-100 p-4"><div class="text-xs text-blue-700">Produzido</div><div class="text-2xl font-bold text-blue-900">${formatQuantidade(totalProduzido)}</div></div>
+          <div class="rounded-lg bg-orange-50 border border-orange-100 p-4"><div class="text-xs text-orange-700">Agendado</div><div class="text-2xl font-bold text-orange-900">${formatQuantidade(totalAgendado)}</div></div>
+          <div class="rounded-lg ${saldoTotal < 0 ? "bg-red-50 border-red-100" : "bg-green-50 border-green-100"} border p-4"><div class="text-xs ${saldoTotal < 0 ? "text-red-700" : "text-green-700"}">Saldo</div><div class="text-2xl font-bold ${saldoTotal < 0 ? "text-red-800" : "text-green-800"}">${formatQuantidade(saldoTotal)}</div></div>
+        </div>
+        ${produtos.length ? `
+          <div class="overflow-x-auto rounded-lg border">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-gray-600"><tr><th class="text-left p-3">Produto</th><th class="text-right p-3">Produzido</th><th class="text-right p-3">Agendado</th><th class="text-right p-3">Saldo</th></tr></thead>
+              <tbody>${produtos.map(item => {
+                const saldo = item.produzido - item.agendado;
+                return `<tr class="border-t"><td class="p-3 font-semibold">${item.nome}</td><td class="p-3 text-right">${formatQuantidade(item.produzido)}</td><td class="p-3 text-right">${formatQuantidade(item.agendado)}</td><td class="p-3 text-right font-bold ${saldo < 0 ? "text-red-600" : "text-green-600"}">${formatQuantidade(saldo)}</td></tr>`;
+              }).join("")}</tbody>
+            </table>
+          </div>` : '<div class="text-sm text-gray-500 py-4 text-center">Nenhum lançamento neste mês.</div>'}
+      `;
+
+      const agendadoPorDiaProduto = new Map();
+      agendamentosMes.forEach(item => {
+        const chave = chaveProduto(item.data, item.produtoNome);
+        agendadoPorDiaProduto.set(chave, (agendadoPorDiaProduto.get(chave) || 0) + Number(item.quantidade || 0));
+      });
+
+      const porDia = new Map();
+      producoesMes.forEach(item => {
+        if (!porDia.has(item.data)) porDia.set(item.data, []);
+        porDia.get(item.data).push(item);
+      });
+
+      const diasOrdenados = [...porDia.keys()].sort((a, b) => b.localeCompare(a));
+      if (!diasOrdenados.length) {
+        $list.innerHTML = '<div class="bg-white rounded-lg p-5 text-center text-gray-500">Nenhuma produção lançada neste mês.</div>';
+        return;
+      }
+
+      $list.innerHTML = diasOrdenados.map((dia, indice) => {
+        const itensDia = porDia.get(dia);
+        const agrupados = new Map();
+        itensDia.forEach(item => {
+          const chave = String(item.produto || "").trim().toLowerCase();
+          if (!agrupados.has(chave)) agrupados.set(chave, { produto: item.produto, produzido: 0, ids: [] });
+          agrupados.get(chave).produzido += Number(item.quantidade || 0);
+          agrupados.get(chave).ids.push(item.id);
+        });
+        const totalDia = [...agrupados.values()].reduce((soma, item) => soma + item.produzido, 0);
+        return `
+          <details class="bg-white rounded-lg shadow border border-gray-100 overflow-hidden" ${indice === 0 ? "open" : ""}>
+            <summary class="cursor-pointer list-none p-3 flex items-center justify-between gap-3 bg-gray-50">
+              <div><span class="font-bold text-blue-900">${dataBR(dia)}</span><span class="text-sm text-gray-500 ml-2">${diaSemana(dia)}</span></div>
+              <span class="text-sm font-semibold">${formatQuantidade(totalDia)} produzidos</span>
+            </summary>
+            <div class="divide-y">
+              ${[...agrupados.values()].map(item => {
+                const agendado = agendadoPorDiaProduto.get(chaveProduto(dia, item.produto)) || 0;
+                const saldo = item.produzido - agendado;
+                return `
+                  <div class="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div><div class="font-semibold">${item.produto}</div><div class="text-sm text-gray-500">Produzido: ${formatQuantidade(item.produzido)} • Agendado: ${formatQuantidade(agendado)} • <strong class="${saldo < 0 ? "text-red-600" : "text-green-600"}">Saldo: ${formatQuantidade(saldo)}</strong></div></div>
+                    <div class="flex gap-2"><button class="btn-edit bg-yellow-500 text-white px-3 py-1 rounded" data-ids="${item.ids.join(",")}" data-qtd="${item.produzido}">Editar</button><button class="btn-del bg-red-600 text-white px-3 py-1 rounded" data-ids="${item.ids.join(",")}">Excluir</button></div>
+                  </div>`;
+              }).join("")}
+            </div>
+          </details>`;
+      }).join("");
+    }
+
+    $mesFiltro.addEventListener("change", renderizarPainel);
+    $list.addEventListener("click", async event => {
+      const botao = event.target.closest("button");
+      if (!botao) return;
+      const ids = String(botao.dataset.ids || "").split(",").filter(Boolean);
+      if (botao.classList.contains("btn-edit")) {
+        const novaQtd = Number(prompt("Nova quantidade produzida:", botao.dataset.qtd));
+        if (!Number.isFinite(novaQtd) || novaQtd < 0) return;
+        const base = Math.floor(novaQtd / ids.length);
+        let restante = novaQtd - (base * ids.length);
+        for (const id of ids) {
+          await db.collection("producao").doc(id).update({ quantidade: base + (restante-- > 0 ? 1 : 0) });
+        }
+      }
+      if (botao.classList.contains("btn-del") && confirm("Excluir esta produção?")) {
+        for (const id of ids) await db.collection("producao").doc(id).delete();
+      }
+    });
+
+    producaoQuery.orderBy("data", "desc").onSnapshot(snap => {
+      producoes = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+      carregouProducoes = true;
+      renderizarPainel();
+    });
+    agendamentoQuery.onSnapshot(snap => {
+      agendamentos = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+      carregouAgendamentos = true;
+      renderizarPainel();
+    });
   });
+
 }
 
