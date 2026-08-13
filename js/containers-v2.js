@@ -6,9 +6,17 @@
   const hoje = () => new Date().toISOString().slice(0,10);
   const dataBR = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v||"")) ? String(v).split("-").reverse().join("/") : "-";
   const dias = v => v ? Math.max(0,Math.floor((new Date(hoje()+"T00:00:00")-new Date(v+"T00:00:00"))/86400000)) : 0;
-  const buscar = async nome => {
-    const snap=await db.collection(nome).get();
-    return snap.docs.map(doc=>({id:doc.id,...(doc.data()||{})}));
+  const buscar = async (nome, opcional = false) => {
+    try {
+      const snap=await db.collection(nome).get();
+      return snap.docs.map(doc=>({id:doc.id,...(doc.data()||{})}));
+    } catch (erro) {
+      if (opcional && erro?.code === "permission-denied") {
+        console.warn(`A coleção ${nome} ainda não foi liberada nas regras do Firebase.`);
+        return [];
+      }
+      throw erro;
+    }
   };
   const statusNome = s => ({com_cliente:"Com cliente",disponivel:"Devolvido",manutencao:"Em manutenção"}[s]||s||"-");
   const statusCor = s => s==="com_cliente"?"bg-orange-100 text-orange-800":s==="manutencao"?"bg-yellow-100 text-yellow-800":"bg-green-100 text-green-800";
@@ -74,7 +82,7 @@
       </table></div></section>
       <details class="bg-white rounded-xl shadow mt-4"><summary class="p-4 cursor-pointer font-bold text-blue-900">Histórico de movimentações</summary><div id="ct-historico" class="p-4 pt-0 overflow-x-auto"></div></details>`;
 
-    let containers=await buscar(CT), historico=await buscar(MOV);
+    let containers=await buscar(CT, true), historico=await buscar(MOV, true);
     const clientes=await buscar("clientes"), pedidos=await buscar("pedidos");
     let visiveis=[];
     const clienteFiltro=document.getElementById("ct-cliente");
@@ -136,10 +144,16 @@
             if(antigo)batch.update(ref,dados);else batch.set(ref,{...dados,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
             batch.set(db.collection(MOV).doc(),{containerId:ref.id,numero,tipo:"saida",data:dataSaida,cliente,pedidoCodigo:codigo,observacao,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
           });
-          await batch.commit();m.remove();containers=await buscar(CT);historico=await buscar(MOV);
+          await batch.commit();m.remove();containers=await buscar(CT,true);historico=await buscar(MOV,true);
           if(![...clienteFiltro.options].some(o=>o.value===cliente))clienteFiltro.add(new Option(cliente,cliente));
           atualizar();
-        } catch(e){console.error(e);alert("Não foi possível cadastrar os contêineres.");btn.disabled=false;btn.textContent="Cadastrar e registrar saída";}
+        } catch(e){
+          console.error(e);
+          alert(e?.code === "permission-denied"
+            ? "O Firebase ainda não permite salvar contêineres. É necessário liberar as coleções containers e containers_movimentos para o administrador."
+            : "Não foi possível cadastrar os contêineres.");
+          btn.disabled=false;btn.textContent="Cadastrar e registrar saída";
+        }
       };
     }
 
@@ -151,7 +165,7 @@
         const ids=[...m.querySelectorAll(".dev-item:checked")].map(i=>i.value),data=m.querySelector("#dev-data").value,condicao=m.querySelector("#dev-condicao").value,observacao=m.querySelector("#dev-obs").value.trim();
         if(!data||!ids.length){alert("Informe a data e selecione os contêineres devolvidos.");return;}
         const batch=db.batch();ids.forEach(id=>{const i=containers.find(x=>x.id===id),tempo=dias(i.dataSaida);batch.update(db.collection(CT).doc(id),{status:condicao==="Danificado"?"manutencao":"disponivel",ultimaDevolucao:data,diasUltimaPermanencia:tempo,observacaoDevolucao:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});batch.set(db.collection(MOV).doc(),{containerId:id,numero:i.numero,tipo:"devolucao",data,cliente:i.clienteAtual,pedidoCodigo:i.pedidoCodigo,condicao,observacao,diasComCliente:tempo,createdAt:firebase.firestore.FieldValue.serverTimestamp()});});
-        await batch.commit();m.remove();containers=await buscar(CT);historico=await buscar(MOV);atualizar();
+        await batch.commit();m.remove();containers=await buscar(CT,true);historico=await buscar(MOV,true);atualizar();
       };
     }
 
