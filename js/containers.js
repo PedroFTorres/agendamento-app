@@ -57,12 +57,14 @@
       </div>
       <div id="container-cards" class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4"></div>
       <section class="bg-white p-4 rounded-xl shadow mb-4">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <input id="container-busca" class="border p-2 rounded" placeholder="Número, cliente ou pedido">
+        <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-2">
+          <input id="container-busca" class="border p-2 rounded" placeholder="Pesquisar número do contêiner">
+          <select id="container-cliente-filtro" class="border p-2 rounded"><option value="">Todos os clientes</option></select>
+          <select id="container-pedido-filtro" class="border p-2 rounded"><option value="">Todos os pedidos</option></select>
           <select id="container-status" class="border p-2 rounded"><option value="">Todas as situações</option><option value="disponivel">Disponíveis</option><option value="com_cliente">Com cliente</option><option value="manutencao">Em manutenção</option><option value="baixado">Baixados</option></select>
-          <button id="container-csv" class="border border-green-700 text-green-700 px-3 py-2 rounded">Exportar CSV</button>
-          <button id="container-pdf" class="border border-red-700 text-red-700 px-3 py-2 rounded">Exportar PDF</button>
+          <button id="container-limpar" class="border border-gray-400 text-gray-700 px-3 py-2 rounded">Limpar filtros</button>
         </div>
+        <div class="flex flex-wrap gap-2 mt-3"><button id="container-csv" class="border border-green-700 text-green-700 px-3 py-2 rounded">Exportar CSV</button><button id="container-pdf" class="border border-red-700 text-red-700 px-3 py-2 rounded">Exportar PDF</button></div>
       </section>
       <section class="bg-white rounded-xl shadow overflow-hidden">
         <div class="overflow-x-auto"><table class="w-full text-sm">
@@ -77,14 +79,30 @@
 
     let containers = await carregarTudo(colecao);
     let historico = await carregarTudo(movimentos);
+    const clientesCadastrados = await carregarTudo("clientes");
+    const pedidosCadastrados = await carregarTudo("pedidos");
     let visiveis = [];
+
+    const filtroCliente = document.getElementById("container-cliente-filtro");
+    const filtroPedido = document.getElementById("container-pedido-filtro");
+    [...new Set(clientesCadastrados.map(item => String(item.nome || "").trim()).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(nome => filtroCliente.add(new Option(nome,nome)));
+    [...new Set(pedidosCadastrados.map(item => String(item.codigo || item.id || "").trim()).filter(Boolean))]
+      .sort((a,b)=>b.localeCompare(a,"pt-BR")).forEach(codigo => filtroPedido.add(new Option(codigo,codigo)));
 
     function ordenar() { containers.sort((a,b) => String(a.numero).localeCompare(String(b.numero),"pt-BR",{numeric:true})); }
     function atualizar() {
       ordenar();
       const termo = String(document.getElementById("container-busca")?.value || "").trim().toLowerCase();
+      const clienteFiltro = filtroCliente?.value || "";
+      const pedidoFiltro = filtroPedido?.value || "";
       const status = document.getElementById("container-status")?.value || "";
-      visiveis = containers.filter(item => (!status || item.status === status) && (!termo || [item.numero,item.clienteAtual,item.pedidoCodigo].some(v => String(v||"").toLowerCase().includes(termo))));
+      visiveis = containers.filter(item =>
+        (!status || item.status === status) &&
+        (!clienteFiltro || item.clienteAtual === clienteFiltro) &&
+        (!pedidoFiltro || item.pedidoCodigo === pedidoFiltro) &&
+        (!termo || String(item.numero || "").toLowerCase().includes(termo))
+      );
       const disponiveis = containers.filter(i=>i.status==="disponivel").length;
       const fora = containers.filter(i=>i.status==="com_cliente");
       const manutencao = containers.filter(i=>i.status==="manutencao").length;
@@ -139,20 +157,36 @@
 
     async function registrarSaida() {
       const disponiveis=containers.filter(i=>i.status==="disponivel"); if(!disponiveis.length){alert("Não há contêineres disponíveis.");return;}
-      const clientes=await carregarTudo("clientes");
+      const clientes=[...clientesCadastrados].sort((a,b)=>String(a.nome).localeCompare(String(b.nome),"pt-BR"));
+      const pedidos=[...pedidosCadastrados].sort((a,b)=>String(b.codigo||"").localeCompare(String(a.codigo||""),"pt-BR"));
       const modal=modalBase("Registrar saída no carregamento",`
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
           <label>Data real da saída *<input id="s-data" type="date" class="border p-2 rounded w-full" value="${hojeIso()}"></label>
-          <label>Cliente *<select id="s-cliente" class="border p-2 rounded w-full"><option value="">Selecione</option>${clientes.sort((a,b)=>String(a.nome).localeCompare(String(b.nome),"pt-BR")).map(c=>`<option>${esc(c.nome)}</option>`).join("")}</select></label>
-          <label>Pedido/agendamento<input id="s-pedido" class="border p-2 rounded w-full" placeholder="Código opcional"></label>
+          <label>Cliente cadastrado *<select id="s-cliente" class="border p-2 rounded w-full"><option value="">Selecione o cliente</option>${clientes.map(item=>`<option value="${esc(item.nome)}">${esc(item.nome)}</option>`).join("")}</select></label>
+          <label>Pedido do cliente *<select id="s-pedido" class="border p-2 rounded w-full" disabled><option value="">Selecione primeiro o cliente</option></select></label>
           <label>Previsão de devolução<input id="s-prazo" type="date" class="border p-2 rounded w-full"></label>
           <label class="md:col-span-2">Observação<input id="s-obs" class="border p-2 rounded w-full"></label>
         </div>
-        <div class="font-semibold mb-2">Selecione os contêineres</div><div class="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto border rounded p-2">${disponiveis.map(i=>`<label class="border rounded p-2"><input type="checkbox" class="s-item mr-2" value="${i.id}">${esc(i.numero)}</label>`).join("")}</div>`,"Confirmar saída");
+        <div class="mb-2"><input id="s-busca-container" class="border p-2 rounded w-full" placeholder="Pesquisar número do contêiner disponível"></div>
+        <div class="font-semibold mb-2">Selecione os contêineres</div><div id="s-lista-containers" class="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto border rounded p-2">${disponiveis.map(i=>`<label class="s-label border rounded p-2" data-numero="${esc(String(i.numero).toLowerCase())}"><input type="checkbox" class="s-item mr-2" value="${i.id}">${esc(i.numero)}</label>`).join("")}</div>`,"Confirmar saída");
+      const clienteSelect=modal.querySelector("#s-cliente"),pedidoSelect=modal.querySelector("#s-pedido");
+      clienteSelect.onchange=()=>{
+        const cliente=clienteSelect.value;
+        const doCliente=pedidos.filter(p=>String(p.clienteNome||"").trim()===cliente);
+        pedidoSelect.disabled=!cliente;
+        pedidoSelect.innerHTML=cliente
+          ? '<option value="">Selecione o pedido</option>'+doCliente.map(p=>`<option value="${esc(p.codigo||p.id)}">${esc(p.codigo||p.id)} • ${esc(p.produtosResumo||p.produtoNome||"")}</option>`).join("")
+          : '<option value="">Selecione primeiro o cliente</option>';
+        if(cliente&&!doCliente.length)pedidoSelect.innerHTML='<option value="">Nenhum pedido encontrado para este cliente</option>';
+      };
+      modal.querySelector("#s-busca-container").oninput=e=>{
+        const termo=String(e.target.value||"").trim().toLowerCase();
+        modal.querySelectorAll(".s-label").forEach(label=>label.classList.toggle("hidden",termo&&!label.dataset.numero.includes(termo)));
+      };
       modal.querySelector(".salvar").onclick=async()=>{
-        const data=modal.querySelector("#s-data").value,cliente=modal.querySelector("#s-cliente").value,ids=[...modal.querySelectorAll(".s-item:checked")].map(i=>i.value);
-        if(!data||!cliente||!ids.length){alert("Informe data, cliente e selecione os contêineres.");return;}
-        const pedidoCodigo=modal.querySelector("#s-pedido").value.trim(),prazoDevolucao=modal.querySelector("#s-prazo").value,observacao=modal.querySelector("#s-obs").value.trim();
+        const data=modal.querySelector("#s-data").value,cliente=clienteSelect.value,pedidoCodigo=pedidoSelect.value,ids=[...modal.querySelectorAll(".s-item:checked")].map(i=>i.value);
+        if(!data||!cliente||!pedidoCodigo||!ids.length){alert("Data, cliente, pedido e contêineres são obrigatórios.");return;}
+        const prazoDevolucao=modal.querySelector("#s-prazo").value,observacao=modal.querySelector("#s-obs").value.trim();
         const batch=db.batch(); ids.forEach(id=>{const item=containers.find(i=>i.id===id); batch.update(db.collection(colecao).doc(id),{status:"com_cliente",clienteAtual:cliente,dataSaida:data,prazoDevolucao,pedidoCodigo,observacaoSaida:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});batch.set(db.collection(movimentos).doc(),{containerId:id,numero:item.numero,tipo:"saida",data,cliente,pedidoCodigo,prazoDevolucao,observacao,createdAt:firebase.firestore.FieldValue.serverTimestamp()});});
         await batch.commit(); modal.remove(); containers=await carregarTudo(colecao);historico=await carregarTudo(movimentos);atualizar();
       };
@@ -176,6 +210,9 @@
     document.getElementById("container-devolucao").onclick=registrarDevolucao;
     document.getElementById("container-busca").oninput=atualizar;
     document.getElementById("container-status").onchange=atualizar;
+    filtroCliente.onchange=atualizar;
+    filtroPedido.onchange=atualizar;
+    document.getElementById("container-limpar").onclick=()=>{document.getElementById("container-busca").value="";filtroCliente.value="";filtroPedido.value="";document.getElementById("container-status").value="";atualizar();};
     document.getElementById("container-csv").onclick=()=>baixarCsv("containers.csv",[["Número","Situação","Cliente","Saída","Dias fora","Pedido","Prazo","Última devolução","Observação"],...visiveis.map(i=>[i.numero,statusTexto(i.status),i.clienteAtual||"",i.dataSaida||"",i.status==="com_cliente"?diasFora(i.dataSaida):"",i.pedidoCodigo||"",i.prazoDevolucao||"",i.ultimaDevolucao||"",i.observacao||""])]);
     document.getElementById("container-pdf").onclick=()=>exportarPdf(visiveis);
     document.getElementById("container-lista").onclick=e=>{const editar=e.target.closest("[data-edit]"),hist=e.target.closest("[data-history]");if(editar)cadastrar(containers.find(i=>i.id===editar.dataset.edit));if(hist){const numero=containers.find(i=>i.id===hist.dataset.history)?.numero;document.querySelector("#container-historico").closest("details").open=true;document.getElementById("container-historico").scrollIntoView({behavior:"smooth"});}};
