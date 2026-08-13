@@ -3270,6 +3270,10 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else if (page === "dashboard") renderDashboard();
     else if (page === "notificacoes") renderNotificacoes();
     else if (page === "producao") renderProducao();
+    else if (page === "containers") {
+      if (typeof window.renderContainers === "function") window.renderContainers();
+      else pageContent.innerHTML = '<p class="text-red-600">Não foi possível carregar o controle de contêineres.</p>';
+    }
     else if (page === "recibo") renderRecibo();
     else if (page === "whatsapp") renderWhatsapp();
     else if (page === "notas") renderNotas();
