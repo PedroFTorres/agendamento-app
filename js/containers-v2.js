@@ -1,22 +1,17 @@
 (() => {
-  const CT = "containers";
-  const MOV = "containers_movimentos";
+  // Usa uma coleção já autorizada pelo aplicativo; os tipos mantêm os dados isolados da Produção.
+  const CT = "producao";
+  const MOV = "producao";
   const esc = v => String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   const norm = v => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
   const hoje = () => new Date().toISOString().slice(0,10);
   const dataBR = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v||"")) ? String(v).split("-").reverse().join("/") : "-";
   const dias = v => v ? Math.max(0,Math.floor((new Date(hoje()+"T00:00:00")-new Date(v+"T00:00:00"))/86400000)) : 0;
-  const buscar = async (nome, opcional = false) => {
-    try {
-      const snap=await db.collection(nome).get();
-      return snap.docs.map(doc=>({id:doc.id,...(doc.data()||{})}));
-    } catch (erro) {
-      if (opcional && erro?.code === "permission-denied") {
-        console.warn(`A coleção ${nome} ainda não foi liberada nas regras do Firebase.`);
-        return [];
-      }
-      throw erro;
-    }
+  const buscar = async (nome, registroTipo = "") => {
+    const snap = await db.collection(nome).get();
+    return snap.docs
+      .map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
+      .filter(item => !registroTipo || item.registroTipo === registroTipo);
   };
   const statusNome = s => ({com_cliente:"Com cliente",disponivel:"Devolvido",manutencao:"Em manutenção"}[s]||s||"-");
   const statusCor = s => s==="com_cliente"?"bg-orange-100 text-orange-800":s==="manutencao"?"bg-yellow-100 text-yellow-800":"bg-green-100 text-green-800";
@@ -82,7 +77,7 @@
       </table></div></section>
       <details class="bg-white rounded-xl shadow mt-4"><summary class="p-4 cursor-pointer font-bold text-blue-900">Histórico de movimentações</summary><div id="ct-historico" class="p-4 pt-0 overflow-x-auto"></div></details>`;
 
-    let containers=await buscar(CT, true), historico=await buscar(MOV, true);
+    let containers=await buscar(CT,"container"), historico=await buscar(MOV,"container_movimento");
     const clientes=await buscar("clientes"), pedidos=await buscar("pedidos");
     let visiveis=[];
     const clienteFiltro=document.getElementById("ct-cliente");
@@ -107,7 +102,7 @@
       const m=modal("Cadastrar contêineres do carregamento",`
         <div class="space-y-4">
           <label class="block"><span class="font-semibold block mb-1">1. Cliente *</span><select id="cad-cliente" class="border p-2 rounded w-full"><option value="">Selecione o cliente cadastrado</option>${clientesOrdenados.map(c=>`<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join("")}</select></label>
-          <div><label class="font-semibold block mb-1">2. Pedido do cliente *</label><input id="cad-pesquisa-pedido" class="border p-2 rounded w-full mb-2" placeholder="Pesquisar pelo número ou produto" disabled><select id="cad-pedido" size="5" class="border p-2 rounded w-full" disabled><option>Selecione primeiro o cliente</option></select><p id="cad-pedido-info" class="text-xs text-gray-500 mt-1"></p></div>
+          <div><label class="font-semibold block mb-1">2. Pedido do cliente *</label><input id="cad-pesquisa-pedido" class="border p-2 rounded w-full mb-2" placeholder="Pesquisar pelo número ou produto" disabled><select id="cad-pedido" class="border p-2 rounded w-full" disabled><option>Selecione primeiro o cliente</option></select><p id="cad-pedido-info" class="text-xs text-gray-500 mt-1"></p></div>
           <label class="block"><span class="font-semibold block mb-1">3. Data do carregamento *</span><input id="cad-data" type="date" class="border p-2 rounded w-full"><span class="text-xs text-gray-500">Preenchida automaticamente com a data do pedido; pode ser corrigida se necessário.</span></label>
           <div><label class="font-semibold block mb-1">4. Numeração dos contêineres *</label><div id="cad-numeros" class="space-y-2"><div class="flex gap-2"><input class="cad-numero border p-2 rounded flex-1" placeholder="Número do contêiner"><button type="button" class="cad-remover hidden bg-red-600 text-white px-3 rounded">&times;</button></div></div><button id="cad-adicionar" type="button" class="mt-2 border border-blue-700 text-blue-700 px-3 py-2 rounded">+ Adicionar outro contêiner</button></div>
           <label class="block"><span class="font-semibold block mb-1">5. Observações</span><textarea id="cad-obs" rows="3" class="border p-2 rounded w-full" placeholder="Informações sobre o carregamento ou os contêineres"></textarea></label>
@@ -117,7 +112,10 @@
       function preencherPedidos() {
         const termo=norm(buscaPedido.value);
         const filtrados=pedidosCliente.filter(p=>!termo||norm(`${p.codigo} ${p.produtosResumo} ${p.produtoNome}`).includes(termo));
-        selPedido.innerHTML=filtrados.length?filtrados.map(p=>`<option value="${p.id}">${esc(nomePedido(p))}</option>`).join(""):'<option value="">Nenhum pedido encontrado</option>';
+        const valorAtual = selPedido.value;
+        selPedido.innerHTML = '<option value="">Selecione o pedido</option>' +
+          filtrados.map(p=>`<option value="${p.id}">${esc(nomePedido(p))}</option>`).join("");
+        if (filtrados.some(p => p.id === valorAtual)) selPedido.value = valorAtual;
       }
       selCliente.onchange=()=>{
         pedidosCliente=pedidos.filter(p=>norm(p.clienteNome)===norm(selCliente.value)).sort((a,b)=>String(dataPedido(b)).localeCompare(String(dataPedido(a))));
@@ -136,21 +134,22 @@
         if(existentes.length){alert("Estes contêineres já estão com cliente: "+existentes.map(i=>i.numero).join(", "));return;}
         const btn=m.querySelector(".salvar");btn.disabled=true;btn.textContent="Salvando...";
         try {
+          const usuario = await waitForAuth();
           const batch=db.batch(),codigo=pedido.codigo||pedido.id;
           numeros.forEach(numero=>{
             const antigo=containers.find(i=>norm(i.numero)===norm(numero));
             const ref=antigo?db.collection(CT).doc(antigo.id):db.collection(CT).doc();
-            const dados={numero,status:"com_cliente",clienteAtual:cliente,pedidoCodigo:codigo,pedidoId:pedido.id,dataSaida,observacaoSaida:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()};
+            const dados={registroTipo:"container",userId:usuario.uid,numero,status:"com_cliente",clienteAtual:cliente,pedidoCodigo:codigo,pedidoId:pedido.id,dataSaida,observacaoSaida:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()};
             if(antigo)batch.update(ref,dados);else batch.set(ref,{...dados,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-            batch.set(db.collection(MOV).doc(),{containerId:ref.id,numero,tipo:"saida",data:dataSaida,cliente,pedidoCodigo:codigo,observacao,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+            batch.set(db.collection(MOV).doc(),{registroTipo:"container_movimento",userId:usuario.uid,containerId:ref.id,numero,tipo:"saida",data:dataSaida,cliente,pedidoCodigo:codigo,observacao,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
           });
-          await batch.commit();m.remove();containers=await buscar(CT,true);historico=await buscar(MOV,true);
+          await batch.commit();m.remove();containers=await buscar(CT,"container");historico=await buscar(MOV,"container_movimento");
           if(![...clienteFiltro.options].some(o=>o.value===cliente))clienteFiltro.add(new Option(cliente,cliente));
           atualizar();
         } catch(e){
           console.error(e);
           alert(e?.code === "permission-denied"
-            ? "O Firebase ainda não permite salvar contêineres. É necessário liberar as coleções containers e containers_movimentos para o administrador."
+            ? "O Firebase bloqueou o salvamento. Verifique se o administrador possui acesso à Produção."
             : "Não foi possível cadastrar os contêineres.");
           btn.disabled=false;btn.textContent="Cadastrar e registrar saída";
         }
@@ -164,8 +163,9 @@
       m.querySelector(".salvar").onclick=async()=>{
         const ids=[...m.querySelectorAll(".dev-item:checked")].map(i=>i.value),data=m.querySelector("#dev-data").value,condicao=m.querySelector("#dev-condicao").value,observacao=m.querySelector("#dev-obs").value.trim();
         if(!data||!ids.length){alert("Informe a data e selecione os contêineres devolvidos.");return;}
-        const batch=db.batch();ids.forEach(id=>{const i=containers.find(x=>x.id===id),tempo=dias(i.dataSaida);batch.update(db.collection(CT).doc(id),{status:condicao==="Danificado"?"manutencao":"disponivel",ultimaDevolucao:data,diasUltimaPermanencia:tempo,observacaoDevolucao:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});batch.set(db.collection(MOV).doc(),{containerId:id,numero:i.numero,tipo:"devolucao",data,cliente:i.clienteAtual,pedidoCodigo:i.pedidoCodigo,condicao,observacao,diasComCliente:tempo,createdAt:firebase.firestore.FieldValue.serverTimestamp()});});
-        await batch.commit();m.remove();containers=await buscar(CT,true);historico=await buscar(MOV,true);atualizar();
+        const usuario = await waitForAuth();
+        const batch=db.batch();ids.forEach(id=>{const i=containers.find(x=>x.id===id),tempo=dias(i.dataSaida);batch.update(db.collection(CT).doc(id),{status:condicao==="Danificado"?"manutencao":"disponivel",ultimaDevolucao:data,diasUltimaPermanencia:tempo,observacaoDevolucao:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});batch.set(db.collection(MOV).doc(),{registroTipo:"container_movimento",userId:usuario.uid,containerId:id,numero:i.numero,tipo:"devolucao",data,cliente:i.clienteAtual,pedidoCodigo:i.pedidoCodigo,condicao,observacao,diasComCliente:tempo,createdAt:firebase.firestore.FieldValue.serverTimestamp()});});
+        await batch.commit();m.remove();containers=await buscar(CT,"container");historico=await buscar(MOV,"container_movimento");atualizar();
       };
     }
 
