@@ -270,7 +270,9 @@ function renderProducao() {
     });
 
     producaoQuery.orderBy("data", "desc").onSnapshot(snap => {
-      producoes = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+      producoes = snap.docs
+        .map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
+        .filter(item => !item.registroTipo || item.registroTipo === "producao");
       carregouProducoes = true;
       renderizarPainel();
     });
