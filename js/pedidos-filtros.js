@@ -299,6 +299,7 @@
         .filter((item) => item.produtoNome && item.quantidade > 0);
       const prazo = document.getElementById("p-prazo").value;
       const obs = document.getElementById("p-obs").value;
+      const previsaoHorarioChegada = document.getElementById("p-horario-chegada")?.value || "";
       const responsavel = document.getElementById("p-responsavel")?.value.trim() || REPRESENTANTE_ATUAL || "Administrativo";
 
       if (!prazo) return alert("Selecione o prazo de pagamento.");
@@ -368,6 +369,7 @@
           produtosResumo: itens.map((item) => `${item.produtoNome} (${formatQuantidade(item.quantidade)})`).join(", "),
           itens,
           prazoPagamento: prazo,
+          previsaoHorarioChegada,
           observacao: obs,
           quantidade,
           representanteNome: responsavel,
@@ -456,6 +458,7 @@
                 <option value="30/60 dias">30/60 dias</option>
               </select>
               <input id="p-responsavel" type="text" class="border p-2 w-full" placeholder="Representante/responsavel">
+              <label class="block text-sm"><span class="block mb-1 font-semibold">Previsão de chegada (opcional)</span><input id="p-horario-chegada" type="time" class="border p-2 rounded w-full"></label>
               <input id="p-obs" type="text" class="border p-2 w-full" placeholder="Observacoes (opcional)">
               <p id="msg-enviando-pedido" class="hidden text-center text-sm font-semibold text-blue-700">ENVIANDO SEU PEDIDO...</p>
               <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">Enviar Pedido</button>
