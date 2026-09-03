@@ -112,6 +112,7 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
     <tr>
       <td>${indice + 1}</td>
       <td>${escapar(item.clienteNome || "-")}</td>
+      <td>${escapar(item.previsaoHorarioChegada || "-")}</td>
       <td>${escapar(item.produtoNome || "-")}</td>
       <td class="numero">${formatQuantidade(item.quantidade || 0)}</td>
       <td class="numero">${formatMoedaRelatorio(item.valorVenda || 0)}</td>
@@ -153,12 +154,13 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
           td { border-bottom: 1px solid #dfe6f1; padding: 6px 5px; vertical-align: top; overflow-wrap: anywhere; }
           tbody tr:nth-child(even) { background: #f8fafc; }
           th:nth-child(1), td:nth-child(1) { width: 5%; }
-          th:nth-child(2), td:nth-child(2) { width: 22%; }
-          th:nth-child(3), td:nth-child(3) { width: 17%; }
-          th:nth-child(4), td:nth-child(4) { width: 9%; }
-          th:nth-child(5), td:nth-child(5) { width: 13%; }
-          th:nth-child(6), td:nth-child(6) { width: 16%; }
-          th:nth-child(7), td:nth-child(7) { width: 18%; }
+          th:nth-child(2), td:nth-child(2) { width: 19%; }
+          th:nth-child(3), td:nth-child(3) { width: 9%; }
+          th:nth-child(4), td:nth-child(4) { width: 15%; }
+          th:nth-child(5), td:nth-child(5) { width: 8%; }
+          th:nth-child(6), td:nth-child(6) { width: 12%; }
+          th:nth-child(7), td:nth-child(7) { width: 14%; }
+          th:nth-child(8), td:nth-child(8) { width: 18%; }
           .numero, th.numero { text-align: right; font-weight: bold; }
           .rodape { margin-top: 12px; padding-top: 7px; border-top: 1px solid #dfe6f1; color: #6b7280; font-size: 9px; text-align: right; }
           @media (max-width: 700px) { .resumos, .totais { grid-template-columns: 1fr; } }
@@ -202,6 +204,7 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
             <tr>
               <th>#</th>
               <th>Cliente</th>
+              <th>Chegada</th>
               <th>Produto</th>
               <th class="numero">Qtd.</th>
               <th class="numero">Valor</th>
@@ -209,7 +212,7 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
               <th>Observa&ccedil;&atilde;o</th>
             </tr>
           </thead>
-          <tbody>${linhasTabela || `<tr><td colspan="7">Nenhum agendamento.</td></tr>`}</tbody>
+          <tbody>${linhasTabela || `<tr><td colspan="8">Nenhum agendamento.</td></tr>`}</tbody>
         </table>
 
         <footer class="rodape">
@@ -245,65 +248,51 @@ async function abrirResumoDoDia(dataSelecionada) {
     lista.push({ id: doc.id, ...d });
   });
 
-  const observacoesPorVinculo = new Map();
+  const dadosPedidoPorVinculo = new Map();
 
-  async function buscarObservacaoPedido(agendamento) {
-    const chave = agendamento.pedidoId
-      ? `pedido:${agendamento.pedidoId}`
-      : `agendamento:${agendamento.id}`;
-
-    if (observacoesPorVinculo.has(chave)) return observacoesPorVinculo.get(chave);
+  async function buscarDadosPedido(agendamento) {
+    const chave = agendamento.pedidoId ? `pedido:${agendamento.pedidoId}` : `agendamento:${agendamento.id}`;
+    if (dadosPedidoPorVinculo.has(chave)) return dadosPedidoPorVinculo.get(chave);
 
     const consulta = (async () => {
       let pedidoDoc = null;
-
       if (agendamento.pedidoId) {
-        const porCodigo = await db.collection("pedidos")
-          .where("codigo", "==", agendamento.pedidoId)
-          .limit(1)
-          .get();
-
-        if (!porCodigo.empty) {
-          pedidoDoc = porCodigo.docs[0];
-        } else {
+        const porCodigo = await db.collection("pedidos").where("codigo", "==", agendamento.pedidoId).limit(1).get();
+        if (!porCodigo.empty) pedidoDoc = porCodigo.docs[0];
+        else {
           const porId = await db.collection("pedidos").doc(String(agendamento.pedidoId)).get();
           if (porId.exists) pedidoDoc = porId;
         }
       }
-
       if (!pedidoDoc && agendamento.id) {
-        const porListaIds = await db.collection("pedidos")
-          .where("agendamentoIds", "array-contains", agendamento.id)
-          .limit(1)
-          .get();
-
+        const porListaIds = await db.collection("pedidos").where("agendamentoIds", "array-contains", agendamento.id).limit(1).get();
         if (!porListaIds.empty) pedidoDoc = porListaIds.docs[0];
       }
-
       if (!pedidoDoc && agendamento.id) {
-        const porIdPrincipal = await db.collection("pedidos")
-          .where("agendamentoId", "==", agendamento.id)
-          .limit(1)
-          .get();
-
+        const porIdPrincipal = await db.collection("pedidos").where("agendamentoId", "==", agendamento.id).limit(1).get();
         if (!porIdPrincipal.empty) pedidoDoc = porIdPrincipal.docs[0];
       }
-
-      return String(pedidoDoc?.data()?.observacao || "").trim();
+      const pedido = pedidoDoc?.data() || {};
+      return {
+        observacao: String(pedido.observacao || "").trim(),
+        previsaoHorarioChegada: String(pedido.previsaoHorarioChegada || "").trim()
+      };
     })();
 
-    observacoesPorVinculo.set(chave, consulta);
+    dadosPedidoPorVinculo.set(chave, consulta);
     return consulta;
   }
 
-  await Promise.all(lista.map(async (agendamento) => {
-    if (String(agendamento.observacao || "").trim()) return;
-
+  await Promise.all(lista.map(async agendamento => {
+    if (String(agendamento.observacao || "").trim() && String(agendamento.previsaoHorarioChegada || "").trim()) return;
     try {
-      const observacaoPedido = await buscarObservacaoPedido(agendamento);
-      if (observacaoPedido) agendamento.observacao = observacaoPedido;
+      const dadosPedido = await buscarDadosPedido(agendamento);
+      if (!String(agendamento.observacao || "").trim() && dadosPedido.observacao) agendamento.observacao = dadosPedido.observacao;
+      if (!String(agendamento.previsaoHorarioChegada || "").trim() && dadosPedido.previsaoHorarioChegada) {
+        agendamento.previsaoHorarioChegada = dadosPedido.previsaoHorarioChegada;
+      }
     } catch (e) {
-      console.warn("Nao foi possivel recuperar a observacao do pedido.", e);
+      console.warn("Nao foi possivel recuperar os dados do pedido.", e);
     }
   }));
 
