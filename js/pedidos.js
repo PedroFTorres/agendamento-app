@@ -648,6 +648,7 @@ async function aprovarPedido(id, btn) {
                 criadoPorAdmin: p.criadoPorAdmin === true,
                 pedidoId: p.codigo || id,
                 data: dataEscolhida,
+                previsaoHorarioChegada: p.previsaoHorarioChegada || "",
                 observacao: p.observacao || "",
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
               });
@@ -905,6 +906,9 @@ async function editarPedidoAprovado(id) {
      <label class="block mb-1">Data/Dia</label>
       <input id="edit-data" type="date" value="${escapeHtml(dataAtual)}" class="w-full border p-2 mb-3"/>
 
+      <label class="block mb-1">Previsão de chegada (opcional)</label>
+      <input id="edit-horario-chegada" type="time" value="${escapeHtml(p.previsaoHorarioChegada || "")}" class="w-full border p-2 mb-3"/>
+
       <label class="block mb-1">Prazo de pagamento</label>
       <select id="edit-prazo" class="w-full border p-2 mb-3">
         ${["À vista", "10 dias", "15 dias", "30 dias", "30/60 dias"]
@@ -1007,6 +1011,7 @@ async function editarPedidoAprovado(id) {
     }
     const novaData = modal.querySelector("#edit-data").value;
     const novoPrazo = modal.querySelector("#edit-prazo").value;
+    const novoHorarioChegada = modal.querySelector("#edit-horario-chegada").value;
     const novaObs = modal.querySelector("#edit-obs").value.trim();
 
   if (!novosItens.length || !novaData || !novoPrazo) {
@@ -1029,6 +1034,7 @@ async function editarPedidoAprovado(id) {
         quantidade: quantidadeTotal,
         qtdAnterior: p.quantidade,
         prazoPagamento: novoPrazo,
+        previsaoHorarioChegada: novoHorarioChegada,
         observacao: novaObs,
         notificadoData: dataAtual !== novaData,
         notificadoQtd: Number(p.quantidade || 0) !== quantidadeTotal,
@@ -1082,6 +1088,7 @@ async function editarPedidoAprovado(id) {
             representanteNome: p.representanteNome,
             pedidoId: codigoVinculo,
             data: novaData,
+            previsaoHorarioChegada: novoHorarioChegada,
             observacao: novaObs,
             editadoPor: user.uid,
             editadoEm: firebase.firestore.FieldValue.serverTimestamp()
