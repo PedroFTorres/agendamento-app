@@ -2875,6 +2875,7 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
     <tr>
       <td>${indice + 1}</td>
       <td>${escapar(item.clienteNome || "-")}</td>
+      <td>${escapar(item.previsaoHorarioChegada || "-")}</td>
       <td>${escapar(item.produtoNome || "-")}</td>
       <td class="numero">${formatQuantidade(item.quantidade || 0)}</td>
       <td>${escapar(item.representanteNome || "-")}</td>
@@ -2963,11 +2964,12 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
           }
           tbody tr:nth-child(even) { background: #f8fafc; }
           th:nth-child(1), td:nth-child(1) { width: 5%; }
-          th:nth-child(2), td:nth-child(2) { width: 24%; }
-          th:nth-child(3), td:nth-child(3) { width: 20%; }
-          th:nth-child(4), td:nth-child(4) { width: 12%; }
-          th:nth-child(5), td:nth-child(5) { width: 19%; }
-          th:nth-child(6), td:nth-child(6) { width: 20%; }
+          th:nth-child(2), td:nth-child(2) { width: 21%; }
+          th:nth-child(3), td:nth-child(3) { width: 10%; }
+          th:nth-child(4), td:nth-child(4) { width: 18%; }
+          th:nth-child(5), td:nth-child(5) { width: 10%; }
+          th:nth-child(6), td:nth-child(6) { width: 17%; }
+          th:nth-child(7), td:nth-child(7) { width: 19%; }
           .numero { text-align: right; font-weight: bold; }
           .rodape {
             margin-top: 12px;
@@ -3017,13 +3019,14 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
             <tr>
               <th>#</th>
               <th>Cliente</th>
+              <th>Chegada</th>
               <th>Produto</th>
               <th>Qtd.</th>
               <th>Representante</th>
               <th>Observação</th>
             </tr>
           </thead>
-          <tbody>${linhasTabela || `<tr><td colspan="6">Nenhum agendamento.</td></tr>`}</tbody>
+          <tbody>${linhasTabela || `<tr><td colspan="7">Nenhum agendamento.</td></tr>`}</tbody>
         </table>
 
         <footer class="rodape">
@@ -3334,6 +3337,7 @@ function renderPedidos() {
             <option value="30/60 dias">30/60 dias</option>
           </select>
            <input id="p-responsavel" type="text" class="border p-2 w-full" placeholder="Representante/responsável">
+          <label class="block text-sm"><span class="block mb-1 font-semibold">Previsão de chegada (opcional)</span><input id="p-horario-chegada" type="time" class="border p-2 w-full rounded"></label>
           <input id="p-obs" type="text" class="border p-2 w-full" placeholder="Observações (opcional)">
           <p id="msg-enviando-pedido" class="hidden text-center text-sm font-semibold text-blue-700">ENVIANDO SEU PEDIDO...</p>
           <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">Enviar Pedido</button>
@@ -3541,6 +3545,7 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
       .filter((item) => item.produtoNome && item.quantidade > 0);
     const prazo = document.getElementById("p-prazo").value;
     const obs = document.getElementById("p-obs").value;
+    const previsaoHorarioChegada = document.getElementById("p-horario-chegada")?.value || "";
     const responsavel = document.getElementById("p-responsavel")?.value.trim() || REPRESENTANTE_ATUAL || "Administrativo";
     const produto = itens[0]?.produtoNome || "";
     const quantidade = itens.reduce((total, item) => total + item.quantidade, 0);
@@ -3618,6 +3623,7 @@ $produto.innerHTML = `<option value="">Selecione produto</option>`;
         produtosResumo: itens.map((item) => `${item.produtoNome} (${typeof formatQuantidade === "function" ? formatQuantidade(item.quantidade) : item.quantidade})`).join(", "),
         itens,
         prazoPagamento: prazo,
+        previsaoHorarioChegada,
         observacao: obs,
         quantidade,
         representanteNome: responsavel,
