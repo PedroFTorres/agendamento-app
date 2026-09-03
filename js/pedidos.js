@@ -891,9 +891,8 @@ async function editarPedidoAprovado(id) {
 
   modal.innerHTML = `
     <div class="bg-white p-4 rounded shadow w-full max-w-2xl max-h-[95vh] overflow-y-auto">
-      <h3 class="text-lg font-bold mb-3">Editar Pedido</h3>
+      <h3 class="text-lg font-bold mb-1">Editar Pedido</h3>
       <p class="text-xs text-gray-500 mb-3">Edição permitida somente para administradores.</p>
-      <h3 class="text-lg font-bold mb-3">Editar Pedido</h3>
 
       <div id="edit-itens" class="space-y-2 mb-3">
         ${itensEditaveis.map(montarLinhaItem).join("")}
