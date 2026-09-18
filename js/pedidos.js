@@ -910,7 +910,7 @@ async function editarPedidoAprovado(id) {
 
       <label class="block mb-1">Prazo de pagamento</label>
       <select id="edit-prazo" class="w-full border p-2 mb-3">
-        ${["À vista", "10 dias", "15 dias", "30 dias", "30/60 dias"]
+        ${["À vista", "10 dias", "15 dias", "30 dias", "45 dias", "30/60 dias"]
           .map((prazo) => `<option value="${prazo}" ${prazo === (p.prazoPagamento || "") ? "selected" : ""}>${prazo}</option>`)
           .join("")}
       </select>
