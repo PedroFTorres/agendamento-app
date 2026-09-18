@@ -94,6 +94,17 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
     const [ano, mes, dia] = String(data || "").split("-");
     return dia && mes && ano ? `${dia}/${mes}/${ano}` : data;
   };
+  const formatarDocumentoCliente = (valor) => {
+    const original = String(valor || "").trim();
+    const numeros = original.replace(/\D/g, "");
+    if (numeros.length === 11) {
+      return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    }
+    if (numeros.length === 14) {
+      return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    }
+    return original || "-";
+  };
   const logoUrl = new URL("img/logo.png", window.location.href).href;
   const produtos = Object.entries(porProduto || {}).sort((a, b) => b[1] - a[1]);
   const representantes = Object.entries(porRep || {}).sort((a, b) => b[1] - a[1]);
@@ -112,7 +123,8 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
     <tr>
       <td>${indice + 1}</td>
       <td>${escapar(item.clienteNome || "-")}</td>
-      <td>${escapar(item.previsaoHorarioChegada || "-")}</td>
+      <td>${escapar(formatarDocumentoCliente(item.clienteDocumento))}</td>
+      <td>${escapar(item.prazoPagamento || "-")}</td>
       <td>${escapar(item.produtoNome || "-")}</td>
       <td class="numero">${formatQuantidade(item.quantidade || 0)}</td>
       <td class="numero">${formatMoedaRelatorio(item.valorVenda || 0)}</td>
@@ -153,14 +165,15 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
           th { background: #1f3b64; color: #fff; text-align: left; padding: 7px 5px; font-size: 9px; }
           td { border-bottom: 1px solid #dfe6f1; padding: 6px 5px; vertical-align: top; overflow-wrap: anywhere; }
           tbody tr:nth-child(even) { background: #f8fafc; }
-          th:nth-child(1), td:nth-child(1) { width: 5%; }
-          th:nth-child(2), td:nth-child(2) { width: 19%; }
-          th:nth-child(3), td:nth-child(3) { width: 9%; }
-          th:nth-child(4), td:nth-child(4) { width: 15%; }
-          th:nth-child(5), td:nth-child(5) { width: 8%; }
-          th:nth-child(6), td:nth-child(6) { width: 12%; }
-          th:nth-child(7), td:nth-child(7) { width: 14%; }
-          th:nth-child(8), td:nth-child(8) { width: 18%; }
+          th:nth-child(1), td:nth-child(1) { width: 4%; }
+          th:nth-child(2), td:nth-child(2) { width: 16%; }
+          th:nth-child(3), td:nth-child(3) { width: 15%; }
+          th:nth-child(4), td:nth-child(4) { width: 9%; }
+          th:nth-child(5), td:nth-child(5) { width: 14%; }
+          th:nth-child(6), td:nth-child(6) { width: 7%; }
+          th:nth-child(7), td:nth-child(7) { width: 11%; }
+          th:nth-child(8), td:nth-child(8) { width: 11%; }
+          th:nth-child(9), td:nth-child(9) { width: 13%; }
           .numero, th.numero { text-align: right; font-weight: bold; }
           .rodape { margin-top: 12px; padding-top: 7px; border-top: 1px solid #dfe6f1; color: #6b7280; font-size: 9px; text-align: right; }
           @media (max-width: 700px) { .resumos, .totais { grid-template-columns: 1fr; } }
@@ -204,7 +217,8 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
             <tr>
               <th>#</th>
               <th>Cliente</th>
-              <th>Chegada</th>
+              <th>CNPJ/CPF</th>
+              <th>Prazo</th>
               <th>Produto</th>
               <th class="numero">Qtd.</th>
               <th class="numero">Valor</th>
@@ -212,7 +226,7 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
               <th>Observa&ccedil;&atilde;o</th>
             </tr>
           </thead>
-          <tbody>${linhasTabela || `<tr><td colspan="8">Nenhum agendamento.</td></tr>`}</tbody>
+          <tbody>${linhasTabela || `<tr><td colspan="9">Nenhum agendamento.</td></tr>`}</tbody>
         </table>
 
         <footer class="rodape">
@@ -275,7 +289,15 @@ async function abrirResumoDoDia(dataSelecionada) {
       const pedido = pedidoDoc?.data() || {};
       return {
         observacao: String(pedido.observacao || "").trim(),
-        previsaoHorarioChegada: String(pedido.previsaoHorarioChegada || "").trim()
+        prazoPagamento: String(pedido.prazoPagamento || "").trim(),
+        clienteDocumento: String(
+          pedido.clienteCnpj ||
+          pedido.clienteCpf ||
+          pedido.cnpj ||
+          pedido.cpf ||
+          pedido.clienteDocumento ||
+          ""
+        ).trim()
       };
     })();
 
@@ -284,12 +306,19 @@ async function abrirResumoDoDia(dataSelecionada) {
   }
 
   await Promise.all(lista.map(async agendamento => {
-    if (String(agendamento.observacao || "").trim() && String(agendamento.previsaoHorarioChegada || "").trim()) return;
+    if (
+      String(agendamento.observacao || "").trim() &&
+      String(agendamento.prazoPagamento || "").trim() &&
+      String(agendamento.clienteDocumento || "").trim()
+    ) return;
     try {
       const dadosPedido = await buscarDadosPedido(agendamento);
       if (!String(agendamento.observacao || "").trim() && dadosPedido.observacao) agendamento.observacao = dadosPedido.observacao;
-      if (!String(agendamento.previsaoHorarioChegada || "").trim() && dadosPedido.previsaoHorarioChegada) {
-        agendamento.previsaoHorarioChegada = dadosPedido.previsaoHorarioChegada;
+      if (!String(agendamento.prazoPagamento || "").trim() && dadosPedido.prazoPagamento) {
+        agendamento.prazoPagamento = dadosPedido.prazoPagamento;
+      }
+      if (!String(agendamento.clienteDocumento || "").trim() && dadosPedido.clienteDocumento) {
+        agendamento.clienteDocumento = dadosPedido.clienteDocumento;
       }
     } catch (e) {
       console.warn("Nao foi possivel recuperar os dados do pedido.", e);
