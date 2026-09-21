@@ -44,15 +44,20 @@
     const a=document.createElement("a");a.href=url;a.download="controle-containers.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
-  function exportarPdf(lista) {
+  function exportarPdf(lista, filtros = {}) {
     if(!window.jspdf?.jsPDF){alert("Gerador de PDF indisponível.");return;}
+    if(!lista.length){alert("Nenhum contêiner encontrado com os filtros selecionados.");return;}
     const doc=new window.jspdf.jsPDF({orientation:"landscape"});
     doc.setFontSize(16);doc.text("Controle de Contêineres Retornáveis",14,15);
-    doc.setFontSize(9);doc.text("Emitido em "+new Date().toLocaleString("pt-BR"),14,21);
-    doc.autoTable({startY:26,head:[["Número","Cliente","Pedido","Carregamento","Dias","Situação","Devolução","Observação"]],
+    doc.setFontSize(9);
+    doc.text("Cliente: "+(filtros.cliente||"Todos")+"  |  Situação: "+(filtros.status||"Todas"),14,21);
+    doc.text("Período: "+dataBR(filtros.inicio)+" a "+dataBR(filtros.fim)+"  |  Emitido em "+new Date().toLocaleString("pt-BR"),14,26);
+    doc.autoTable({startY:31,head:[["Número","Cliente","Pedido","Carregamento","Dias","Situação","Devolução","Observação"]],
       body:lista.map(i=>[i.numero,i.clienteAtual||"-",i.pedidoCodigo||"-",dataBR(i.dataSaida),i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-"),statusNome(i.status),dataBR(i.ultimaDevolucao),i.observacaoSaida||i.observacaoDevolucao||""]),
       styles:{fontSize:8},headStyles:{fillColor:[31,59,100]}});
-    doc.save("controle-containers.pdf");
+    const clienteArquivo=norm(filtros.cliente||"todos").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    const statusArquivo=norm(filtros.status||"todas").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    doc.save("containers-"+clienteArquivo+"-"+statusArquivo+".pdf");
   }
 
   async function renderContainers() {
@@ -64,8 +69,9 @@
       </div>
       <div id="ct-cards" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
       <section class="bg-white p-4 rounded-xl shadow mb-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2">
-          <input id="ct-busca-cliente" class="border p-2 rounded" placeholder="Pesquisar cliente">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-2">
+          <label class="text-xs text-gray-500">Cliente<select id="ct-cliente" class="border p-2 rounded w-full mt-1"><option value="">Todos os clientes</option></select></label>
+          <label class="text-xs text-gray-500">Situação<select id="ct-status" class="border p-2 rounded w-full mt-1"><option value="">Todas as situações</option><option value="com_cliente">Com o cliente</option><option value="disponivel">Já devolvidos</option><option value="manutencao">Em manutenção</option></select></label>
           <label class="text-xs text-gray-500">Mês<input id="ct-mes" type="month" class="border p-2 rounded w-full mt-1"></label>
           <label class="text-xs text-gray-500">Data inicial<input id="ct-inicio" type="date" class="border p-2 rounded w-full mt-1"></label>
           <label class="text-xs text-gray-500">Data final<input id="ct-fim" type="date" class="border p-2 rounded w-full mt-1"></label>
@@ -82,6 +88,10 @@
     let containers=await buscar(CT,"container"), historico=await buscar(MOV,"container_movimento");
     const clientes=await buscar("clientes"), pedidos=await buscar("pedidos");
     let visiveis=[];
+    const clienteFiltro=document.getElementById("ct-cliente");
+    [...new Set(containers.map(i=>String(i.clienteAtual||"").trim()).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,"pt-BR"))
+      .forEach(nome=>clienteFiltro.add(new Option(nome,nome)));
     document.getElementById("ct-mes").value=hoje().slice(0,7);
 
     function periodoSelecionado() {
@@ -93,8 +103,11 @@
     function dentro(data,periodo){return data&&data>=periodo.inicio&&data<=periodo.fim;}
 
     function atualizar() {
-      const termo=norm(document.getElementById("ct-busca-cliente").value),periodo=periodoSelecionado();
-      visiveis=containers.filter(i=>dentro(i.dataSaida,periodo)&&(!termo||norm(i.clienteAtual).includes(termo)));
+      const cliente=document.getElementById("ct-cliente").value,status=document.getElementById("ct-status").value,periodo=periodoSelecionado();
+      visiveis=containers.filter(i=>{
+        const dataReferencia=status==="disponivel" ? i.ultimaDevolucao : i.dataSaida;
+        return dentro(dataReferencia,periodo)&&(!cliente||i.clienteAtual===cliente)&&(!status||i.status===status);
+      });
       const grupos=new Map();
       visiveis.forEach(item=>{
         const nome=item.clienteAtual||"Cliente não informado";
@@ -112,7 +125,11 @@
 
     function abrirDetalhesCliente(nome) {
       const periodo=periodoSelecionado();
-      const itens=containers.filter(i=>i.clienteAtual===nome&&dentro(i.dataSaida,periodo)).sort((a,b)=>String(a.numero).localeCompare(String(b.numero),"pt-BR",{numeric:true}));
+      const status=document.getElementById("ct-status").value;
+      const itens=containers.filter(i=>{
+        const dataReferencia=status==="disponivel" ? i.ultimaDevolucao : i.dataSaida;
+        return i.clienteAtual===nome&&dentro(dataReferencia,periodo)&&(!status||i.status===status);
+      }).sort((a,b)=>String(a.numero).localeCompare(String(b.numero),"pt-BR",{numeric:true}));
       const movimentos=historico.filter(m=>m.cliente===nome&&dentro(m.data,periodo)).sort((a,b)=>String(b.data).localeCompare(String(a.data)));
       const janela=modal("Contêineres de "+nome,`
         <div class="mb-4 grid grid-cols-2 md:grid-cols-4 gap-2"><div class="bg-blue-50 rounded p-3"><div class="text-xs">Total</div><strong class="text-xl">${itens.length}</strong></div><div class="bg-orange-50 rounded p-3"><div class="text-xs">Com cliente</div><strong class="text-xl">${itens.filter(i=>i.status==="com_cliente").length}</strong></div><div class="bg-green-50 rounded p-3"><div class="text-xs">Devolvidos</div><strong class="text-xl">${itens.filter(i=>i.status==="disponivel").length}</strong></div><div class="bg-yellow-50 rounded p-3"><div class="text-xs">Manutenção</div><strong class="text-xl">${itens.filter(i=>i.status==="manutencao").length}</strong></div></div>
@@ -196,14 +213,23 @@
 
     document.getElementById("ct-cadastrar").onclick=abrirCadastro;
     document.getElementById("ct-devolver").onclick=abrirDevolucao;
-    document.getElementById("ct-busca-cliente").oninput=atualizar;
+    document.getElementById("ct-cliente").onchange=atualizar;
+    document.getElementById("ct-status").onchange=atualizar;
     document.getElementById("ct-mes").onchange=()=>{document.getElementById("ct-inicio").value="";document.getElementById("ct-fim").value="";atualizar();};
     document.getElementById("ct-inicio").onchange=()=>{document.getElementById("ct-mes").value="";atualizar();};
     document.getElementById("ct-fim").onchange=()=>{document.getElementById("ct-mes").value="";atualizar();};
-    document.getElementById("ct-limpar").onclick=()=>{document.getElementById("ct-busca-cliente").value="";document.getElementById("ct-mes").value="";document.getElementById("ct-inicio").value="";document.getElementById("ct-fim").value="";atualizar();};
+    document.getElementById("ct-limpar").onclick=()=>{document.getElementById("ct-cliente").value="";document.getElementById("ct-status").value="";document.getElementById("ct-mes").value="";document.getElementById("ct-inicio").value="";document.getElementById("ct-fim").value="";atualizar();};
     document.getElementById("ct-lista-clientes").onclick=e=>{const linha=e.target.closest(".ct-cliente-linha");if(linha)abrirDetalhesCliente(linha.dataset.cliente);};
     document.getElementById("ct-csv").onclick=()=>exportarCsv(visiveis);
-    document.getElementById("ct-pdf").onclick=()=>exportarPdf(visiveis);
+    document.getElementById("ct-pdf").onclick=()=>{
+      const periodo=periodoSelecionado(),cliente=document.getElementById("ct-cliente"),status=document.getElementById("ct-status");
+      exportarPdf(visiveis,{
+        cliente:cliente.options[cliente.selectedIndex]?.text||"Todos os clientes",
+        status:status.options[status.selectedIndex]?.text||"Todas as situações",
+        inicio:periodo.inicio,
+        fim:periodo.fim
+      });
+    };
     atualizar();
   }
   window.renderContainers=renderContainers;
