@@ -60,6 +60,21 @@
     doc.save("containers-"+clienteArquivo+"-"+statusArquivo+".pdf");
   }
 
+  function imprimirDetalhesCliente(nome, lista, filtros = {}) {
+    if(!lista.length){alert("Nenhum contêiner encontrado para imprimir.");return;}
+    const janela=window.open("","_blank","width=1000,height=750");
+    if(!janela){alert("Permita a abertura de janelas para imprimir.");return;}
+    const linhas=lista.map(i=>`<tr><td>${esc(i.numero)}</td><td>${esc(i.pedidoCodigo||"-")}</td><td>${dataBR(i.dataSaida)}</td><td>${i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-")}</td><td>${esc(statusNome(i.status))}</td><td>${dataBR(i.ultimaDevolucao)}</td><td>${esc(i.observacaoSaida||i.observacaoDevolucao||"-")}</td></tr>`).join("");
+    janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Contêineres de ${esc(nome)}</title><style>
+      @page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#1f2937;font-size:11px}h1{color:#1f3b64;margin:0 0 5px}.filtros{color:#4b5563;margin-bottom:14px}.resumo{display:flex;gap:10px;margin:12px 0}.card{border:1px solid #d1d5db;border-radius:6px;padding:8px 14px}.card strong{font-size:16px}table{width:100%;border-collapse:collapse}th{background:#1f3b64;color:white;text-align:left;padding:7px}td{border-bottom:1px solid #dfe6f1;padding:6px;vertical-align:top}tbody tr:nth-child(even){background:#f8fafc}.rodape{text-align:right;color:#6b7280;margin-top:10px;font-size:9px}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+    </style></head><body><h1>Contêineres de ${esc(nome)}</h1><div class="filtros">Situação: ${esc(filtros.status||"Todas")} &nbsp;|&nbsp; Período: ${dataBR(filtros.inicio)} a ${dataBR(filtros.fim)}</div>
+    <div class="resumo"><div class="card">Total<br><strong>${lista.length}</strong></div><div class="card">Com cliente<br><strong>${lista.filter(i=>i.status==="com_cliente").length}</strong></div><div class="card">Devolvidos<br><strong>${lista.filter(i=>i.status==="disponivel").length}</strong></div><div class="card">Manutenção<br><strong>${lista.filter(i=>i.status==="manutencao").length}</strong></div></div>
+    <table><thead><tr><th>Número</th><th>Pedido</th><th>Saída</th><th>Dias</th><th>Situação</th><th>Devolução</th><th>Observação</th></tr></thead><tbody>${linhas}</tbody></table>
+    <div class="rodape">Emitido em ${new Date().toLocaleString("pt-BR")}</div></body></html>`);
+    janela.document.close();
+    janela.onload=()=>setTimeout(()=>janela.print(),200);
+  }
+
   async function renderContainers() {
     if(PERFIL!=="admin"){pageContent.innerHTML='<div class="bg-red-50 text-red-700 p-4 rounded">Acesso exclusivo do administrador.</div>';return;}
     pageContent.innerHTML=`
@@ -133,9 +148,19 @@
       const movimentos=historico.filter(m=>m.cliente===nome&&dentro(m.data,periodo)).sort((a,b)=>String(b.data).localeCompare(String(a.data)));
       const janela=modal("Contêineres de "+nome,`
         <div class="mb-4 grid grid-cols-2 md:grid-cols-4 gap-2"><div class="bg-blue-50 rounded p-3"><div class="text-xs">Total</div><strong class="text-xl">${itens.length}</strong></div><div class="bg-orange-50 rounded p-3"><div class="text-xs">Com cliente</div><strong class="text-xl">${itens.filter(i=>i.status==="com_cliente").length}</strong></div><div class="bg-green-50 rounded p-3"><div class="text-xs">Devolvidos</div><strong class="text-xl">${itens.filter(i=>i.status==="disponivel").length}</strong></div><div class="bg-yellow-50 rounded p-3"><div class="text-xs">Manutenção</div><strong class="text-xl">${itens.filter(i=>i.status==="manutencao").length}</strong></div></div>
+        <div class="flex flex-wrap gap-2 mb-4"><button type="button" class="ct-imprimir-cliente bg-blue-700 text-white px-4 py-2 rounded">Imprimir</button><button type="button" class="ct-pdf-cliente border border-red-700 text-red-700 px-4 py-2 rounded">Gerar PDF</button></div>
         <div class="overflow-x-auto border rounded"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="text-left p-2">Número</th><th class="text-left p-2">Pedido</th><th class="text-left p-2">Saída</th><th class="text-right p-2">Dias</th><th class="text-left p-2">Situação</th><th class="text-left p-2">Observação</th></tr></thead><tbody>${itens.map(i=>`<tr class="border-t"><td class="p-2 font-bold">${esc(i.numero)}</td><td class="p-2">${esc(i.pedidoCodigo||"-")}</td><td class="p-2">${dataBR(i.dataSaida)}</td><td class="p-2 text-right">${i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-")}</td><td class="p-2"><span class="px-2 py-1 rounded-full text-xs ${statusCor(i.status)}">${statusNome(i.status)}</span></td><td class="p-2">${esc(i.observacaoSaida||i.observacaoDevolucao||"-")}</td></tr>`).join("")}</tbody></table></div>
         <details class="mt-4 border rounded"><summary class="p-3 cursor-pointer font-semibold text-blue-900">Histórico deste cliente (${movimentos.length})</summary><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="text-left p-2">Data</th><th class="text-left p-2">Número</th><th class="text-left p-2">Movimento</th><th class="text-left p-2">Pedido</th><th class="text-left p-2">Observação</th></tr></thead><tbody>${movimentos.map(m=>`<tr class="border-t"><td class="p-2">${dataBR(m.data)}</td><td class="p-2">${esc(m.numero)}</td><td class="p-2">${m.tipo==="saida"?"Saída":"Devolução"}</td><td class="p-2">${esc(m.pedidoCodigo||"-")}</td><td class="p-2">${esc(m.observacao||m.condicao||"-")}</td></tr>`).join("")}</tbody></table></div></details>
       `,"Fechar");
+      const statusSelect=document.getElementById("ct-status");
+      const filtrosCliente={
+        cliente:nome,
+        status:statusSelect.options[statusSelect.selectedIndex]?.text||"Todas as situações",
+        inicio:periodo.inicio,
+        fim:periodo.fim
+      };
+      janela.querySelector(".ct-imprimir-cliente").onclick=()=>imprimirDetalhesCliente(nome,itens,filtrosCliente);
+      janela.querySelector(".ct-pdf-cliente").onclick=()=>exportarPdf(itens,filtrosCliente);
       janela.querySelector(".salvar").onclick=()=>janela.remove();
     }
 
