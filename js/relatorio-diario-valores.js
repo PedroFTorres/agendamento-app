@@ -125,11 +125,12 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
       <td>${escapar(item.clienteNome || "-")}</td>
       <td>${escapar(formatarDocumentoCliente(item.clienteDocumento))}</td>
       <td>${escapar(item.prazoPagamento || "-")}</td>
-      <td>${escapar(item.produtoNome || "-")}</td>
-      <td class="numero">${formatQuantidade(item.quantidade || 0)}</td>
+      <td class="produto">${escapar(item.produtoNome || "-")}</td>
+      <td class="quantidade">${formatQuantidade(item.quantidade || 0)}</td>
+      <td class="numero">${formatMoedaRelatorio(item.precoUnitario || 0)}</td>
       <td class="numero">${formatMoedaRelatorio(item.valorVenda || 0)}</td>
       <td>${escapar(item.representanteNome || "-")}</td>
-      <td>${escapar(item.observacao || "-")}</td>
+      <td class="observacao ${item.observacao ? "" : "sem-observacao"}">${escapar(item.observacao || "-")}</td>
     </tr>
   `).join("");
 
@@ -165,16 +166,21 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
           th { background: #1f3b64; color: #fff; text-align: left; padding: 7px 5px; font-size: 9px; }
           td { border-bottom: 1px solid #dfe6f1; padding: 6px 5px; vertical-align: top; overflow-wrap: anywhere; }
           tbody tr:nth-child(even) { background: #f8fafc; }
-          th:nth-child(1), td:nth-child(1) { width: 4%; }
-          th:nth-child(2), td:nth-child(2) { width: 16%; }
-          th:nth-child(3), td:nth-child(3) { width: 15%; }
-          th:nth-child(4), td:nth-child(4) { width: 9%; }
-          th:nth-child(5), td:nth-child(5) { width: 14%; }
+          th:nth-child(1), td:nth-child(1) { width: 3%; }
+          th:nth-child(2), td:nth-child(2) { width: 15%; }
+          th:nth-child(3), td:nth-child(3) { width: 13%; }
+          th:nth-child(4), td:nth-child(4) { width: 7%; }
+          th:nth-child(5), td:nth-child(5) { width: 13%; }
           th:nth-child(6), td:nth-child(6) { width: 7%; }
-          th:nth-child(7), td:nth-child(7) { width: 11%; }
+          th:nth-child(7), td:nth-child(7) { width: 10%; }
           th:nth-child(8), td:nth-child(8) { width: 11%; }
-          th:nth-child(9), td:nth-child(9) { width: 13%; }
+          th:nth-child(9), td:nth-child(9) { width: 9%; }
+          th:nth-child(10), td:nth-child(10) { width: 12%; }
+          .produto { padding-right: 2px; }
+          .quantidade, th.quantidade { text-align: center; font-weight: bold; padding-left: 2px; padding-right: 2px; }
           .numero, th.numero { text-align: right; font-weight: bold; }
+          .observacao { color: #dc2626; font-weight: 700; }
+          .observacao.sem-observacao { color: #6b7280; font-weight: 400; }
           .rodape { margin-top: 12px; padding-top: 7px; border-top: 1px solid #dfe6f1; color: #6b7280; font-size: 9px; text-align: right; }
           @media (max-width: 700px) { .resumos, .totais { grid-template-columns: 1fr; } }
           @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } tr { break-inside: avoid; } }
@@ -220,13 +226,14 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
               <th>CNPJ/CPF</th>
               <th>Prazo</th>
               <th>Produto</th>
-              <th class="numero">Qtd.</th>
-              <th class="numero">Valor</th>
+              <th class="quantidade">Qtd.</th>
+              <th class="numero">Valor unit.</th>
+              <th class="numero">Valor total</th>
               <th>Representante</th>
               <th>Observa&ccedil;&atilde;o</th>
             </tr>
           </thead>
-          <tbody>${linhasTabela || `<tr><td colspan="9">Nenhum agendamento.</td></tr>`}</tbody>
+          <tbody>${linhasTabela || `<tr><td colspan="10">Nenhum agendamento.</td></tr>`}</tbody>
         </table>
 
         <footer class="rodape">
