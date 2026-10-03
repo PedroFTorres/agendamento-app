@@ -15,6 +15,15 @@ function formatMoedaRelatorio(valor) {
   });
 }
 
+function formatMoedaUnitarioRelatorio(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3
+  });
+}
+
 async function aplicarValoresAgendamentosRelatorio(lista, user) {
   const produtosPorNome = new Map();
   const precosPorClienteProduto = new Map();
@@ -127,7 +136,7 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
       <td>${escapar(item.prazoPagamento || "-")}</td>
       <td class="produto">${escapar(item.produtoNome || "-")}</td>
       <td class="quantidade">${formatQuantidade(item.quantidade || 0)}</td>
-      <td class="numero">${formatMoedaRelatorio(item.precoUnitario || 0)}</td>
+      <td class="numero">${formatMoedaUnitarioRelatorio(item.precoUnitario || 0)}</td>
       <td class="numero">${formatMoedaRelatorio(item.valorVenda || 0)}</td>
       <td>${escapar(item.representanteNome || "-")}</td>
       <td class="observacao ${item.observacao ? "" : "sem-observacao"}">${escapar(item.observacao || "-")}</td>
@@ -229,7 +238,7 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
               <th class="quantidade">Qtd.</th>
               <th class="numero">Valor unit.</th>
               <th class="numero">Valor total</th>
-              <th>Representante</th>
+              <th>Rep.</th>
               <th>Observa&ccedil;&atilde;o</th>
             </tr>
           </thead>
