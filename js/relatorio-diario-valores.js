@@ -257,6 +257,22 @@ function imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, l
 }
 
 async function abrirResumoDoDia(dataSelecionada) {
+  if (window.__resumoDiarioCarregando) return;
+
+  const modalExistente = document.querySelector('[data-modal-resumo-diario="true"]');
+  if (modalExistente) {
+    modalExistente.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+
+  window.__resumoDiarioCarregando = true;
+  const indicador = document.createElement("div");
+  indicador.id = "resumo-diario-carregando";
+  indicador.className = "fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50";
+  indicador.innerHTML = '<div class="bg-white px-5 py-4 rounded-lg shadow-lg font-semibold text-blue-900">Carregando relatório...</div>';
+  document.body.appendChild(indicador);
+
+  try {
   const user = await waitForAuth();
   const representanteSomenteConsulta = PERFIL === "representante";
 
@@ -424,12 +440,15 @@ async function abrirResumoDoDia(dataSelecionada) {
     </div>
   `;
 
+  modal.dataset.modalResumoDiario = "true";
   document.body.appendChild(modal);
-  modal.querySelector("#fechar").onclick = () => modal.remove();
+
+  const fecharResumo = () => modal.remove();
+  modal.querySelector("#fechar").onclick = fecharResumo;
 
   if (!representanteSomenteConsulta) {
     modal.querySelector("#novo").onclick = () => {
-      modal.remove();
+      fecharResumo();
       abrirModalAgendamento(dataSelecionada);
     };
 
@@ -437,4 +456,55 @@ async function abrirResumoDoDia(dataSelecionada) {
       imprimirResumoDiario(dataSelecionada, totalGeral, porProduto, porRep, lista, previsaoFaturamento);
     };
   }
+  } catch (erro) {
+    console.error("Erro ao carregar o relatório diário.", erro);
+    alert("Não foi possível carregar o relatório. Tente novamente.");
+  } finally {
+    indicador.remove();
+    window.__resumoDiarioCarregando = false;
+  }
 }
+
+function renderRelatoriosDiarios() {
+  const agora = new Date();
+  const dataLocal = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+  pageContent.innerHTML = `
+    <section class="max-w-3xl mx-auto">
+      <div class="mb-5">
+        <h2 class="text-2xl font-bold text-blue-900">Relatórios Diários</h2>
+        <p class="text-sm text-gray-500">Escolha a data para consultar, imprimir ou gerar o PDF dos agendamentos.</p>
+      </div>
+      <div class="bg-white rounded-xl shadow p-5">
+        <label class="block font-semibold mb-2" for="relatorio-diario-data">Data do relatório</label>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input id="relatorio-diario-data" type="date" value="${dataLocal}" class="border rounded p-3 flex-1">
+          <button id="relatorio-diario-abrir" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-5 py-3 rounded">
+            Abrir relatório
+          </button>
+        </div>
+        <p id="relatorio-diario-status" class="text-sm text-gray-500 mt-3"></p>
+      </div>
+    </section>
+  `;
+
+  const data = document.getElementById("relatorio-diario-data");
+  const botao = document.getElementById("relatorio-diario-abrir");
+  const status = document.getElementById("relatorio-diario-status");
+
+  botao.onclick = async () => {
+    if (!data.value || botao.disabled) return;
+    botao.disabled = true;
+    botao.classList.add("opacity-60", "cursor-wait");
+    status.textContent = "Carregando relatório...";
+    try {
+      await abrirResumoDoDia(data.value);
+      status.textContent = "";
+    } finally {
+      botao.disabled = false;
+      botao.classList.remove("opacity-60", "cursor-wait");
+    }
+  };
+}
+
+window.renderRelatoriosDiarios = renderRelatoriosDiarios;
