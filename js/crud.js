@@ -3333,6 +3333,7 @@ function renderPedidos() {
             <option value="À vista">À vista</option>
             <option value="10 dias">10 dias</option>
             <option value="15 dias">15 dias</option>
+            <option value="20 dias">20 dias</option>
             <option value="30 dias">30 dias</option>
             <option value="45 dias">45 dias</option>
             <option value="30/60 dias">30/60 dias</option>
