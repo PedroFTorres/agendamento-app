@@ -320,6 +320,7 @@ async function abrirResumoDoDia(dataSelecionada) {
       }
       const pedido = pedidoDoc?.data() || {};
       return {
+        pedidoDocumentoId: pedidoDoc?.id || "",
         observacao: String(pedido.observacao || "").trim(),
         prazoPagamento: String(pedido.prazoPagamento || "").trim(),
         clienteDocumento: String(
@@ -341,10 +342,12 @@ async function abrirResumoDoDia(dataSelecionada) {
     if (
       String(agendamento.observacao || "").trim() &&
       String(agendamento.prazoPagamento || "").trim() &&
-      String(agendamento.clienteDocumento || "").trim()
+      String(agendamento.clienteDocumento || "").trim() &&
+      String(agendamento.pedidoDocumentoId || "").trim()
     ) return;
     try {
       const dadosPedido = await buscarDadosPedido(agendamento);
+      if (dadosPedido.pedidoDocumentoId) agendamento.pedidoDocumentoId = dadosPedido.pedidoDocumentoId;
       if (!String(agendamento.observacao || "").trim() && dadosPedido.observacao) agendamento.observacao = dadosPedido.observacao;
       if (!String(agendamento.prazoPagamento || "").trim() && dadosPedido.prazoPagamento) {
         agendamento.prazoPagamento = dadosPedido.prazoPagamento;
@@ -404,8 +407,14 @@ async function abrirResumoDoDia(dataSelecionada) {
           <h4 class="font-bold mb-2">Agendamentos:</h4>
           <div class="max-h-72 overflow-y-auto space-y-1 pr-1">
             ${lista.map((item, i) => `
-              <div class="py-2 px-2 ${i % 2 === 0 ? "bg-gray-100" : "bg-white"} rounded">
-                <div class="font-medium">${escapeHtmlRelatorio(item.clienteNome)}</div>
+              <div
+                class="py-2 px-2 ${i % 2 === 0 ? "bg-gray-100" : "bg-white"} rounded ${PERFIL === "admin" && item.pedidoDocumentoId ? "cursor-pointer border border-transparent hover:border-blue-500 hover:bg-blue-50 transition-colors" : ""}"
+                ${PERFIL === "admin" && item.pedidoDocumentoId ? `data-editar-pedido-id="${escapeHtmlRelatorio(item.pedidoDocumentoId)}" title="Clique para editar este pedido"` : ""}
+              >
+                <div class="font-medium flex items-center justify-between gap-2">
+                  <span>${escapeHtmlRelatorio(item.clienteNome)}</span>
+                  ${PERFIL === "admin" && item.pedidoDocumentoId ? '<span class="text-xs text-blue-700 font-semibold">Editar pedido</span>' : ""}
+                </div>
                 <div class="text-sm text-gray-600">
                   ${escapeHtmlRelatorio(item.produtoNome)} &bull; ${formatQuantidade(item.quantidade || 0)}
                 </div>
@@ -445,6 +454,20 @@ async function abrirResumoDoDia(dataSelecionada) {
 
   const fecharResumo = () => modal.remove();
   modal.querySelector("#fechar").onclick = fecharResumo;
+
+  if (PERFIL === "admin") {
+    modal.querySelectorAll("[data-editar-pedido-id]").forEach(cartao => {
+      cartao.onclick = async () => {
+        const pedidoId = cartao.dataset.editarPedidoId;
+        if (!pedidoId || typeof editarPedidoAprovado !== "function") {
+          alert("Não foi possível localizar a edição deste pedido.");
+          return;
+        }
+        fecharResumo();
+        await editarPedidoAprovado(pedidoId);
+      };
+    });
+  }
 
   if (!representanteSomenteConsulta) {
     modal.querySelector("#novo").onclick = () => {
