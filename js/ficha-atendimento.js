@@ -30,7 +30,7 @@
     }
 
     const logoUrl = new URL("img/logo.png", window.location.href).href;
-    const linhas = Array.from({ length: 8 }, () => '<div class="linha"></div>').join("");
+    const linhas = Array.from({ length: 12 }, () => '<div class="linha"></div>').join("");
 
     const montarFicha = cliente => {
       const telefone = formatarTelefoneFicha(cliente.whatsapp || cliente.telefone || "");
@@ -83,7 +83,7 @@
             body { margin: 0; color: #1f2937; font-family: Arial, Helvetica, sans-serif; font-size: 9px; background: #fff; }
             .folha { height: 280mm; display: grid; grid-template-rows: 1fr 1fr; gap: 4mm; break-after: page; page-break-after: always; }
             .folha:last-child { break-after: auto; page-break-after: auto; }
-            .ficha { height: 138mm; border: 1px solid #94a3b8; border-radius: 7px; padding: 5mm; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
+            .ficha { height: 138mm; border: 1px solid #94a3b8; border-radius: 7px; padding: 5mm; overflow: hidden; break-inside: avoid; page-break-inside: avoid; display: flex; flex-direction: column; }
             .cabecalho { display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #f28c28; padding-bottom: 5px; }
             .cabecalho img { width: 34px; height: 34px; object-fit: contain; }
             .titulo h1 { margin: 0 0 2px; color: #1f3b64; font-size: 14px; }
@@ -95,10 +95,10 @@
             .campo { border: 1px solid #cbd5e1; border-radius: 4px; padding: 5px 6px; min-height: 32px; }
             .campo span { display: block; color: #64748b; font-size: 7px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
             .campo strong { color: #111827; font-size: 9px; }
-            .observacoes { margin-top: 7px; }
+            .observacoes { margin-top: 7px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
             .observacoes h2 { margin: 0 0 3px; color: #1f3b64; font-size: 10px; }
-            .pautas { border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 7px 4px; }
-            .linha { height: 13px; border-bottom: 1px solid #94a3b8; }
+            .pautas { border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 7px 4px; flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(12, 1fr); }
+            .linha { min-height: 0; border-bottom: 1px solid #94a3b8; }
             footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 7px; color: #475569; font-size: 8px; }
             footer div { border-bottom: 1px solid #64748b; height: 18px; padding-top: 3px; }
             @media print {
