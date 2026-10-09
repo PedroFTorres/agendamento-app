@@ -3271,6 +3271,7 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     }
     else if (page === "ranking-clientes") renderRankingClientes();
     else if (page === "relatorios-diarios" && typeof window.renderRelatoriosDiarios === "function") window.renderRelatoriosDiarios();
+    else if (page === "ficha-atendimento" && typeof window.renderFichaAtendimento === "function") window.renderFichaAtendimento();
     else if (page === "dashboard") renderDashboard();
     else if (page === "notificacoes") renderNotificacoes();
     else if (page === "producao") renderProducao();
