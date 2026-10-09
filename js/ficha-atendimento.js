@@ -22,7 +22,7 @@
     return partes.length === 3 ? partes.reverse().join("/") : valor || "-";
   };
 
-  function imprimirFichasAtendimento(clientes, data, titulo) {
+  function imprimirFichasAtendimento(clientes, data, titulo, descricao) {
     const janela = window.open("", "", "width=950,height=800");
     if (!janela) {
       alert("Permita a abertura de janelas para imprimir as fichas.");
@@ -30,7 +30,7 @@
     }
 
     const logoUrl = new URL("img/logo.png", window.location.href).href;
-    const linhas = Array.from({ length: 9 }, () => '<div class="linha"></div>').join("");
+    const linhas = Array.from({ length: 8 }, () => '<div class="linha"></div>').join("");
 
     const montarFicha = cliente => {
       const telefone = formatarTelefoneFicha(cliente.whatsapp || cliente.telefone || "");
@@ -44,6 +44,10 @@
               <div>Data: ${dataBrFicha(data)}</div>
             </div>
           </header>
+          <section class="abordagem">
+            <span>Descrição / orientação de abordagem</span>
+            <strong>${escaparFicha(descricao)}</strong>
+          </section>
           <section class="dados">
             <div class="campo cliente"><span>Cliente</span><strong>${escaparFicha(cliente.nome || "-")}</strong></div>
             <div class="campo"><span>Telefone / WhatsApp</span><strong>${escaparFicha(telefone)}</strong></div>
@@ -84,7 +88,10 @@
             .cabecalho img { width: 34px; height: 34px; object-fit: contain; }
             .titulo h1 { margin: 0 0 2px; color: #1f3b64; font-size: 14px; }
             .titulo div { color: #4b5563; font-size: 9px; }
-            .dados { display: grid; grid-template-columns: 1.35fr 1fr; gap: 5px; margin-top: 6px; }
+            .abordagem { margin-top: 5px; border-left: 3px solid #f28c28; background: #fff7ed; padding: 4px 7px; min-height: 29px; max-height: 36px; overflow: hidden; }
+            .abordagem span { display: block; color: #9a3412; font-size: 7px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+            .abordagem strong { color: #431407; font-size: 8px; line-height: 1.2; }
+            .dados { display: grid; grid-template-columns: 1.35fr 1fr; gap: 5px; margin-top: 5px; }
             .campo { border: 1px solid #cbd5e1; border-radius: 4px; padding: 5px 6px; min-height: 32px; }
             .campo span { display: block; color: #64748b; font-size: 7px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
             .campo strong { color: #111827; font-size: 9px; }
@@ -155,6 +162,12 @@
               </label>
             </div>
 
+            <label class="block">
+              <span class="block font-semibold mb-1">Descrição / orientação de abordagem *</span>
+              <textarea id="ficha-descricao" rows="2" maxlength="220" class="border rounded p-3 w-full" placeholder="Ex.: Apresentar a nova tabela, confirmar a necessidade mensal e combinar o próximo contato."></textarea>
+              <small class="text-gray-500">Essa orientação será impressa em todas as fichas selecionadas.</small>
+            </label>
+
             <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900">
               Será impressa uma ficha para cada cliente selecionado, com duas fichas em cada folha A4.
             </div>
@@ -215,11 +228,12 @@
         const escolhidos = clientes.filter(cliente => selecionados.has(cliente.id));
         const data = document.getElementById("ficha-data").value;
         const titulo = document.getElementById("ficha-titulo").value.trim();
-        if (!escolhidos.length || !data || !titulo) {
-          alert("Selecione ao menos um cliente e preencha a data e o título.");
+        const descricao = document.getElementById("ficha-descricao").value.trim();
+        if (!escolhidos.length || !data || !titulo || !descricao) {
+          alert("Selecione ao menos um cliente e preencha a data, o título e a descrição.");
           return;
         }
-        imprimirFichasAtendimento(escolhidos, data, titulo);
+        imprimirFichasAtendimento(escolhidos, data, titulo, descricao);
       };
 
       renderizarLista();
