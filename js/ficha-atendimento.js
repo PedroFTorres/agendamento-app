@@ -88,9 +88,9 @@
             .cabecalho img { width: 34px; height: 34px; object-fit: contain; }
             .titulo h1 { margin: 0 0 2px; color: #1f3b64; font-size: 14px; }
             .titulo div { color: #4b5563; font-size: 9px; }
-            .abordagem { margin-top: 5px; border-left: 3px solid #f28c28; background: #fff7ed; padding: 4px 7px; min-height: 29px; max-height: 36px; overflow: hidden; }
+            .abordagem { margin-top: 5px; border-left: 3px solid #f28c28; background: #fff7ed; padding: 5px 8px; min-height: 42px; max-height: 52px; overflow: hidden; }
             .abordagem span { display: block; color: #9a3412; font-size: 7px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
-            .abordagem strong { color: #431407; font-size: 8px; line-height: 1.2; }
+            .abordagem strong { display: block; color: #431407; font-size: 9px; line-height: 1.3; }
             .dados { display: grid; grid-template-columns: 1.35fr 1fr; gap: 5px; margin-top: 5px; }
             .campo { border: 1px solid #cbd5e1; border-radius: 4px; padding: 5px 6px; min-height: 32px; }
             .campo span { display: block; color: #64748b; font-size: 7px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
@@ -164,7 +164,7 @@
 
             <label class="block">
               <span class="block font-semibold mb-1">Descrição / orientação de abordagem *</span>
-              <textarea id="ficha-descricao" rows="2" maxlength="220" class="border rounded p-3 w-full" placeholder="Ex.: Apresentar a nova tabela, confirmar a necessidade mensal e combinar o próximo contato."></textarea>
+              <textarea id="ficha-descricao" rows="3" maxlength="350" class="border rounded p-3 w-full" placeholder="Ex.: Apresentar a nova tabela, confirmar a necessidade mensal e combinar o próximo contato."></textarea>
               <small class="text-gray-500">Essa orientação será impressa em todas as fichas selecionadas.</small>
             </label>
 
