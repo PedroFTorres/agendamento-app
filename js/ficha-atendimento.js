@@ -22,74 +22,85 @@
     return partes.length === 3 ? partes.reverse().join("/") : valor || "-";
   };
 
-  function imprimirFichaAtendimento(cliente, data, titulo) {
-    const janela = window.open("", "", "width=900,height=750");
+  function imprimirFichasAtendimento(clientes, data, titulo) {
+    const janela = window.open("", "", "width=950,height=800");
     if (!janela) {
-      alert("Permita a abertura de janelas para imprimir a ficha.");
+      alert("Permita a abertura de janelas para imprimir as fichas.");
       return;
     }
 
-    const telefone = formatarTelefoneFicha(cliente.whatsapp || cliente.telefone || "");
-    const representante = cliente.vinculadoPor || REPRESENTANTE_ATUAL || "-";
     const logoUrl = new URL("img/logo.png", window.location.href).href;
-    const linhas = Array.from({ length: 18 }, () => '<div class="linha"></div>').join("");
+    const linhas = Array.from({ length: 9 }, () => '<div class="linha"></div>').join("");
+
+    const montarFicha = cliente => {
+      const telefone = formatarTelefoneFicha(cliente.whatsapp || cliente.telefone || "");
+      const representante = cliente.vinculadoPor || REPRESENTANTE_ATUAL || "-";
+      return `
+        <article class="ficha">
+          <header class="cabecalho">
+            <img src="${logoUrl}" alt="Logo">
+            <div class="titulo">
+              <h1>${escaparFicha(titulo)}</h1>
+              <div>Data: ${dataBrFicha(data)}</div>
+            </div>
+          </header>
+          <section class="dados">
+            <div class="campo cliente"><span>Cliente</span><strong>${escaparFicha(cliente.nome || "-")}</strong></div>
+            <div class="campo"><span>Telefone / WhatsApp</span><strong>${escaparFicha(telefone)}</strong></div>
+            <div class="campo"><span>Vendedor / Representante</span><strong>${escaparFicha(representante)}</strong></div>
+            <div class="campo"><span>Contato</span><strong>□ Visita &nbsp; □ Ligação &nbsp; □ WhatsApp</strong></div>
+          </section>
+          <section class="observacoes">
+            <h2>Observações da conversa</h2>
+            <div class="pautas">${linhas}</div>
+          </section>
+          <footer>
+            <div>Próximo contato: ____/____/________</div>
+            <div>Assinatura: ________________________________</div>
+          </footer>
+        </article>
+      `;
+    };
+
+    const folhas = [];
+    for (let indice = 0; indice < clientes.length; indice += 2) {
+      folhas.push(`<section class="folha">${clientes.slice(indice, indice + 2).map(montarFicha).join("")}</section>`);
+    }
 
     janela.document.write(`
       <!doctype html>
       <html lang="pt-BR">
         <head>
           <meta charset="utf-8">
-          <title>${escaparFicha(titulo)} - ${escaparFicha(cliente.nome)}</title>
+          <title>${escaparFicha(titulo)} - ${clientes.length} cliente(s)</title>
           <style>
-            @page { size: A4 portrait; margin: 14mm; }
+            @page { size: A4 portrait; margin: 8mm; }
             * { box-sizing: border-box; }
-            body { margin: 0; color: #1f2937; font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
-            .cabecalho { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #f28c28; padding-bottom: 10px; }
-            .cabecalho img { width: 58px; height: 58px; object-fit: contain; }
-            h1 { margin: 0 0 5px; color: #1f3b64; font-size: 21px; }
-            .data { color: #4b5563; font-size: 13px; }
-            .dados { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 16px; }
-            .campo { border: 1px solid #cbd5e1; border-radius: 7px; padding: 10px; min-height: 55px; }
-            .campo span { display: block; color: #64748b; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
-            .campo strong { color: #111827; font-size: 14px; }
-            .secao { margin-top: 18px; }
-            .secao h2 { margin: 0 0 8px; color: #1f3b64; font-size: 14px; }
-            .pautas { border: 1px solid #cbd5e1; border-radius: 7px; padding: 5px 12px 10px; min-height: 430px; }
-            .linha { height: 23px; border-bottom: 1px solid #94a3b8; }
-            .rodape-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
-            .preencher { border-bottom: 1px solid #64748b; height: 42px; padding-top: 4px; color: #64748b; }
-            .emitido { margin-top: 16px; color: #94a3b8; font-size: 9px; text-align: right; }
-            @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+            body { margin: 0; color: #1f2937; font-family: Arial, Helvetica, sans-serif; font-size: 9px; background: #fff; }
+            .folha { height: 280mm; display: grid; grid-template-rows: 1fr 1fr; gap: 4mm; break-after: page; page-break-after: always; }
+            .folha:last-child { break-after: auto; page-break-after: auto; }
+            .ficha { height: 138mm; border: 1px solid #94a3b8; border-radius: 7px; padding: 5mm; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
+            .cabecalho { display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #f28c28; padding-bottom: 5px; }
+            .cabecalho img { width: 34px; height: 34px; object-fit: contain; }
+            .titulo h1 { margin: 0 0 2px; color: #1f3b64; font-size: 14px; }
+            .titulo div { color: #4b5563; font-size: 9px; }
+            .dados { display: grid; grid-template-columns: 1.35fr 1fr; gap: 5px; margin-top: 6px; }
+            .campo { border: 1px solid #cbd5e1; border-radius: 4px; padding: 5px 6px; min-height: 32px; }
+            .campo span { display: block; color: #64748b; font-size: 7px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+            .campo strong { color: #111827; font-size: 9px; }
+            .observacoes { margin-top: 7px; }
+            .observacoes h2 { margin: 0 0 3px; color: #1f3b64; font-size: 10px; }
+            .pautas { border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 7px 4px; }
+            .linha { height: 13px; border-bottom: 1px solid #94a3b8; }
+            footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 7px; color: #475569; font-size: 8px; }
+            footer div { border-bottom: 1px solid #64748b; height: 18px; padding-top: 3px; }
+            @media print {
+              body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+              .folha, .ficha { break-inside: avoid; page-break-inside: avoid; }
+            }
           </style>
         </head>
-        <body>
-          <header class="cabecalho">
-            <img src="${logoUrl}" alt="Logo">
-            <div>
-              <h1>${escaparFicha(titulo)}</h1>
-              <div class="data">Data: ${dataBrFicha(data)}</div>
-            </div>
-          </header>
-
-          <section class="dados">
-            <div class="campo"><span>Cliente</span><strong>${escaparFicha(cliente.nome || "-")}</strong></div>
-            <div class="campo"><span>Telefone / WhatsApp</span><strong>${escaparFicha(telefone)}</strong></div>
-            <div class="campo"><span>Vendedor / Representante</span><strong>${escaparFicha(representante)}</strong></div>
-            <div class="campo"><span>Forma do contato</span><strong>□ Visita &nbsp; □ Ligação &nbsp; □ WhatsApp</strong></div>
-          </section>
-
-          <section class="secao">
-            <h2>Observações da conversa</h2>
-            <div class="pautas">${linhas}</div>
-          </section>
-
-          <section class="rodape-campos">
-            <div class="preencher">Próximo contato: ____/____/________</div>
-            <div class="preencher">Assinatura do vendedor:</div>
-          </section>
-
-          <div class="emitido">Ficha emitida em ${new Date().toLocaleString("pt-BR")}</div>
-        </body>
+        <body>${folhas.join("")}</body>
       </html>
     `);
     janela.document.close();
@@ -111,27 +122,27 @@
       clientes.sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
 
       pageContent.innerHTML = `
-        <section class="max-w-3xl mx-auto">
+        <section class="max-w-4xl mx-auto">
           <div class="mb-5">
             <h2 class="text-2xl font-bold text-blue-900">Ficha de Atendimento</h2>
-            <p class="text-sm text-gray-500">Selecione o cliente e imprima uma ficha pautada para registrar a conversa à mão.</p>
+            <p class="text-sm text-gray-500">Selecione um ou mais clientes. A impressão será organizada com duas fichas por folha.</p>
           </div>
 
           <div class="bg-white rounded-xl shadow p-5 space-y-4">
             <label class="block">
-              <span class="block font-semibold mb-1">Pesquisar cliente</span>
+              <span class="block font-semibold mb-1">Pesquisar clientes</span>
               <input id="ficha-busca" class="border rounded p-3 w-full" placeholder="Digite parte do nome do cliente">
             </label>
 
-            <label class="block">
-              <span class="block font-semibold mb-1">Cliente *</span>
-              <select id="ficha-cliente" class="border rounded p-3 w-full">
-                <option value="">Selecione um cliente</option>
-                ${clientes.map(cliente => `<option value="${escaparFicha(cliente.id)}">${escaparFicha(cliente.nome)}</option>`).join("")}
-              </select>
-            </label>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <strong id="ficha-contador" class="text-blue-900">0 clientes selecionados</strong>
+              <div class="flex gap-2">
+                <button id="ficha-marcar-visiveis" type="button" class="border border-blue-600 text-blue-700 px-3 py-2 rounded">Selecionar visíveis</button>
+                <button id="ficha-limpar" type="button" class="border border-gray-400 text-gray-700 px-3 py-2 rounded">Limpar seleção</button>
+              </div>
+            </div>
 
-            <div id="ficha-dados-cliente" class="hidden bg-blue-50 border border-blue-200 rounded p-4 grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            <div id="ficha-lista-clientes" class="border rounded max-h-80 overflow-y-auto divide-y"></div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label class="block">
@@ -144,6 +155,10 @@
               </label>
             </div>
 
+            <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900">
+              Será impressa uma ficha para cada cliente selecionado, com duas fichas em cada folha A4.
+            </div>
+
             <button id="ficha-imprimir" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-5 py-3 rounded w-full">
               Imprimir / Gerar PDF
             </button>
@@ -152,44 +167,63 @@
       `;
 
       const busca = document.getElementById("ficha-busca");
-      const select = document.getElementById("ficha-cliente");
-      const dadosCliente = document.getElementById("ficha-dados-cliente");
+      const lista = document.getElementById("ficha-lista-clientes");
+      const contador = document.getElementById("ficha-contador");
+      const selecionados = new Set();
+      let clientesVisiveis = [...clientes];
 
-      const preencherOpcoes = termo => {
-        const atual = select.value;
-        const chave = normalizarTexto(termo);
-        const filtrados = clientes.filter(cliente => !chave || normalizarTexto(cliente.nome).includes(chave));
-        select.innerHTML = '<option value="">Selecione um cliente</option>' + filtrados
-          .map(cliente => `<option value="${escaparFicha(cliente.id)}">${escaparFicha(cliente.nome)}</option>`)
-          .join("");
-        if (filtrados.some(cliente => cliente.id === atual)) select.value = atual;
+      const atualizarContador = () => {
+        const total = selecionados.size;
+        contador.textContent = `${total} cliente${total === 1 ? "" : "s"} selecionado${total === 1 ? "" : "s"}`;
       };
 
-      busca.oninput = () => preencherOpcoes(busca.value);
-      select.onchange = () => {
-        const cliente = clientes.find(item => item.id === select.value);
-        if (!cliente) {
-          dadosCliente.classList.add("hidden");
-          dadosCliente.innerHTML = "";
-          return;
-        }
-        dadosCliente.classList.remove("hidden");
-        dadosCliente.innerHTML = `
-          <div><span class="text-xs text-gray-500 block">Cliente</span><strong>${escaparFicha(cliente.nome)}</strong></div>
-          <div><span class="text-xs text-gray-500 block">Telefone / WhatsApp</span><strong>${escaparFicha(formatarTelefoneFicha(cliente.whatsapp || cliente.telefone || ""))}</strong></div>
-        `;
+      const renderizarLista = () => {
+        const chave = normalizarTexto(busca.value);
+        clientesVisiveis = clientes.filter(cliente => !chave || normalizarTexto(cliente.nome).includes(chave));
+        lista.innerHTML = clientesVisiveis.length ? clientesVisiveis.map(cliente => `
+          <label class="flex items-center gap-3 p-3 hover:bg-blue-50 cursor-pointer">
+            <input type="checkbox" class="ficha-cliente-item w-5 h-5" value="${escaparFicha(cliente.id)}" ${selecionados.has(cliente.id) ? "checked" : ""}>
+            <span class="flex-1">
+              <strong class="block">${escaparFicha(cliente.nome)}</strong>
+              <small class="text-gray-500">${escaparFicha(formatarTelefoneFicha(cliente.whatsapp || cliente.telefone || ""))}</small>
+            </span>
+          </label>
+        `).join("") : '<div class="p-5 text-center text-gray-500">Nenhum cliente encontrado.</div>';
+
+        lista.querySelectorAll(".ficha-cliente-item").forEach(caixa => {
+          caixa.onchange = () => {
+            if (caixa.checked) selecionados.add(caixa.value);
+            else selecionados.delete(caixa.value);
+            atualizarContador();
+          };
+        });
+      };
+
+      busca.oninput = renderizarLista;
+      document.getElementById("ficha-marcar-visiveis").onclick = () => {
+        clientesVisiveis.forEach(cliente => selecionados.add(cliente.id));
+        renderizarLista();
+        atualizarContador();
+      };
+      document.getElementById("ficha-limpar").onclick = () => {
+        selecionados.clear();
+        renderizarLista();
+        atualizarContador();
       };
 
       document.getElementById("ficha-imprimir").onclick = () => {
-        const cliente = clientes.find(item => item.id === select.value);
+        const escolhidos = clientes.filter(cliente => selecionados.has(cliente.id));
         const data = document.getElementById("ficha-data").value;
         const titulo = document.getElementById("ficha-titulo").value.trim();
-        if (!cliente || !data || !titulo) {
-          alert("Selecione o cliente e preencha a data e o título.");
+        if (!escolhidos.length || !data || !titulo) {
+          alert("Selecione ao menos um cliente e preencha a data e o título.");
           return;
         }
-        imprimirFichaAtendimento(cliente, data, titulo);
+        imprimirFichasAtendimento(escolhidos, data, titulo);
       };
+
+      renderizarLista();
+      atualizarContador();
     } catch (erro) {
       console.error("Erro ao preparar ficha de atendimento.", erro);
       pageContent.innerHTML = '<div class="bg-red-50 text-red-700 p-4 rounded">Não foi possível carregar os clientes.</div>';
