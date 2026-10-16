@@ -116,6 +116,11 @@
   }
 
   async function renderFichaAtendimento() {
+    if (PERFIL !== "admin") {
+      pageContent.innerHTML = '<div class="bg-red-50 text-red-700 p-4 rounded">Acesso exclusivo do administrador.</div>';
+      return;
+    }
+
     pageContent.innerHTML = '<div class="bg-white rounded-xl shadow p-6 text-center text-gray-500">Carregando clientes...</div>';
 
     try {
