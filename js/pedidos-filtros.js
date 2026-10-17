@@ -249,23 +249,21 @@
       });
     });
 
-    const buscaCliente = document.getElementById("p-cliente-busca");
-    const letrasCliente = document.getElementById("p-cliente-letras");
-    const resultadoCliente = document.getElementById("p-cliente-resultado");
-    const normalizarBuscaCliente = (valor) => String(valor || "")
+    const letraCliente = document.getElementById("p-cliente-letra");
+    const normalizarInicialCliente = (valor) => String(valor || "")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
+      .toUpperCase()
       .trim();
 
-    function preencherClientesNovoPedido(termo = "", somenteInicial = false) {
-      const chave = normalizarBuscaCliente(termo);
-      const filtrados = clientesNovoPedido.filter(cliente => {
-        const nome = normalizarBuscaCliente(cliente.nome);
-        return !chave || (somenteInicial ? nome.startsWith(chave) : nome.includes(chave));
-      });
+    function preencherClientesNovoPedido(letra = "") {
+      const inicial = normalizarInicialCliente(letra);
+      const clienteSelecionado = clienteSelect.value;
+      const filtrados = clientesNovoPedido.filter(cliente =>
+        !inicial || normalizarInicialCliente(cliente.nome).startsWith(inicial)
+      );
 
-      clienteSelect.innerHTML = "";
+      clienteSelect.innerHTML = `<option value="">Selecione cliente</option>`;
       filtrados.forEach(cliente => {
         const opt = document.createElement("option");
         opt.value = cliente.nome;
@@ -279,36 +277,15 @@
         clienteSelect.appendChild(opt);
       });
 
-      if (resultadoCliente) {
-        resultadoCliente.textContent = filtrados.length
-          ? `${filtrados.length} cliente(s) encontrado(s)`
-          : "Nenhum cliente encontrado";
+      if (filtrados.some(cliente => cliente.nome === clienteSelecionado)) {
+        clienteSelect.value = clienteSelecionado;
       }
     }
 
     preencherClientesNovoPedido();
-
-    if (letrasCliente) {
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(letra => {
-        const botao = document.createElement("button");
-        botao.type = "button";
-        botao.textContent = letra;
-        botao.className = "flex-none border border-blue-700 text-blue-700 rounded px-2 py-1 text-xs";
-        botao.addEventListener("click", () => {
-          if (buscaCliente) buscaCliente.value = letra;
-          preencherClientesNovoPedido(letra, true);
-        });
-        letrasCliente.appendChild(botao);
-      });
-    }
-
-    buscaCliente?.addEventListener("input", () => {
-      preencherClientesNovoPedido(buscaCliente.value);
-    });
-
-    clienteSelect.addEventListener("change", () => {
-      const nomeSelecionado = clienteSelect.value;
-      if (buscaCliente && nomeSelecionado) buscaCliente.value = nomeSelecionado;
+    letraCliente?.addEventListener("change", () => {
+      preencherClientesNovoPedido(letraCliente.value);
+      clienteSelect.focus();
     });
 
     preencherSelectProduto(produtoSelect, listaProdutos);
@@ -502,11 +479,16 @@
               <h3 class="text-lg font-bold mb-2">Novo Pedido</h3>
               <label class="block text-sm">
                 <span class="block mb-1 font-semibold">Cliente *</span>
-                <input id="p-cliente-busca" type="search" autocomplete="off" class="border p-3 rounded w-full text-base" placeholder="Digite o nome do cliente">
+                <div class="flex gap-2">
+                  <select id="p-cliente-letra" class="border p-2 rounded w-24 flex-none" aria-label="Filtrar clientes pela letra inicial">
+                    <option value="">Todos</option>
+                    <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option><option value="G">G</option><option value="H">H</option><option value="I">I</option><option value="J">J</option><option value="K">K</option><option value="L">L</option><option value="M">M</option><option value="N">N</option><option value="O">O</option><option value="P">P</option><option value="Q">Q</option><option value="R">R</option><option value="S">S</option><option value="T">T</option><option value="U">U</option><option value="V">V</option><option value="W">W</option><option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option>
+                  </select>
+                  <select id="p-cliente" class="border p-2 rounded flex-1 min-w-0">
+                    <option value="">Selecione cliente</option>
+                  </select>
+                </div>
               </label>
-              <div id="p-cliente-letras" class="flex gap-1 overflow-x-auto py-1" aria-label="Filtrar clientes pela primeira letra"></div>
-              <p id="p-cliente-resultado" class="text-xs text-gray-500"></p>
-              <select id="p-cliente" size="5" class="border p-2 rounded w-full"></select>
               <div id="p-itens" class="space-y-2">
                 <div class="pedido-item grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
                   <select id="p-produto" class="pedido-produto border p-2 w-full md:col-span-7"></select>
