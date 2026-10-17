@@ -88,6 +88,16 @@
     });
   }
 
+  function lerPrecoNegociadoPedido(valor) {
+    const texto = String(valor || "").trim();
+    if (!texto) return null;
+    const normalizado = texto.includes(",")
+      ? texto.replace(/\./g, "").replace(",", ".")
+      : texto;
+    const preco = Number(normalizado);
+    return Number.isFinite(preco) && preco > 0 ? preco : null;
+  }
+
   function atualizarBotoesRemoverProduto() {
     const linhas = document.querySelectorAll("#p-itens .pedido-item");
     linhas.forEach((linha) => {
@@ -301,7 +311,9 @@
       novaLinha.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
       preencherSelectProduto(novaLinha.querySelector(".pedido-produto"), listaProdutos);
       const inputQuantidade = novaLinha.querySelector(".pedido-qtd");
+      const inputPrecoNegociado = novaLinha.querySelector(".pedido-preco-negociado");
       if (inputQuantidade) inputQuantidade.value = "";
+      if (inputPrecoNegociado) inputPrecoNegociado.value = "";
       formatarInputQuantidadePedido(inputQuantidade);
       novaLinha.querySelector(".btn-remover-produto")?.addEventListener("click", () => {
         novaLinha.remove();
@@ -331,7 +343,21 @@
         .map((linha) => {
           const produtoNome = linha.querySelector(".pedido-produto")?.value || "";
           const valor = (linha.querySelector(".pedido-qtd")?.value || "").replace(/\./g, "");
-          return { produtoNome, quantidade: parseInt(valor, 10) || 0 };
+          const quantidade = parseInt(valor, 10) || 0;
+          const precoNegociado = PERFIL === "admin"
+            ? lerPrecoNegociadoPedido(linha.querySelector(".pedido-preco-negociado")?.value)
+            : null;
+          return precoNegociado == null
+            ? { produtoNome, quantidade }
+            : {
+                produtoNome,
+                quantidade,
+                precoNegociado,
+                precoUnitario: precoNegociado,
+                valorTotal: precoNegociado * quantidade,
+                precoOrigem: "negociado",
+                precoManual: true
+              };
         })
         .filter((item) => item.produtoNome && item.quantidade > 0);
       const prazo = document.getElementById("p-prazo").value;
@@ -491,8 +517,9 @@
               </label>
               <div id="p-itens" class="space-y-2">
                 <div class="pedido-item grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
-                  <select id="p-produto" class="pedido-produto border p-2 w-full md:col-span-7"></select>
-                  <input id="p-qtd" type="text" class="pedido-qtd border p-2 w-full md:col-span-4" placeholder="Quantidade">
+                  <select id="p-produto" class="pedido-produto border p-2 w-full ${PERFIL === "admin" ? "md:col-span-5" : "md:col-span-7"}"></select>
+                  <input id="p-qtd" type="text" class="pedido-qtd border p-2 w-full ${PERFIL === "admin" ? "md:col-span-3" : "md:col-span-4"}" placeholder="Quantidade">
+                  ${PERFIL === "admin" ? '<input type="text" inputmode="decimal" class="pedido-preco-negociado border p-2 w-full md:col-span-3" placeholder="Preço negociado (opcional)">' : ""}
                   <button type="button" class="btn-remover-produto hidden bg-red-600 text-white p-2 rounded md:col-span-1">x</button>
                 </div>
               </div>
@@ -502,7 +529,9 @@
                 <option value="À vista">À vista</option>
                 <option value="10 dias">10 dias</option>
                 <option value="15 dias">15 dias</option>
+                <option value="20 dias">20 dias</option>
                 <option value="30 dias">30 dias</option>
+                <option value="45 dias">45 dias</option>
                 <option value="30/60 dias">30/60 dias</option>
               </select>
               <input id="p-responsavel" type="text" class="border p-2 w-full" placeholder="Representante/responsavel">
@@ -722,3 +751,4 @@
     btn.addEventListener("click", () => atualizarCabecalhoDashboard(btn.dataset.page));
   });
 })();
+
