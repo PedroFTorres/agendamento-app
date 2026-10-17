@@ -1,4 +1,3 @@
-
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
@@ -31,6 +30,12 @@ if (/function\s+renderPedidos\s*\(/.test(crud)) {
 if (!/window\.renderPedidos\s*=/.test(pedidos)) {
   erros.push("pedidos-filtros.js não publica a tela oficial de pedidos.");
 }
+if (!pedidos.includes('value="20 dias"') || !pedidos.includes('value="45 dias"')) {
+  erros.push("A tela oficial de pedidos perdeu os prazos de 20 ou 45 dias.");
+}
+if (!pedidos.includes("pedido-preco-negociado") || !pedidos.includes("precoManual: true")) {
+  erros.push("A tela oficial de pedidos perdeu o preço negociado do administrador.");
+}
 
 if (erros.length) {
   console.error(erros.join("\n"));
@@ -38,3 +43,4 @@ if (erros.length) {
 }
 
 console.log(`OK: ${scriptsLocais.length} scripts locais verificados.`);
+
