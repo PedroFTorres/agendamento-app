@@ -236,19 +236,79 @@
     }
 
     const cliSnap = await cliQuery.orderBy("nome").get();
-    clienteSelect.innerHTML = `<option value="">Selecione cliente</option>`;
+    const clientesNovoPedido = [];
     cliSnap.forEach(doc => {
-      const clienteDados = doc.data() || {};
-      const opt = document.createElement("option");
-      opt.value = clienteDados.nome;
-      opt.textContent = clienteDados.bloqueado && PERFIL === "representante"
-        ? `${clienteDados.nome} — BLOQUEADO`
-        : clienteDados.nome;
-      opt.dataset.id = doc.id;
-      opt.dataset.bloqueado = clienteDados.bloqueado ? "true" : "false";
-      opt.dataset.motivoBloqueio = clienteDados.motivoBloqueio || "";
-      if (clienteDados.bloqueado && PERFIL === "representante") opt.disabled = true;
-      clienteSelect.appendChild(opt);
+      const dados = doc.data() || {};
+      const nome = String(dados.nome || "").trim();
+      if (!nome) return;
+      clientesNovoPedido.push({
+        id: doc.id,
+        nome,
+        bloqueado: dados.bloqueado === true,
+        motivoBloqueio: dados.motivoBloqueio || ""
+      });
+    });
+
+    const buscaCliente = document.getElementById("p-cliente-busca");
+    const letrasCliente = document.getElementById("p-cliente-letras");
+    const resultadoCliente = document.getElementById("p-cliente-resultado");
+    const normalizarBuscaCliente = (valor) => String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
+    function preencherClientesNovoPedido(termo = "", somenteInicial = false) {
+      const chave = normalizarBuscaCliente(termo);
+      const filtrados = clientesNovoPedido.filter(cliente => {
+        const nome = normalizarBuscaCliente(cliente.nome);
+        return !chave || (somenteInicial ? nome.startsWith(chave) : nome.includes(chave));
+      });
+
+      clienteSelect.innerHTML = "";
+      filtrados.forEach(cliente => {
+        const opt = document.createElement("option");
+        opt.value = cliente.nome;
+        opt.textContent = cliente.bloqueado && PERFIL === "representante"
+          ? `${cliente.nome} — BLOQUEADO`
+          : cliente.nome;
+        opt.dataset.id = cliente.id;
+        opt.dataset.bloqueado = cliente.bloqueado ? "true" : "false";
+        opt.dataset.motivoBloqueio = cliente.motivoBloqueio;
+        if (cliente.bloqueado && PERFIL === "representante") opt.disabled = true;
+        clienteSelect.appendChild(opt);
+      });
+
+      if (resultadoCliente) {
+        resultadoCliente.textContent = filtrados.length
+          ? `${filtrados.length} cliente(s) encontrado(s)`
+          : "Nenhum cliente encontrado";
+      }
+    }
+
+    preencherClientesNovoPedido();
+
+    if (letrasCliente) {
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(letra => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.textContent = letra;
+        botao.className = "flex-none border border-blue-700 text-blue-700 rounded px-2 py-1 text-xs";
+        botao.addEventListener("click", () => {
+          if (buscaCliente) buscaCliente.value = letra;
+          preencherClientesNovoPedido(letra, true);
+        });
+        letrasCliente.appendChild(botao);
+      });
+    }
+
+    buscaCliente?.addEventListener("input", () => {
+      preencherClientesNovoPedido(buscaCliente.value);
+    });
+
+    clienteSelect.addEventListener("change", () => {
+      const nomeSelecionado = clienteSelect.value;
+      if (buscaCliente && nomeSelecionado) buscaCliente.value = nomeSelecionado;
     });
 
     preencherSelectProduto(produtoSelect, listaProdutos);
@@ -440,7 +500,13 @@
           <div id="modal-pedido" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 p-0 md:p-4">
             <div class="bg-white w-full md:max-w-2xl md:mx-auto md:mt-12 rounded-t-2xl md:rounded-xl p-4 md:p-6 max-h-[92vh] overflow-y-auto absolute bottom-0 left-0 right-0 md:static space-y-2">
               <h3 class="text-lg font-bold mb-2">Novo Pedido</h3>
-              <select id="p-cliente" class="border p-2 w-full"></select>
+              <label class="block text-sm">
+                <span class="block mb-1 font-semibold">Cliente *</span>
+                <input id="p-cliente-busca" type="search" autocomplete="off" class="border p-3 rounded w-full text-base" placeholder="Digite o nome do cliente">
+              </label>
+              <div id="p-cliente-letras" class="flex gap-1 overflow-x-auto py-1" aria-label="Filtrar clientes pela primeira letra"></div>
+              <p id="p-cliente-resultado" class="text-xs text-gray-500"></p>
+              <select id="p-cliente" size="5" class="border p-2 rounded w-full"></select>
               <div id="p-itens" class="space-y-2">
                 <div class="pedido-item grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
                   <select id="p-produto" class="pedido-produto border p-2 w-full md:col-span-7"></select>
