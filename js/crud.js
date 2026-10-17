@@ -3320,7 +3320,12 @@ function renderPedidos() {
       <div id="modal-pedido" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 p-0 md:p-4">
         <div class="bg-white w-full md:max-w-2xl md:mx-auto md:mt-12 rounded-t-2xl md:rounded-xl p-4 md:p-6 max-h-[92vh] overflow-y-auto absolute bottom-0 left-0 right-0 md:static space-y-2">
           <h3 class="text-lg font-bold mb-2">Novo Pedido</h3>
-          <select id="p-cliente" class="border p-2 w-full"></select>
+          <label class="block text-sm">
+            <span class="block mb-1 font-semibold">Buscar cliente</span>
+            <input id="p-busca-cliente" type="search" autocomplete="off" class="border p-3 w-full rounded text-base" placeholder="Digite o nome ou as primeiras letras">
+          </label>
+          <p id="p-busca-cliente-resultado" class="text-xs text-gray-500">Carregando clientes...</p>
+          <select id="p-cliente" class="border p-3 w-full rounded text-base"></select>
            <div id="p-itens" class="space-y-2">
             <div class="pedido-item grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
               <select id="p-produto" class="pedido-produto border p-2 w-full ${PERFIL === "admin" ? "md:col-span-5" : "md:col-span-7"}"></select>
@@ -3362,6 +3367,8 @@ function renderPedidos() {
   `;
 
   const $cliente = document.getElementById("p-cliente");
+  const $buscaCliente = document.getElementById("p-busca-cliente");
+  const $resultadoBuscaCliente = document.getElementById("p-busca-cliente-resultado");
   const $produto = document.getElementById("p-produto");
   const lista = document.getElementById("lista-pedidos");
 
@@ -3423,6 +3430,7 @@ function lerPrecoNegociadoPedido(valor) {
   const modalPedido = document.getElementById("modal-pedido");
   document.getElementById("btn-abrir-modal-pedido")?.addEventListener("click", () => {
     modalPedido?.classList.remove("hidden");
+    setTimeout(() => $buscaCliente?.focus(), 100);
   });
   document.getElementById("btn-cancelar-modal-pedido")?.addEventListener("click", () => {
     modalPedido?.classList.add("hidden");
@@ -3438,14 +3446,45 @@ waitForAuth().then(async user => {
         cliQuery = cliQuery.where("userId", "==", user.uid);
       }
        const cliSnap = await cliQuery.orderBy("nome").get();
-      $cliente.innerHTML = `<option value="">Selecione cliente</option>`;
+      const clientesPedido = [];
       cliSnap.forEach(doc => {
-        const opt = document.createElement("option");
-        opt.value = doc.data().nome;
-        opt.textContent = doc.data().nome;
-        opt.dataset.id = doc.id;
-        $cliente.appendChild(opt);
+        const nome = String(doc.data()?.nome || "").trim();
+        if (!nome) return;
+        clientesPedido.push({ id: doc.id, nome });
       });
+
+      const preencherClientesPedido = (termo = "") => {
+        const chave = normalizarIdentidadePedido(termo);
+        const valorAtual = $cliente.value;
+        const filtrados = clientesPedido
+          .filter(item => !chave || normalizarIdentidadePedido(item.nome).includes(chave))
+          .sort((a, b) => {
+            const nomeA = normalizarIdentidadePedido(a.nome);
+            const nomeB = normalizarIdentidadePedido(b.nome);
+            const iniciaA = chave && nomeA.startsWith(chave) ? 0 : 1;
+            const iniciaB = chave && nomeB.startsWith(chave) ? 0 : 1;
+            return iniciaA - iniciaB || a.nome.localeCompare(b.nome, "pt-BR");
+          });
+
+        $cliente.innerHTML = '<option value="">Selecione cliente</option>';
+        filtrados.forEach(item => {
+          const opt = document.createElement("option");
+          opt.value = item.nome;
+          opt.textContent = item.nome;
+          opt.dataset.id = item.id;
+          $cliente.appendChild(opt);
+        });
+
+        if (filtrados.some(item => item.nome === valorAtual)) $cliente.value = valorAtual;
+        if ($resultadoBuscaCliente) {
+          $resultadoBuscaCliente.textContent = filtrados.length === 1
+            ? "1 cliente encontrado"
+            : `${filtrados.length} clientes encontrados`;
+        }
+      };
+
+      preencherClientesPedido();
+      $buscaCliente?.addEventListener("input", () => preencherClientesPedido($buscaCliente.value));
 
     // PRODUTOS
       const prodSnap = await db.collection("produtos").get();
