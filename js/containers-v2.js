@@ -38,7 +38,7 @@
 
   function exportarCsv(lista) {
     const linhas=[["Número","Cliente","Pedido","Data carregamento","Dias com cliente","Situação","Data devolução","Observação"],
-      ...lista.map(i=>[i.numero,i.clienteAtual,i.pedidoCodigo,i.dataSaida,i.status==="com_cliente"?dias(i.dataSaida):i.diasUltimaPermanencia,statusNome(i.status),i.ultimaDevolucao,i.observacaoSaida||i.observacaoDevolucao||""])];
+      ...lista.map(i=>[i.numero,i.clienteAtual,i.pedidoCodigo,i.dataSaida,i.status==="com_cliente"?dias(i.dataSaida):i.diasUltimaPermanencia,statusNome(i.status),i.status==="com_cliente"?"":i.ultimaDevolucao,i.observacaoSaida||i.observacaoDevolucao||""])];
     const texto="\ufeff"+linhas.map(l=>l.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(";")).join("\n");
     const url=URL.createObjectURL(new Blob([texto],{type:"text/csv;charset=utf-8"}));
     const a=document.createElement("a");a.href=url;a.download="controle-containers.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -53,7 +53,7 @@
     doc.text("Cliente: "+(filtros.cliente||"Todos")+"  |  Situação: "+(filtros.status||"Todas"),14,21);
     doc.text("Período: "+dataBR(filtros.inicio)+" a "+dataBR(filtros.fim)+"  |  Emitido em "+new Date().toLocaleString("pt-BR"),14,26);
     doc.autoTable({startY:31,head:[["Número","Cliente","Pedido","Carregamento","Dias","Situação","Devolução","Observação"]],
-      body:lista.map(i=>[i.numero,i.clienteAtual||"-",i.pedidoCodigo||"-",dataBR(i.dataSaida),i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-"),statusNome(i.status),dataBR(i.ultimaDevolucao),i.observacaoSaida||i.observacaoDevolucao||""]),
+      body:lista.map(i=>[i.numero,i.clienteAtual||"-",i.pedidoCodigo||"-",dataBR(i.dataSaida),i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-"),statusNome(i.status),dataBR(i.status==="com_cliente"?"":i.ultimaDevolucao),i.observacaoSaida||i.observacaoDevolucao||""]),
       styles:{fontSize:8},headStyles:{fillColor:[31,59,100]}});
     const clienteArquivo=norm(filtros.cliente||"todos").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
     const statusArquivo=norm(filtros.status||"todas").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
@@ -64,7 +64,7 @@
     if(!lista.length){alert("Nenhum contêiner encontrado para imprimir.");return;}
     const janela=window.open("","_blank","width=1000,height=750");
     if(!janela){alert("Permita a abertura de janelas para imprimir.");return;}
-    const linhas=lista.map(i=>`<tr><td>${esc(i.numero)}</td><td>${esc(i.pedidoCodigo||"-")}</td><td>${dataBR(i.dataSaida)}</td><td>${i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-")}</td><td>${esc(statusNome(i.status))}</td><td>${dataBR(i.ultimaDevolucao)}</td><td>${esc(i.observacaoSaida||i.observacaoDevolucao||"-")}</td></tr>`).join("");
+    const linhas=lista.map(i=>`<tr><td>${esc(i.numero)}</td><td>${esc(i.pedidoCodigo||"-")}</td><td>${dataBR(i.dataSaida)}</td><td>${i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-")}</td><td>${esc(statusNome(i.status))}</td><td>${dataBR(i.status==="com_cliente"?"":i.ultimaDevolucao)}</td><td>${esc(i.observacaoSaida||i.observacaoDevolucao||"-")}</td></tr>`).join("");
     janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Contêineres de ${esc(nome)}</title><style>
       @page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#1f2937;font-size:11px}h1{color:#1f3b64;margin:0 0 5px}.filtros{color:#4b5563;margin-bottom:14px}.resumo{display:flex;gap:10px;margin:12px 0}.card{border:1px solid #d1d5db;border-radius:6px;padding:8px 14px}.card strong{font-size:16px}table{width:100%;border-collapse:collapse}th{background:#1f3b64;color:white;text-align:left;padding:7px}td{border-bottom:1px solid #dfe6f1;padding:6px;vertical-align:top}tbody tr:nth-child(even){background:#f8fafc}.rodape{text-align:right;color:#6b7280;margin-top:10px;font-size:9px}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
     </style></head><body><h1>Contêineres de ${esc(nome)}</h1><div class="filtros">Situação: ${esc(filtros.status||"Todas")} &nbsp;|&nbsp; Período: ${dataBR(filtros.inicio)} a ${dataBR(filtros.fim)}</div>
@@ -207,7 +207,7 @@
             const antigo=containers.find(i=>norm(i.numero)===norm(numero));
             const ref=antigo?db.collection(CT).doc(antigo.id):db.collection(CT).doc();
             const dados={registroTipo:"container",userId:usuario.uid,numero,status:"com_cliente",clienteAtual:cliente,pedidoCodigo:codigo,pedidoId:pedido.id,dataSaida,observacaoSaida:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()};
-            if(antigo)batch.update(ref,dados);else batch.set(ref,{...dados,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+            if(antigo)batch.update(ref,{...dados,ultimaDevolucao:firebase.firestore.FieldValue.delete(),diasUltimaPermanencia:firebase.firestore.FieldValue.delete(),observacaoDevolucao:firebase.firestore.FieldValue.delete()});else batch.set(ref,{...dados,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
             batch.set(db.collection(MOV).doc(),{registroTipo:"container_movimento",userId:usuario.uid,containerId:ref.id,numero,tipo:"saida",data:dataSaida,cliente,pedidoCodigo:codigo,observacao,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
           });
           await batch.commit();m.remove();containers=await buscar(CT,"container");historico=await buscar(MOV,"container_movimento");
