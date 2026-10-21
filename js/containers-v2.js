@@ -44,17 +44,115 @@
     const a=document.createElement("a");a.href=url;a.download="controle-containers.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
-  function exportarPdf(lista, filtros = {}) {
+  async function exportarPdf(lista, filtros = {}) {
     if(!window.jspdf?.jsPDF){alert("Gerador de PDF indisponível.");return;}
     if(!lista.length){alert("Nenhum contêiner encontrado com os filtros selecionados.");return;}
-    const doc=new window.jspdf.jsPDF({orientation:"landscape"});
-    doc.setFontSize(16);doc.text("Controle de Contêineres Retornáveis",14,15);
+
+    const doc=new window.jspdf.jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+    const azul=[31,59,100],azulClaro=[239,246,255],cinza=[107,114,128],borda=[226,232,240],laranja=[242,140,40];
+    const total=lista.length;
+    const comCliente=lista.filter(i=>i.status==="com_cliente").length;
+    const devolvidos=lista.filter(i=>i.status==="disponivel").length;
+    const manutencao=lista.filter(i=>i.status==="manutencao").length;
+    const emissao=new Date().toLocaleString("pt-BR");
+
+    let logo=null;
+    try {
+      if(typeof carregarLogoDataUrl==="function") logo=await carregarLogoDataUrl();
+    } catch(_) {}
+    if(logo) doc.addImage(logo,"PNG",14,9,20,20);
+
+    doc.setTextColor(...azul);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(18);
+    doc.text("Controle de Contêineres Retornáveis",logo?39:14,17);
+    doc.setFont("helvetica","normal");
     doc.setFontSize(9);
-    doc.text("Cliente: "+(filtros.cliente||"Todos")+"  |  Situação: "+(filtros.status||"Todas"),14,21);
-    doc.text("Período: "+dataBR(filtros.inicio)+" a "+dataBR(filtros.fim)+"  |  Emitido em "+new Date().toLocaleString("pt-BR"),14,26);
-    doc.autoTable({startY:31,head:[["Número","Cliente","Pedido","Carregamento","Dias","Situação","Devolução","Observação"]],
-      body:lista.map(i=>[i.numero,i.clienteAtual||"-",i.pedidoCodigo||"-",dataBR(i.dataSaida),i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-"),statusNome(i.status),dataBR(i.status==="com_cliente"?"":i.ultimaDevolucao),i.observacaoSaida||i.observacaoDevolucao||""]),
-      styles:{fontSize:8},headStyles:{fillColor:[31,59,100]}});
+    doc.setTextColor(...cinza);
+    doc.text("Relatório de movimentação e permanência",logo?39:14,23);
+    doc.text("Emitido em "+emissao,283,17,{align:"right"});
+    doc.setDrawColor(...azul);
+    doc.setLineWidth(0.5);
+    doc.line(14,32,283,32);
+
+    const campos=[
+      ["Cliente",filtros.cliente||"Todos os clientes",14,74],
+      ["Situação",filtros.status||"Todas as situações",91,55],
+      ["Período",dataBR(filtros.inicio)+" a "+dataBR(filtros.fim),149,74]
+    ];
+    campos.forEach(([rotulo,valor,x,largura])=>{
+      doc.setFillColor(248,250,252);
+      doc.setDrawColor(...borda);
+      doc.roundedRect(x,36,largura,15,2,2,"FD");
+      doc.setFont("helvetica","bold");doc.setFontSize(7.5);doc.setTextColor(...cinza);
+      doc.text(rotulo,x+4,41);
+      doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(31,41,55);
+      const texto=doc.splitTextToSize(String(valor),largura-8);
+      doc.text(texto.slice(0,2),x+4,47);
+    });
+
+    const cards=[
+      ["TOTAL",total,14,azulClaro,azul],
+      ["COM CLIENTES",comCliente,81,[248,250,252],[31,41,55]],
+      ["DEVOLVIDOS",devolvidos,148,[236,253,245],[4,120,87]],
+      ["MANUTENÇÃO",manutencao,215,[255,247,237],[194,65,12]]
+    ];
+    cards.forEach(([rotulo,valor,x,fundo,texto])=>{
+      doc.setFillColor(...fundo);doc.setDrawColor(...borda);
+      doc.roundedRect(x,56,62,18,2,2,"FD");
+      doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(...cinza);
+      doc.text(rotulo,x+4,62);
+      doc.setFont("helvetica","bold");doc.setFontSize(14);doc.setTextColor(...texto);
+      doc.text(String(valor),x+4,70);
+    });
+
+    doc.autoTable({
+      startY:79,
+      margin:{left:14,right:14,bottom:16},
+      head:[["Número","Cliente","Pedido","Carregamento","Dias","Situação","Devolução","Observação"]],
+      body:lista.map(i=>[
+        i.numero,
+        i.clienteAtual||"-",
+        i.pedidoCodigo||"-",
+        dataBR(i.dataSaida),
+        i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-"),
+        statusNome(i.status),
+        dataBR(i.status==="com_cliente"?"":i.ultimaDevolucao),
+        i.observacaoSaida||i.observacaoDevolucao||"-"
+      ]),
+      theme:"grid",
+      styles:{font:"helvetica",fontSize:7.5,cellPadding:2.4,textColor:[55,65,81],lineColor:borda,lineWidth:0.15,valign:"middle",overflow:"linebreak"},
+      headStyles:{fillColor:azul,textColor:[255,255,255],fontStyle:"bold",fontSize:8,halign:"left",cellPadding:3},
+      alternateRowStyles:{fillColor:[248,250,252]},
+      columnStyles:{
+        0:{cellWidth:17,fontStyle:"bold",textColor:azul},
+        1:{cellWidth:43},
+        2:{cellWidth:53},
+        3:{cellWidth:25,halign:"center"},
+        4:{cellWidth:14,halign:"center"},
+        5:{cellWidth:24,fontStyle:"bold"},
+        6:{cellWidth:25,halign:"center"},
+        7:{cellWidth:"auto"}
+      },
+      didParseCell:(dados)=>{
+        if(dados.section!=="body"||dados.column.index!==5)return;
+        const valor=String(dados.cell.raw||"").toLowerCase();
+        if(valor.includes("com cliente"))dados.cell.styles.textColor=azul;
+        else if(valor.includes("devolvido"))dados.cell.styles.textColor=[4,120,87];
+        else if(valor.includes("manutenção"))dados.cell.styles.textColor=[194,65,12];
+      }
+    });
+
+    const paginas=doc.internal.getNumberOfPages();
+    for(let pagina=1;pagina<=paginas;pagina+=1){
+      doc.setPage(pagina);
+      doc.setDrawColor(...borda);doc.setLineWidth(0.2);doc.line(14,196,283,196);
+      doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...cinza);
+      doc.text("AgendaCF - Controle de Contêineres",14,201);
+      doc.text("Página "+pagina+" de "+paginas,283,201,{align:"right"});
+      doc.setFillColor(...laranja);doc.rect(14,204,269,1,"F");
+    }
+
     const clienteArquivo=norm(filtros.cliente||"todos").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
     const statusArquivo=norm(filtros.status||"todas").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
     doc.save("containers-"+clienteArquivo+"-"+statusArquivo+".pdf");
