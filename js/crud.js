@@ -1,4 +1,3 @@
-Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.
 // ======================= UTIL =========================
 const pageContent = document.getElementById("page-content");
 document.getElementById("sidebar").style.display = "none";
