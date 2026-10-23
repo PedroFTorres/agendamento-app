@@ -1,3 +1,4 @@
+Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.
 (() => {
   const COLECAO_ORCAMENTOS = "orcamentos";
   let unsubscribeOrcamentos = null;
@@ -114,9 +115,10 @@
     campo("WhatsApp", orcamento.clienteWhatsapp || "-", 14, 57, 56);
     campo("Forma de pagamento", orcamento.formaPagamento || "-", 74, 57, 56);
     campo("Representante", orcamento.representanteNome || "-", 134, 57, 62);
+    campo("Endereço", orcamento.clienteEndereco || "-", 14, 76, 182);
 
     doc.autoTable({
-      startY: 79,
+      startY: 98,
       margin: { left: 14, right: 14, bottom: 28 },
       head: [["Item", "Produto", "Quantidade", "Valor unitário", "Valor total"]],
       body: (orcamento.itens || []).map((item, indice) => [
