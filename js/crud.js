@@ -1,3 +1,4 @@
+Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.
 // ======================= UTIL =========================
 const pageContent = document.getElementById("page-content");
 document.getElementById("sidebar").style.display = "none";
@@ -3262,6 +3263,7 @@ document.querySelectorAll(".menu-item").forEach(btn => {
 
    if (page === "agendamentos") renderAgendamentos();
     else if (page === "pedidos" && typeof window.renderPedidos === "function") window.renderPedidos();
+    else if (page === "orcamentos" && typeof window.renderOrcamentos === "function") window.renderOrcamentos();
     else if (page === "relatorios") {
       if (typeof window.renderRelatorioComissoes === "function") {
         window.renderRelatorioComissoes();
