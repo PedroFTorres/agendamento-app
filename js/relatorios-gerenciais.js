@@ -106,6 +106,7 @@
       return {...cliente,ultimaCompra,diasSemComprar:dias,ultimoProduto:mov?.produtoNome || "",representanteNome:cliente.vinculadoPor || mov?.representanteNome || "-"};
     }).filter(cliente => {
       if (estadoRG.representante && String(cliente.representanteNome || "") !== estadoRG.representante) return false;
+      if (estadoRG.inicio && cliente.ultimaCompra && cliente.ultimaCompra < estadoRG.inicio) return false;
       return cliente.diasSemComprar === null || cliente.diasSemComprar > Number(estadoRG.dias || 15);
     }).sort((a,b) => {
       if (a.diasSemComprar === null && b.diasSemComprar !== null) return -1;
@@ -164,8 +165,8 @@
       '<button id="rg-tab-inativos" class="px-4 py-2 '+(estadoRG.aba==="inativos"?"bg-blue-700 text-white":"bg-gray-100")+'">Clientes sem comprar</button>'+
       '</div>'+
       '<div class="bg-white p-5 mb-5"><div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">'+
-      '<label><span class="text-sm block mb-1">Data inicial</span><input id="rg-inicio" type="date" value="'+escRG(estadoRG.inicio)+'" class="w-full"></label>'+
-      '<label><span class="text-sm block mb-1">Data final</span><input id="rg-fim" type="date" value="'+escRG(estadoRG.fim)+'" class="w-full"></label>'+
+      '<label><span class="text-sm block mb-1">'+(estadoRG.aba==="inativos"?"Última compra a partir de (opcional)":"Data inicial")+'</span><input id="rg-inicio" type="date" value="'+escRG(estadoRG.inicio)+'" class="w-full"></label>'+
+      '<label><span class="text-sm block mb-1">'+(estadoRG.aba==="inativos"?"Data de referência":"Data final")+'</span><input id="rg-fim" type="date" value="'+escRG(estadoRG.fim)+'" class="w-full"></label>'+
       '<label id="rg-wrap-rep"><span class="text-sm block mb-1">Representante</span><select id="rg-representante" class="w-full"><option value="">Todos os representantes</option></select></label>'+
       '<label id="rg-wrap-prod"><span class="text-sm block mb-1">Produto</span><select id="rg-produto" class="w-full"><option value="">Todos os produtos</option></select></label>'+
       '<label id="rg-wrap-dias" class="'+(estadoRG.aba==="inativos"?"":"hidden")+'"><span class="text-sm block mb-1">Mais de quantos dias?</span><input id="rg-dias" type="number" min="1" value="'+escRG(estadoRG.dias)+'" class="w-full"></label>'+
@@ -174,8 +175,8 @@
     const lerFiltros=()=>{estadoRG.inicio=document.getElementById("rg-inicio").value;estadoRG.fim=document.getElementById("rg-fim").value;estadoRG.representante=document.getElementById("rg-representante").value;estadoRG.produto=document.getElementById("rg-produto").value;estadoRG.dias=Number(document.getElementById("rg-dias")?.value||15);};
     document.getElementById("rg-atualizar").onclick=()=>{lerFiltros();atualizarRG();};
     document.getElementById("rg-imprimir").onclick=imprimirRG;
-    document.getElementById("rg-tab-agendados").onclick=()=>{lerFiltros();estadoRG.aba="agendados";window.renderRelatoriosGerenciais();};
-    document.getElementById("rg-tab-inativos").onclick=()=>{lerFiltros();estadoRG.aba="inativos";window.renderRelatoriosGerenciais();};
+    document.getElementById("rg-tab-agendados").onclick=()=>{lerFiltros();estadoRG.aba="agendados";if(!estadoRG.inicio)estadoRG.inicio=primeiroDiaRG();window.renderRelatoriosGerenciais();};
+    document.getElementById("rg-tab-inativos").onclick=()=>{lerFiltros();estadoRG.aba="inativos";estadoRG.inicio="";window.renderRelatoriosGerenciais();};
     await atualizarRG();
     if(PERFIL==="representante"){const w=document.getElementById("rg-wrap-rep");if(w)w.classList.add("hidden");}
     const prod=document.getElementById("rg-wrap-prod"); if(prod) prod.classList.toggle("hidden",estadoRG.aba==="inativos");
