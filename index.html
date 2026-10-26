@@ -12,6 +12,10 @@
 
   <!-- TailwindCSS -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="css/app-premium.css?v=20261026-1" rel="stylesheet">
 
   <!-- FullCalendar -->
  
@@ -147,72 +151,82 @@
  
 
   <!-- Sidebar -->
-  <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white shadow-md p-4 transform -translate-x-full transition-transform duration-300 z-50 md:relative md:translate-x-0">
-    <h2 class="text-xl font-bold mb-6">Menu</h2>
-    <ul class="space-y-2">
+  <aside id="sidebar" class="fixed inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 z-50 md:relative md:translate-x-0">
+    <div class="cf-brand">
+      <img src="img/logo.png" alt="Cerâmica Fortes" class="cf-brand-logo">
+      <div>
+        <div class="cf-brand-name">AgendaCF</div>
+        <div class="cf-brand-subtitle">Gestão Comercial</div>
+      </div>
+    </div>
 
-<li data-perfil="all"><button data-page="notificacoes"class="menu-item flex items-center justify-between hover:bg-gray-100 p-2 rounded"><div class="flex items-center space-x-2"><span>🔔</span><span>Notificações</span></div>
-<!-- 🔴 BADGE -->
-<span id="badge-notificacoes"class="hidden bg-red-600 text-white text-xs px-2 py-0.5 rounded-full"></span></button></li>
+    <nav class="cf-nav">
+      <div class="cf-nav-group">
+        <div class="cf-nav-label">Principal</div>
+        <ul>
+          <li data-perfil="all"><button data-page="dashboard" class="menu-item"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button></li>
+          <li data-perfil="all"><button data-page="notificacoes" class="menu-item"><i data-lucide="bell"></i><span>Notificações</span><span id="badge-notificacoes" class="hidden text-white text-xs px-2 py-0.5 rounded-full"></span></button></li>
+        </ul>
+      </div>
 
-  <li data-perfil="all"><button data-page="dashboard" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>📊</span><span>Dashboard</span></button></li>
-  <li data-perfil="admin"><button data-page="ficha-atendimento" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>✍️</span><span>Ficha de Atendimento</span></button></li>
+      <div class="cf-nav-group">
+        <div class="cf-nav-label">Comercial</div>
+        <ul>
+          <li data-perfil="all"><button data-page="clientes" class="menu-item"><i data-lucide="users"></i><span>Clientes</span></button></li>
+          <li data-perfil="all"><button data-page="pedidos" class="menu-item"><i data-lucide="package-check"></i><span>Pedidos</span></button></li>
+          <li data-perfil="all"><button data-page="orcamentos" class="menu-item"><i data-lucide="file-text"></i><span>Orçamentos</span></button></li>
+          <li data-perfil="admin"><button data-page="produtos" class="menu-item"><i data-lucide="tags"></i><span>Produtos</span></button></li>
+        </ul>
+      </div>
 
-  <li data-perfil="all"><button data-page="clientes" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>👥</span><span>Clientes</span></button></li>
+      <div class="cf-nav-group">
+        <div class="cf-nav-label">Financeiro</div>
+        <ul>
+          <li data-perfil="all"><button data-page="relatorios" class="menu-item"><i data-lucide="chart-no-axes-combined"></i><span>Vendas e Comissões</span></button></li>
+          <li data-perfil="admin"><button data-page="ranking-clientes" class="menu-item"><i data-lucide="trophy"></i><span>Ranking de Clientes</span></button></li>
+          <li data-perfil="admin"><button data-page="recibo" class="menu-item"><i data-lucide="receipt-text"></i><span>Recibos</span></button></li>
+        </ul>
+      </div>
 
-  <li data-perfil="all"><button data-page="orcamentos" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>📄</span><span>Orçamentos</span></button></li>
+      <div class="cf-nav-group">
+        <div class="cf-nav-label">Operacional</div>
+        <ul>
+          <li data-perfil="admin"><button data-page="producao" class="menu-item"><i data-lucide="factory"></i><span>Produção</span></button></li>
+          <li data-perfil="admin"><button data-page="containers" class="menu-item"><i data-lucide="container"></i><span>Contêineres</span></button></li>
+        </ul>
+      </div>
 
-  <li data-perfil="all"><button data-page="pedidos" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>📦</span><span>Pedidos</span></button></li>
+      <div class="cf-nav-group">
+        <div class="cf-nav-label">Administração</div>
+        <ul>
+          <li data-perfil="admin"><button data-page="ficha-atendimento" class="menu-item"><i data-lucide="clipboard-pen-line"></i><span>Ficha de Atendimento</span></button></li>
+          <li data-perfil="admin"><button data-page="usuarios" class="menu-item"><i data-lucide="user-cog"></i><span>Usuários</span></button></li>
+          <li data-perfil="admin"><button data-page="notas" class="menu-item"><i data-lucide="notebook-pen"></i><span>Bloco de Anotações</span></button></li>
+        </ul>
+      </div>
+    </nav>
 
-  <li data-perfil="admin"><button data-page="produtos" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>🏷️</span><span>Produtos</span></button></li>
+    <div class="cf-sidebar-footer">
+      <button id="logout-button"><i data-lucide="log-out" class="inline-block w-4 h-4 mr-2"></i>Sair</button>
+    </div>
+  </aside>
 
-  <li data-perfil="all"><button data-page="relatorios" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>📈</span><span>Vendas e Comissões</span></button></li>
+  <main class="flex-1">
+    <header class="cf-topbar">
+      <button onclick="toggleMenu()" class="cf-mobile-menu"><i data-lucide="menu"></i><span>Menu</span></button>
+      <div class="hidden md:block text-xs font-semibold uppercase tracking-widest text-gray-500">Painel de gestão</div>
+      <div id="usuario-logado" class="cf-user">Carregando usuário...</div>
+    </header>
 
-  <li data-perfil="admin"><button data-page="ranking-clientes" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>🏆</span><span>Ranking de Clientes</span></button></li>
+    <div id="dashboard-header">
+      <h1>Dashboard</h1>
+      <p>Visão geral da operação comercial.</p>
+    </div>
 
-  <li data-perfil="admin"><button data-page="producao" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>🏭</span><span>Produção</span></button></li>
-  <li data-perfil="admin"><button data-page="containers" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>🔄</span><span>Contêineres</span></button></li>
-
-  <li data-perfil="admin"><button data-page="recibo" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>🧾</span><span>Recibo</span></button></li>
-  
- <li data-perfil="admin"><button data-page="usuarios" class="menu-item flex items-center space-x-2 hover:bg-gray-100 p-2 rounded"><span>👤</span><span>Usuários</span></button></li>
-  
- <li data-perfil="admin"><button data-page="notas" class="menu-item flex items-center space-x-2 hover:bg-yellow-100 p-2 rounded w-full text-left"><span>📝</span><span>Bloco de Anotações</span></button></li>
-  </ul>
-  <button id="logout-button" class="mt-6 w-full bg-red-600 text-white p-2 rounded">Sair</button></aside>
-
-  <!-- Main -->
-  <main class="flex-1 p-6">
-   <header class="mb-4 flex justify-between items-center">
-
-  <!-- ESQUERDA -->
-  <div>
-    <button onclick="toggleMenu()" class="md:hidden mb-2 bg-blue-600 text-white px-3 py-2 rounded">
-      ☰ Menu
-    </button>
-
-  </div>
-
-  <!-- DIREITA (USUÁRIO) -->
-  <div id="usuario-logado" class="text-sm font-semibold text-gray-700">
-    Carregando usuário...
-  </div>
-
-</header>
-
-  <div id="dashboard-header">
-    <h1 class="text-2xl font-bold">Dashboard</h1>
-    <p class="text-sm text-gray-500">Use o menu à esquerda para navegar.</p>
-  </div>
-
-    
-</header>
-
-    <!-- Conteúdo dinâmico -->
     <div id="page-content" class="space-y-4">
-      <div class="bg-white p-6 rounded shadow">
-        <h3 class="text-lg font-semibold mb-2">Bem-vindo</h3>
-        <p>Selecione uma opção no menu para começar.</p>
+      <div class="bg-white cf-empty-welcome">
+        <h3 class="text-lg font-semibold mb-2">Bem-vindo ao AgendaCF</h3>
+        <p class="text-gray-500">Selecione uma opção no menu para começar.</p>
       </div>
     </div>
   </main>
@@ -225,6 +239,7 @@
 
   <!-- Extras -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
@@ -249,6 +264,7 @@
   <script src="js/producao.js?v=20260814-2"></script>
   <script src="js/containers-v2.js?v=20261021-8"></script>
   <script src="js/recibo.js"></script>
+  <script src="js/ui-premium.js?v=20261026-1"></script>
   <script>function toggleMenu() {const menu = document.getElementById("sidebar");menu.classList.toggle("-translate-x-full");}</script>
   <script>
 (async () => {
