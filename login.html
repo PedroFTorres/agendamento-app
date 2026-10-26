@@ -8,7 +8,7 @@
   <link rel="apple-touch-icon" href="img/logo.png" />
   <link rel="manifest" href="site.webmanifest" />
   <meta name="theme-color" content="#E67E22" />
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">\n  <link rel="preconnect" href="https://fonts.googleapis.com">\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">\n  <link href="css/app-premium.css?v=20261026-2" rel="stylesheet">
   <style>
     .login-bg {
       min-height: 100vh;
@@ -20,23 +20,35 @@
     }
   </style>
 </head>
-<body class="login-bg flex items-center justify-center p-4">
-  <div class="p-8 rounded-xl shadow-2xl w-full max-w-md" style="background-color: rgba(255,255,255,0.94);">
-    <img
-      src="img/logo.png"
-      alt="Logo Cerâmica Fortes"
-      class="w-24 h-24 object-contain mx-auto mb-3"
-    >
-    <h1 class="text-2xl font-bold text-center mb-6">Agendamento</h1>
-    <form id="login-form" class="space-y-4">
-      <input id="login-email" type="email" autocomplete="username" placeholder="E-mail" required class="w-full border p-2 rounded">
-      <input id="login-password" type="password" autocomplete="current-password" placeholder="Senha" required class="w-full border p-2 rounded">
-      <button type="submit" class="w-full text-white p-2 rounded" style="background-color: #E67E22;">Entrar</button>
-    </form>
-    <p class="mt-6 text-sm text-gray-500 text-center">
-      Acesso restrito a usuários cadastrados pela empresa.
-    </p>
-  </div>
+<body class="cf-login-page">
+  <section class="cf-login-visual">
+    <div class="cf-login-copy">
+      <img src="img/logo.png" alt="Logo Cerâmica Fortes">
+      <h1>Gestão comercial,<br>sem complicação.</h1>
+      <p>Pedidos, clientes, produção e resultados organizados em um único ambiente.</p>
+      <div class="cf-login-accent"></div>
+    </div>
+  </section>
+
+  <section class="cf-login-panel">
+    <div class="cf-login-card">
+      <div class="cf-login-eyebrow">AgendaCF</div>
+      <h2>Acesse sua conta</h2>
+      <p class="cf-login-description">Entre com os dados fornecidos pela empresa.</p>
+      <form id="login-form">
+        <label class="cf-login-field">
+          <span>E-mail</span>
+          <input id="login-email" type="email" autocomplete="username" placeholder="seu@email.com" required>
+        </label>
+        <label class="cf-login-field">
+          <span>Senha</span>
+          <input id="login-password" type="password" autocomplete="current-password" placeholder="Digite sua senha" required>
+        </label>
+        <button type="submit" class="cf-login-submit">Entrar no sistema</button>
+      </form>
+      <p class="cf-login-note">Acesso restrito a usuários autorizados.</p>
+    </div>
+  </section>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
