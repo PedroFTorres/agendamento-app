@@ -46,12 +46,14 @@ async function carregarUsuario() {
     // 🔒 CONTROLE DE MENU POR PERFIL
     document.querySelectorAll("#sidebar li").forEach(item => {
       const perfilItem = item.getAttribute("data-perfil");
+      const permitido = PERFIL !== "representante" || perfilItem !== "admin";
+      item.style.display = permitido ? "" : "none";
+    });
 
-      if (PERFIL === "representante") {
-        if (perfilItem === "admin") {
-          item.style.display = "none";
-        }
-      }
+    // Oculta também o título de grupos que ficaram sem nenhuma opção.
+    document.querySelectorAll("#sidebar .cf-nav-group").forEach(grupo => {
+      const itensVisiveis = [...grupo.querySelectorAll("li")].some(item => item.style.display !== "none");
+      grupo.style.display = itensVisiveis ? "" : "none";
     });
 
   } else {
