@@ -27,7 +27,20 @@
     return Math.max(0, Math.floor((new Date(fim + "T12:00:00") - new Date(inicio + "T12:00:00")) / 86400000));
   };
 
-  let estadoRG = { aba:"agendados", inicio:hojeRG(), fim:hojeRG(), representante:"", produto:"", dias:15, agendamentos:[], clientes:[] };
+  let estadoRG = { aba:"agendados", inicio:hojeRG(), fim:hojeRG(), representante:"", produto:"", dias:15, agendamentos:[], clientes:[], perfil:"", userId:"" };
+
+  async function confirmarEscopoRG() {
+    const user = await waitForAuth();
+    const snap = await db.collection("usuarios").where("uid", "==", user.uid).limit(1).get();
+    if (snap.empty) throw new Error("Usuário não cadastrado.");
+    const dados = snap.docs[0].data() || {};
+    estadoRG.userId = user.uid;
+    estadoRG.perfil = normRG(dados.perfil);
+    if (estadoRG.perfil !== "admin" && estadoRG.perfil !== "representante") {
+      throw new Error("Perfil de usuário inválido.");
+    }
+    return { user, perfil: estadoRG.perfil };
+  }
 
   function cabecalhoRG() {
     const header = document.getElementById("dashboard-header");
@@ -35,7 +48,7 @@
   }
 
   async function carregarDadosRG() {
-    const user = await waitForAuth();
+    const { user, perfil } = await confirmarEscopoRG();
     const inicio = estadoRG.inicio || hojeRG();
     const fim = estadoRG.fim || hojeRG();
     const inicioData = new Date(inicio + "T00:00:00");
@@ -43,12 +56,12 @@
     let agQuery = db.collection("agendamentos")
       .where("createdAt", ">=", firebase.firestore.Timestamp.fromDate(inicioData))
       .where("createdAt", "<=", firebase.firestore.Timestamp.fromDate(fimData));
-    const cliQuery = PERFIL === "representante"
+    const cliQuery = perfil === "representante"
       ? db.collection("clientes").where("userId", "==", user.uid)
       : db.collection("clientes");
     const [agSnap, cliSnap] = await Promise.all([agQuery.get(), cliQuery.get()]);
     estadoRG.agendamentos = agSnap.docs.map(d => ({id:d.id,...d.data()})).filter(d =>
-      PERFIL !== "representante" || d.userId === user.uid
+      perfil !== "representante" || d.userId === user.uid
     );
     estadoRG.clientes = cliSnap.docs.map(d => ({id:d.id,...d.data()}));
   }
@@ -115,11 +128,12 @@
   }
 
   async function calcularInativosRG() {
-    const user = await waitForAuth();
+    const userId = estadoRG.userId;
+    const perfil = estadoRG.perfil;
     let histQuery = db.collection("agendamentos");
     if (estadoRG.fim) histQuery = histQuery.where("data", "<=", estadoRG.fim);
     const histSnap = await histQuery.get();
-    const historico = histSnap.docs.map(d => d.data()).filter(d => PERFIL !== "representante" || d.userId === user.uid);
+    const historico = histSnap.docs.map(d => d.data()).filter(d => perfil !== "representante" || d.userId === userId);
     const ultima = new Map();
     historico.forEach(item => {
       const chave = normRG(item.clienteNome);
@@ -187,6 +201,14 @@
 
   window.renderRelatoriosGerenciais = async function() {
     cabecalhoRG();
+    pageContent.innerHTML = '<div class="bg-white p-8 text-center text-gray-500">Confirmando acesso e carregando relatório...</div>';
+    try {
+      await confirmarEscopoRG();
+    } catch (e) {
+      console.error("Erro ao confirmar acesso ao relatório:", e);
+      pageContent.innerHTML = '<div class="bg-white p-6 text-red-600">Não foi possível confirmar seu acesso ao relatório.</div>';
+      return;
+    }
     pageContent.innerHTML = '<div class="bg-white p-3 flex flex-wrap gap-2 mb-4">'+
       '<button id="rg-tab-agendados" class="px-4 py-2 '+(estadoRG.aba==="agendados"?"bg-blue-700 text-white":"bg-gray-100")+'">Agendamentos realizados</button>'+
       '<button id="rg-tab-inativos" class="px-4 py-2 '+(estadoRG.aba==="inativos"?"bg-blue-700 text-white":"bg-gray-100")+'">Clientes sem comprar</button>'+
@@ -205,7 +227,7 @@
     document.getElementById("rg-tab-agendados").onclick=()=>{lerFiltros();estadoRG.aba="agendados";if(!estadoRG.inicio)estadoRG.inicio=hojeRG();window.renderRelatoriosGerenciais();};
     document.getElementById("rg-tab-inativos").onclick=()=>{lerFiltros();estadoRG.aba="inativos";estadoRG.inicio="";window.renderRelatoriosGerenciais();};
     await atualizarRG();
-    if(PERFIL==="representante"){const w=document.getElementById("rg-wrap-rep");if(w)w.classList.add("hidden");}
+    if(estadoRG.perfil==="representante"){const w=document.getElementById("rg-wrap-rep");if(w)w.classList.add("hidden");}
     const prod=document.getElementById("rg-wrap-prod"); if(prod) prod.classList.toggle("hidden",estadoRG.aba==="inativos");
   };
 })();
