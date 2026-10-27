@@ -181,6 +181,8 @@
 
   async function atualizarRG() {
     const botao = document.getElementById("rg-atualizar");
+    const area = document.getElementById("relatorio-resultado");
+    if (area) area.innerHTML = '<div class="bg-white p-8 text-center text-gray-500">Carregando somente os dados permitidos para este usuário...</div>';
     if (botao) { botao.disabled=true; botao.textContent="Carregando..."; }
     try {
       await carregarDadosRG();
@@ -209,6 +211,7 @@
       pageContent.innerHTML = '<div class="bg-white p-6 text-red-600">Não foi possível confirmar seu acesso ao relatório.</div>';
       return;
     }
+    const somenteRepresentante = estadoRG.perfil === "representante";
     pageContent.innerHTML = '<div class="bg-white p-3 flex flex-wrap gap-2 mb-4">'+
       '<button id="rg-tab-agendados" class="px-4 py-2 '+(estadoRG.aba==="agendados"?"bg-blue-700 text-white":"bg-gray-100")+'">Agendamentos realizados</button>'+
       '<button id="rg-tab-inativos" class="px-4 py-2 '+(estadoRG.aba==="inativos"?"bg-blue-700 text-white":"bg-gray-100")+'">Clientes sem comprar</button>'+
@@ -216,7 +219,7 @@
       '<div class="bg-white p-5 mb-5"><div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">'+
       '<label><span class="text-sm block mb-1">'+(estadoRG.aba==="inativos"?"Última compra a partir de (opcional)":"Data inicial")+'</span><input id="rg-inicio" type="date" value="'+escRG(estadoRG.inicio)+'" class="w-full"></label>'+
       '<label><span class="text-sm block mb-1">'+(estadoRG.aba==="inativos"?"Data de referência":"Data final")+'</span><input id="rg-fim" type="date" value="'+escRG(estadoRG.fim)+'" class="w-full"></label>'+
-      '<label id="rg-wrap-rep"><span class="text-sm block mb-1">Representante</span><select id="rg-representante" class="w-full"><option value="">Todos os representantes</option></select></label>'+
+      '<label id="rg-wrap-rep" class="'+(somenteRepresentante?"hidden":"")+'"><span class="text-sm block mb-1">Representante</span><select id="rg-representante" class="w-full"><option value="">Todos os representantes</option></select></label>'+
       '<label id="rg-wrap-prod"><span class="text-sm block mb-1">Produto</span><select id="rg-produto" class="w-full"><option value="">Todos os produtos</option></select></label>'+
       '<label id="rg-wrap-dias" class="'+(estadoRG.aba==="inativos"?"":"hidden")+'"><span class="text-sm block mb-1">Mais de quantos dias?</span><input id="rg-dias" type="number" min="1" value="'+escRG(estadoRG.dias)+'" class="w-full"></label>'+
       '</div><div class="flex flex-wrap gap-2 mt-4"><button id="rg-atualizar" class="bg-blue-700 text-white px-5 py-2">Atualizar relatório</button><button id="rg-imprimir" class="border border-blue-700 text-blue-700 px-5 py-2">Imprimir / PDF</button></div></div>'+
@@ -227,7 +230,6 @@
     document.getElementById("rg-tab-agendados").onclick=()=>{lerFiltros();estadoRG.aba="agendados";if(!estadoRG.inicio)estadoRG.inicio=hojeRG();window.renderRelatoriosGerenciais();};
     document.getElementById("rg-tab-inativos").onclick=()=>{lerFiltros();estadoRG.aba="inativos";estadoRG.inicio="";window.renderRelatoriosGerenciais();};
     await atualizarRG();
-    if(estadoRG.perfil==="representante"){const w=document.getElementById("rg-wrap-rep");if(w)w.classList.add("hidden");}
     const prod=document.getElementById("rg-wrap-prod"); if(prod) prod.classList.toggle("hidden",estadoRG.aba==="inativos");
   };
 })();
