@@ -498,3 +498,43 @@ tbody tr:hover{background:#f9fbfe!important}
   }
   #calendar .cf-calendar-event-content{min-height:14px;line-height:14px}
 }
+
+
+/* Tooltip compacto e organizado do calendário */
+.tooltip-custom[data-dashboard-tooltip="true"]{
+  width:270px!important;
+  max-width:calc(100vw - 24px)!important;
+  padding:0!important;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px!important;
+  background:#0b1f3a!important;
+  color:#fff;
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+  font-size:11px;
+  line-height:1.3;
+  white-space:normal!important;
+  z-index:9999
+}
+.cf-calendar-tooltip-head,
+.cf-calendar-tooltip-footer{
+  display:flex;align-items:center;justify-content:space-between;gap:12px
+}
+.cf-calendar-tooltip-head{
+  padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.13);
+  background:rgba(255,255,255,.05)
+}
+.cf-calendar-tooltip-head span{color:#f3b46f;font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+.cf-calendar-tooltip-head strong{font-size:11px}
+.cf-calendar-tooltip-list{padding:7px 12px}
+.cf-calendar-tooltip-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0
+}
+.cf-calendar-tooltip-row span{min-width:0;overflow:hidden;color:#dce6f2;text-overflow:ellipsis;white-space:nowrap}
+.cf-calendar-tooltip-row strong{flex:0 0 auto;color:#fff;font-size:11px}
+.cf-calendar-tooltip-footer{
+  padding:8px 12px;border-top:1px solid rgba(255,255,255,.13);
+  background:rgba(255,255,255,.04)
+}
+.cf-calendar-tooltip-footer span{color:#aebed0;font-size:10px}
+.cf-calendar-tooltip-footer strong{color:#fff;font-size:12px}
