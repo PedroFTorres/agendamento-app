@@ -391,3 +391,59 @@ tbody tr:hover{background:#f9fbfe!important}
 @media(max-width:720px){
   .cf-calendar-day-total{display:none}
 }
+
+
+/* Nitidez do calendário em telas Windows */
+.cf-dashboard-calendar-grid{
+  -webkit-font-smoothing:auto;
+  -moz-osx-font-smoothing:auto;
+  text-rendering:auto
+}
+#calendar.cf-dashboard-calendar-grid.fc{
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+  font-size:13px
+}
+#calendar.cf-dashboard-calendar-grid .fc-toolbar-title{
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+  font-size:23px!important;
+  font-weight:700;
+  letter-spacing:0
+}
+#calendar.cf-dashboard-calendar-grid .fc-button{
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+  font-size:12px!important;
+  font-weight:600!important;
+  letter-spacing:0
+}
+#calendar.cf-dashboard-calendar-grid .fc-col-header-cell-cushion{
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:.03em
+}
+#calendar.cf-dashboard-calendar-grid .fc-daygrid-day-number{
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+  font-size:12px;
+  font-weight:600
+}
+#calendar.cf-dashboard-calendar-grid .fc-daygrid-event{
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+  font-size:12px;
+  font-weight:600;
+  line-height:1.35;
+  color:#0b1f3a!important
+}
+#calendar.cf-dashboard-calendar-grid .fc-event-title{
+  font-weight:600;
+  letter-spacing:0
+}
+.cf-calendar-day-total{
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+  font-size:10px;
+  font-weight:600
+}
+@media(max-width:720px){
+  #calendar.cf-dashboard-calendar-grid .fc-col-header-cell-cushion{font-size:10px}
+  #calendar.cf-dashboard-calendar-grid .fc-daygrid-day-number{font-size:11px}
+  #calendar.cf-dashboard-calendar-grid .fc-daygrid-event{font-size:10px}
+}
