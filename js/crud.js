@@ -2480,6 +2480,31 @@ async function exportarPDF() {
 }
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
+let dashboardUnsubscribe = null;
+let dashboardCalendar = null;
+let dashboardTooltip = null;
+let dashboardRenderToken = 0;
+
+function limparRecursosDashboard() {
+  dashboardRenderToken += 1;
+
+  if (typeof dashboardUnsubscribe === "function") {
+    dashboardUnsubscribe();
+    dashboardUnsubscribe = null;
+  }
+
+  if (dashboardCalendar && typeof dashboardCalendar.destroy === "function") {
+    dashboardCalendar.destroy();
+    dashboardCalendar = null;
+  }
+
+  if (dashboardTooltip) {
+    dashboardTooltip.remove();
+    dashboardTooltip = null;
+  }
+
+  document.querySelectorAll(".tooltip-custom[data-dashboard-tooltip='true']").forEach(el => el.remove());
+}
 async function obterPedidosAdminOcultosDoRepresentante(user) {
   if (PERFIL !== "representante" || !user?.uid) return new Set();
 
@@ -2497,13 +2522,20 @@ async function obterPedidosAdminOcultosDoRepresentante(user) {
 }
 
 function renderDashboard() {
+  limparRecursosDashboard();
+  const renderToken = dashboardRenderToken;
+
   pageContent.innerHTML = `
     <h2 class="text-xl font-bold mb-4">Calendário de Agendamentos</h2>
     <div id="calendar" class="bg-white p-4 rounded shadow w-full overflow-x-auto"></div>
   `;
 
   waitForAuth().then(async user => {
+if (renderToken !== dashboardRenderToken || !document.getElementById("calendar")) return;
+
 const pedidosAdminOcultos = await obterPedidosAdminOcultosDoRepresentante(user);
+if (renderToken !== dashboardRenderToken || !document.getElementById("calendar")) return;
+
 let query;
 
 if (PERFIL === "representante") {
@@ -2513,7 +2545,15 @@ if (PERFIL === "representante") {
   query = db.collection("agendamentos"); // ✅ SIMPLES
 }
 
-query.onSnapshot(async snap => {
+dashboardUnsubscribe = query.onSnapshot(snap => {
+        if (renderToken !== dashboardRenderToken) return;
+
+        const calendarEl = document.getElementById("calendar");
+        if (!calendarEl) {
+          limparRecursosDashboard();
+          return;
+        }
+
         const docsVisiveis = snap.docs.filter(doc => {
           if (PERFIL !== "representante") return true;
           const agendamento = doc.data();
@@ -2567,15 +2607,23 @@ query.onSnapshot(async snap => {
             (resumoPorDia[data][d.produtoNome] || 0) + (d.quantidade || 0);
         });
 
-        // Tooltip container
+        // Libera a renderização anterior antes de atualizar o calendário.
+        if (dashboardCalendar && typeof dashboardCalendar.destroy === "function") {
+          dashboardCalendar.destroy();
+          dashboardCalendar = null;
+        }
+        if (dashboardTooltip) {
+          dashboardTooltip.remove();
+          dashboardTooltip = null;
+        }
+
+        calendarEl.innerHTML = "";
+
         const tooltip = document.createElement("div");
         tooltip.className = "tooltip-custom";
+        tooltip.dataset.dashboardTooltip = "true";
         document.body.appendChild(tooltip);
-
-       const calendarEl = document.getElementById("calendar");
-if (!calendarEl) return;
-
-calendarEl.innerHTML = "";
+        dashboardTooltip = tooltip;
 
   const representanteSomenteConsulta = PERFIL === "representante";
   
@@ -2631,9 +2679,11 @@ dateClick: function(info) {
 }
         });
 
+       dashboardCalendar = calendar;
        calendar.render();
 },
 err => {
+  if (renderToken !== dashboardRenderToken) return;
   console.error("🔥 ERRO NO CALENDÁRIO:", err);
 });
   });
@@ -3261,6 +3311,10 @@ const docsVisiveis = snap.docs.filter(doc => {
 document.querySelectorAll(".menu-item").forEach(btn => {
   btn.addEventListener("click", () => {
     const page = btn.dataset.page;
+
+    if (page !== "dashboard") {
+      limparRecursosDashboard();
+    }
 
    if (page === "agendamentos") renderAgendamentos();
     else if (page === "pedidos" && typeof window.renderPedidos === "function") window.renderPedidos();
