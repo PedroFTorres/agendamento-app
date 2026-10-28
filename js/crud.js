@@ -2526,8 +2526,28 @@ function renderDashboard() {
   const renderToken = dashboardRenderToken;
 
   pageContent.innerHTML = `
-    <h2 class="text-xl font-bold mb-4">Calendário de Agendamentos</h2>
-    <div id="calendar" class="bg-white p-4 rounded shadow w-full overflow-x-auto"></div>
+    <section class="cf-dashboard-calendar">
+      <div class="cf-dashboard-calendar-intro">
+        <div>
+          <span class="cf-dashboard-calendar-eyebrow">Planejamento operacional</span>
+          <h2>Calendário de Agendamentos</h2>
+          <p>Visualize os carregamentos programados e clique em um dia para consultar o resumo.</p>
+        </div>
+        <div class="cf-dashboard-calendar-status">
+          <span></span> Agenda atualizada em tempo real
+        </div>
+      </div>
+      <div class="cf-dashboard-calendar-card">
+        <div class="cf-dashboard-calendar-head">
+          <div>
+            <strong>Agenda comercial</strong>
+            <small>Alterne entre mês, semana, dia ou lista usando os controles abaixo.</small>
+          </div>
+          <div class="cf-dashboard-calendar-hint">Clique em um evento para consultar ou editar</div>
+        </div>
+        <div id="calendar" class="cf-dashboard-calendar-grid"></div>
+      </div>
+    </section>
   `;
 
   waitForAuth().then(async user => {
