@@ -2626,7 +2626,7 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
 
         const produtoCor = produto =>
           coresPorProduto.get(produto || "Sem produto") || "#475569";
-        const corComTransparencia = (hex, alpha = 0.72) => {
+        const corComTransparencia = (hex, alpha = 0.78) => {
           const valor = String(hex || "").replace("#", "");
           if (!/^[0-9a-f]{6}$/i.test(valor)) return hex;
           const r = parseInt(valor.slice(0, 2), 16);
@@ -2654,9 +2654,18 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
       cliente: d.clienteNome || "",
       produto: d.produtoNome || "",
       representante: d.representanteNome || "",
-      observacao: d.observacao
+      observacao: d.observacao,
+      carregado: d.carregado === true
     }
   };
+}).sort((a, b) => {
+  const produto = String(a.extendedProps.produto || "").localeCompare(
+    String(b.extendedProps.produto || ""), "pt-BR"
+  );
+  if (produto !== 0) return produto;
+  return String(a.extendedProps.cliente || "").localeCompare(
+    String(b.extendedProps.cliente || ""), "pt-BR"
+  );
 });
         window.agendamentos = docsVisiveis.map(doc => doc.data());
 
@@ -2707,6 +2716,63 @@ dateClick: function(info) {
               : "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
           },
           events: eventos,
+          eventOrderStrict: true,
+          eventOrder: function(a, b) {
+            const produto = String(a.extendedProps.produto || "").localeCompare(
+              String(b.extendedProps.produto || ""), "pt-BR"
+            );
+            if (produto !== 0) return produto;
+            return String(a.extendedProps.cliente || "").localeCompare(
+              String(b.extendedProps.cliente || ""), "pt-BR"
+            );
+          },
+          eventClassNames: function(arg) {
+            return arg.event.extendedProps.carregado ? ["cf-evento-carregado"] : [];
+          },
+          eventContent: function(arg) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "cf-calendar-event-content";
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.className = "cf-calendar-loaded-check";
+            checkbox.checked = arg.event.extendedProps.carregado === true;
+            checkbox.disabled = representanteSomenteConsulta;
+            checkbox.title = representanteSomenteConsulta
+              ? "Situação do carregamento"
+              : (checkbox.checked ? "Marcar como não carregado" : "Marcar como carregado");
+
+            const texto = document.createElement("span");
+            texto.className = "cf-calendar-event-label";
+            texto.textContent = arg.event.title;
+
+            checkbox.addEventListener("mousedown", event => event.stopPropagation());
+            checkbox.addEventListener("click", event => event.stopPropagation());
+            checkbox.addEventListener("change", async event => {
+              event.stopPropagation();
+              if (representanteSomenteConsulta) return;
+
+              const novoEstado = checkbox.checked;
+              checkbox.disabled = true;
+              try {
+                await db.collection("agendamentos").doc(arg.event.id).update({
+                  carregado: novoEstado,
+                  carregadoEm: novoEstado
+                    ? firebase.firestore.FieldValue.serverTimestamp()
+                    : null,
+                  carregadoPor: novoEstado ? user.uid : null
+                });
+              } catch (erro) {
+                checkbox.checked = !novoEstado;
+                checkbox.disabled = false;
+                console.error("Erro ao atualizar carregamento:", erro);
+                alert("Não foi possível atualizar a situação do carregamento.");
+              }
+            });
+
+            wrapper.append(checkbox, texto);
+            return { domNodes: [wrapper] };
+          },
 
           // Tooltip customizado ao passar mouse no dia
           dayCellDidMount: function(info) {
