@@ -2498,9 +2498,28 @@ async function obterPedidosAdminOcultosDoRepresentante(user) {
 
 function renderDashboard() {
   pageContent.innerHTML = `
-    <h2 class="text-xl font-bold mb-4">Calendário de Agendamentos</h2>
-    <div id="calendar" class="bg-white p-4 rounded shadow w-full overflow-x-auto"></div>
+    <section class="cf-dashboard-calendar">
+      <div class="cf-dashboard-calendar-intro">
+        <div class="cf-dashboard-calendar-icon"><i data-lucide="calendar-days"></i></div>
+        <div>
+          <span>Planejamento operacional</span>
+          <h2>Calendário de Agendamentos</h2>
+          <p>Visualize os carregamentos programados e clique em um dia para consultar o resumo.</p>
+        </div>
+      </div>
+      <div class="cf-dashboard-calendar-card">
+        <div class="cf-dashboard-calendar-head">
+          <div>
+            <strong>Agenda comercial</strong>
+            <small>Use os controles para alternar entre mês, semana, dia ou lista.</small>
+          </div>
+          <div class="cf-dashboard-calendar-hint"><i data-lucide="mouse-pointer-click"></i> Clique no evento para consultar</div>
+        </div>
+        <div id="calendar" class="cf-dashboard-calendar-grid"></div>
+      </div>
+    </section>
   `;
+  if (window.lucide) window.lucide.createIcons();
 
   waitForAuth().then(async user => {
 const pedidosAdminOcultos = await obterPedidosAdminOcultosDoRepresentante(user);
