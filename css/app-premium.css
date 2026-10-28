@@ -471,3 +471,30 @@ tbody tr:hover{background:#f9fbfe!important}
   .cf-calendar-event-content{gap:3px}
   .cf-calendar-loaded-check{width:11px;height:11px}
 }
+
+
+/* Compactação dos eventos com checkbox */
+#calendar .cf-calendar-loaded-check{
+  appearance:auto!important;
+  -webkit-appearance:checkbox!important;
+  width:13px!important;
+  min-width:13px!important;
+  height:13px!important;
+  min-height:13px!important;
+  margin:0!important;
+  padding:0!important;
+  border-radius:2px!important;
+  box-shadow:none!important
+}
+#calendar.cf-dashboard-calendar-grid .fc-daygrid-event{
+  min-height:0!important;
+  margin-top:2px;
+  padding:2px 5px!important
+}
+#calendar .cf-calendar-event-content{min-height:16px;line-height:16px}
+@media(max-width:720px){
+  #calendar .cf-calendar-loaded-check{
+    width:11px!important;min-width:11px!important;height:11px!important;min-height:11px!important
+  }
+  #calendar .cf-calendar-event-content{min-height:14px;line-height:14px}
+}
