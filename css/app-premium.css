@@ -538,3 +538,16 @@ tbody tr:hover{background:#f9fbfe!important}
 }
 .cf-calendar-tooltip-footer span{color:#aebed0;font-size:10px}
 .cf-calendar-tooltip-footer strong{color:#fff;font-size:12px}
+
+
+/* Quantidade e valor no rodapé do tooltip */
+.cf-calendar-tooltip-footer{
+  display:grid!important;gap:5px!important
+}
+.cf-calendar-tooltip-footer>div{
+  display:flex;align-items:center;justify-content:space-between;gap:12px
+}
+.cf-calendar-tooltip-footer>div+div{
+  padding-top:5px;border-top:1px solid rgba(255,255,255,.09)
+}
+.cf-calendar-tooltip-value{color:#79e0b4!important;font-size:12px!important}
