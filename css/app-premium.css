@@ -447,3 +447,21 @@ tbody tr:hover{background:#f9fbfe!important}
   #calendar.cf-dashboard-calendar-grid .fc-daygrid-day-number{font-size:11px}
   #calendar.cf-dashboard-calendar-grid .fc-daygrid-event{font-size:10px}
 }
+
+
+/* Legenda de cores por produto */
+.cf-dashboard-calendar-legend{
+  display:flex;align-items:center;flex-wrap:wrap;gap:5px 12px;margin-top:9px
+}
+.cf-dashboard-calendar-legend span{
+  display:inline-flex;align-items:center;gap:5px;color:#607086;
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-size:10px;font-weight:600;white-space:nowrap
+}
+.cf-dashboard-calendar-legend i{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  box-shadow:0 0 0 3px rgba(71,85,105,.07)
+}
+@media(max-width:720px){
+  .cf-dashboard-calendar-legend{gap:5px 10px}
+  .cf-dashboard-calendar-legend span{font-size:9px}
+}
