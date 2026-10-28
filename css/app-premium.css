@@ -323,3 +323,38 @@ tbody tr:hover{background:#f9fbfe!important}
   #calendar.cf-dashboard-calendar-grid .fc-daygrid-day-events{margin:0 2px 3px}
   #calendar.cf-dashboard-calendar-grid .fc-daygrid-event{padding:2px 3px!important;font-size:7px}
 }
+
+
+/* Calendário compacto: cabeçalho único e tipografia mais nítida */
+.cf-dashboard-calendar-head{padding:20px 24px}
+.cf-dashboard-calendar-title{display:flex;flex-direction:column;gap:0}
+.cf-dashboard-calendar-title h2{margin:2px 0 5px;color:var(--cf-navy-950);font-size:22px;font-weight:800;line-height:1.2;letter-spacing:-.025em}
+.cf-dashboard-calendar-title small{color:#718096;font-size:12px;line-height:1.4}
+.cf-dashboard-calendar-head-actions{display:flex;align-items:flex-end;flex-direction:column;gap:8px}
+.cf-dashboard-calendar-head .cf-dashboard-calendar-status{font-size:10px}
+.cf-dashboard-calendar-grid{
+  padding:18px 20px 21px;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility
+}
+#calendar.cf-dashboard-calendar-grid.fc{font-family:Inter,"Segoe UI",Arial,sans-serif;font-size:12px}
+#calendar.cf-dashboard-calendar-grid .fc-toolbar-title{font-size:22px!important;font-weight:800;letter-spacing:-.015em}
+#calendar.cf-dashboard-calendar-grid .fc-button{font-size:11px!important;font-weight:700!important}
+#calendar.cf-dashboard-calendar-grid .fc-col-header-cell-cushion{font-size:11px;font-weight:700;letter-spacing:.055em}
+#calendar.cf-dashboard-calendar-grid .fc-daygrid-day-number{font-size:12px;font-weight:700}
+#calendar.cf-dashboard-calendar-grid .fc-daygrid-event{font-size:10.5px;font-weight:700;line-height:1.35}
+#calendar.cf-dashboard-calendar-grid .fc-event-title{letter-spacing:0}
+#calendar.cf-dashboard-calendar-grid .fc-daygrid-more-link{font-size:10px}
+
+@media(max-width:720px){
+  .cf-dashboard-calendar-head{padding:16px}
+  .cf-dashboard-calendar-title h2{font-size:19px}
+  .cf-dashboard-calendar-title small{font-size:11px}
+  .cf-dashboard-calendar-head-actions{align-items:flex-start}
+  .cf-dashboard-calendar-head .cf-dashboard-calendar-status{display:flex}
+  #calendar.cf-dashboard-calendar-grid .fc-button{font-size:10px!important}
+  #calendar.cf-dashboard-calendar-grid .fc-col-header-cell-cushion{font-size:9px}
+  #calendar.cf-dashboard-calendar-grid .fc-daygrid-day-number{font-size:10px}
+  #calendar.cf-dashboard-calendar-grid .fc-daygrid-event{font-size:8px}
+}
