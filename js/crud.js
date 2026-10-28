@@ -2627,6 +2627,14 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
 
         const produtoCor = produto =>
           coresPorProduto.get(produto || "Sem produto") || "#475569";
+        const corComTransparencia = (hex, alpha = 0.84) => {
+          const valor = String(hex || "").replace("#", "");
+          if (!/^[0-9a-f]{6}$/i.test(valor)) return hex;
+          const r = parseInt(valor.slice(0, 2), 16);
+          const g = parseInt(valor.slice(2, 4), 16);
+          const b = parseInt(valor.slice(4, 6), 16);
+          return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        };
 
         const legenda = document.getElementById("dashboard-calendar-legend");
         if (legenda) {
@@ -2647,7 +2655,7 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
     id: doc.id,
     title: `${nomeCliente} • ${d.produtoNome || ""} (${d.quantidade || 0})`,
     start: formatarDataISO(d.data),
-    backgroundColor: cor,
+    backgroundColor: corComTransparencia(cor),
     borderColor: cor,
     textColor: "#000",
     extendedProps: {
