@@ -2698,6 +2698,31 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
         dashboardTooltip = tooltip;
 
   const representanteSomenteConsulta = PERFIL === "representante";
+  const valoresTooltipPorDia = new Map();
+
+  const obterValorTooltipDia = dataISO => {
+    if (valoresTooltipPorDia.has(dataISO)) {
+      return valoresTooltipPorDia.get(dataISO);
+    }
+
+    const calculo = (async () => {
+      const itensDia = docsVisiveis
+        .filter(doc => doc.data().data === dataISO)
+        .map(doc => ({ id: doc.id, ...doc.data() }));
+
+      if (typeof aplicarValoresAgendamentosRelatorio !== "function") {
+        return 0;
+      }
+
+      return aplicarValoresAgendamentosRelatorio(itensDia, user);
+    })().catch(erro => {
+      console.warn("Não foi possível calcular o valor do tooltip.", erro);
+      return null;
+    });
+
+    valoresTooltipPorDia.set(dataISO, calculo);
+    return calculo;
+  };
   
         const calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: "dayGridMonth",
@@ -2826,10 +2851,26 @@ dateClick: function(info) {
                   '</div>'+
                   '<div class="cf-calendar-tooltip-list">'+linhas+'</div>'+
                   '<div class="cf-calendar-tooltip-footer">'+
-                    '<span>Total agendado</span><strong>'+totalDia.toLocaleString("pt-BR")+'</strong>'+
+                    '<div><span>Quantidade total</span><strong>'+totalDia.toLocaleString("pt-BR")+'</strong></div>'+
+                    '<div><span>Valor total das vendas</span><strong class="cf-calendar-tooltip-value">Calculando...</strong></div>'+
                   '</div>';
+                tooltip.dataset.dataResumo = dataISO;
                 tooltip.style.opacity = "1";
                 posicionarTooltip(e);
+
+                const valorEl = tooltip.querySelector(".cf-calendar-tooltip-value");
+                obterValorTooltipDia(dataISO).then(valor => {
+                  if (!valorEl || tooltip.dataset.dataResumo !== dataISO) return;
+                  valorEl.textContent = valor === null
+                    ? "Não disponível"
+                    : Number(valor || 0).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      });
+                  posicionarTooltip(e);
+                });
               });
               info.el.addEventListener("mousemove", posicionarTooltip);
               info.el.addEventListener("mouseleave", () => {
