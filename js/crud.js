@@ -2536,7 +2536,10 @@ function renderDashboard() {
           </div>
           <div class="cf-dashboard-calendar-head-actions">
             <div class="cf-dashboard-calendar-status"><span></span> Atualização em tempo real</div>
-            <div class="cf-dashboard-calendar-hint">Clique em um evento para consultar ou editar</div>
+            <label class="cf-dashboard-calendar-search">
+              <span>Buscar</span>
+              <input id="dashboard-calendar-search" type="search" placeholder="Cliente, produto ou representante">
+            </label>
           </div>
         </div>
         <div id="calendar" class="cf-dashboard-calendar-grid"></div>
@@ -2604,7 +2607,9 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
     borderColor: cor,
     textColor: "#000",
     extendedProps: {
-      representante: d.representanteNome,
+      cliente: d.clienteNome || "",
+      produto: d.produtoNome || "",
+      representante: d.representanteNome || "",
       observacao: d.observacao
     }
   };
@@ -2695,6 +2700,23 @@ dateClick: function(info) {
 
        dashboardCalendar = calendar;
        calendar.render();
+
+       const campoBusca = document.getElementById("dashboard-calendar-search");
+       if (campoBusca) {
+         campoBusca.oninput = () => {
+           const termo = normalizarTexto(campoBusca.value);
+           calendar.getEvents().forEach(evento => {
+             const dadosEvento = evento.extendedProps || {};
+             const texto = normalizarTexto([
+               dadosEvento.cliente,
+               dadosEvento.produto,
+               dadosEvento.representante,
+               evento.title
+             ].join(" "));
+             evento.setProp("display", !termo || texto.includes(termo) ? "auto" : "none");
+           });
+         };
+       }
 },
 err => {
   if (renderToken !== dashboardRenderToken) return;
