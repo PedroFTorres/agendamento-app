@@ -2533,6 +2533,7 @@ function renderDashboard() {
             <span class="cf-dashboard-calendar-eyebrow">Planejamento operacional</span>
             <h2>Calendário de Agendamentos</h2>
             <small>Visualize os carregamentos e clique em um dia para consultar o resumo.</small>
+            <div id="dashboard-calendar-legend" class="cf-dashboard-calendar-legend"></div>
           </div>
           <div class="cf-dashboard-calendar-head-actions">
             <div class="cf-dashboard-calendar-status"><span></span> Atualização em tempo real</div>
@@ -2578,22 +2579,41 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
             && !pedidosAdminOcultos.has(agendamento.pedidoId);
         });
 
-        // Paleta de cores para eventos
+        // Cada produto mantém sempre a mesma cor.
         const cores = [
-          "#f87171", // vermelho
-          "#60a5fa", // azul
-          "#34d399", // verde
-          "#fbbf24", // amarelo
-          "#a78bfa", // roxo
-          "#fb923c", // laranja
-          "#14b8a6"  // turquesa
+          "#ef6b6b",
+          "#4f9bea",
+          "#2fcf9b",
+          "#f6b91e",
+          "#9a7bea",
+          "#f58a32",
+          "#12b6aa",
+          "#d85fa2",
+          "#6574d9"
         ];
-        let corIndex = 0;
+        const produtoCor = produto => {
+          const texto = normalizarTexto(produto || "Sem produto");
+          let hash = 0;
+          for (let i = 0; i < texto.length; i++) {
+            hash = ((hash << 5) - hash + texto.charCodeAt(i)) | 0;
+          }
+          return cores[Math.abs(hash) % cores.length];
+        };
+
+        const produtosCalendario = [...new Set(
+          docsVisiveis.map(doc => doc.data().produtoNome || "Sem produto")
+        )].sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+        const legenda = document.getElementById("dashboard-calendar-legend");
+        if (legenda) {
+          legenda.innerHTML = produtosCalendario.map(produto =>
+            '<span><i style="background:'+produtoCor(produto)+'"></i>'+escapeHtmlRelatorio(produto)+'</span>'
+          ).join("");
+        }
 
         const eventos = docsVisiveis.map(doc => {
   const d = doc.data();
-  const cor = cores[corIndex % cores.length];
-  corIndex++;
+  const cor = produtoCor(d.produtoNome);
 
   const nomeCliente = d.clienteNome
     ? d.clienteNome.split(" ")[0]
