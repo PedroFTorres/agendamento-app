@@ -2527,23 +2527,17 @@ function renderDashboard() {
 
   pageContent.innerHTML = `
     <section class="cf-dashboard-calendar">
-      <div class="cf-dashboard-calendar-intro">
-        <div>
-          <span class="cf-dashboard-calendar-eyebrow">Planejamento operacional</span>
-          <h2>Calendário de Agendamentos</h2>
-          <p>Visualize os carregamentos programados e clique em um dia para consultar o resumo.</p>
-        </div>
-        <div class="cf-dashboard-calendar-status">
-          <span></span> Agenda atualizada em tempo real
-        </div>
-      </div>
       <div class="cf-dashboard-calendar-card">
         <div class="cf-dashboard-calendar-head">
-          <div>
-            <strong>Agenda comercial</strong>
-            <small>Alterne entre mês, semana, dia ou lista usando os controles abaixo.</small>
+          <div class="cf-dashboard-calendar-title">
+            <span class="cf-dashboard-calendar-eyebrow">Planejamento operacional</span>
+            <h2>Calendário de Agendamentos</h2>
+            <small>Visualize os carregamentos e clique em um dia para consultar o resumo.</small>
           </div>
-          <div class="cf-dashboard-calendar-hint">Clique em um evento para consultar ou editar</div>
+          <div class="cf-dashboard-calendar-head-actions">
+            <div class="cf-dashboard-calendar-status"><span></span> Atualização em tempo real</div>
+            <div class="cf-dashboard-calendar-hint">Clique em um evento para consultar ou editar</div>
+          </div>
         </div>
         <div id="calendar" class="cf-dashboard-calendar-grid"></div>
       </div>
