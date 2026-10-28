@@ -358,3 +358,19 @@ tbody tr:hover{background:#f9fbfe!important}
   #calendar.cf-dashboard-calendar-grid .fc-daygrid-day-number{font-size:10px}
   #calendar.cf-dashboard-calendar-grid .fc-daygrid-event{font-size:8px}
 }
+
+
+/* Busca compacta do calendário */
+.cf-dashboard-calendar-search{display:flex;align-items:center;gap:8px}
+.cf-dashboard-calendar-search>span{color:#718096;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.cf-dashboard-calendar-search input{
+  width:280px;height:34px;padding:0 11px!important;border:1px solid #d7e1ec!important;
+  border-radius:9px!important;background:#fff!important;color:#26384d;font-size:11px!important;
+  box-shadow:0 2px 7px rgba(11,31,58,.035)
+}
+.cf-dashboard-calendar-search input::placeholder{color:#9aa7b6}
+.cf-dashboard-calendar-search input:focus{border-color:#7f9fc4!important;box-shadow:0 0 0 3px rgba(33,81,138,.09)!important}
+@media(max-width:720px){
+  .cf-dashboard-calendar-search{width:100%;align-items:flex-start;flex-direction:column;gap:4px}
+  .cf-dashboard-calendar-search input{width:100%}
+}
