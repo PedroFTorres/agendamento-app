@@ -374,3 +374,20 @@ tbody tr:hover{background:#f9fbfe!important}
   .cf-dashboard-calendar-search{width:100%;align-items:flex-start;flex-direction:column;gap:4px}
   .cf-dashboard-calendar-search input{width:100%}
 }
+
+
+/* Total diário dentro do calendário */
+#calendar.cf-dashboard-calendar-grid .fc-daygrid-day-top{
+  align-items:center;justify-content:space-between;gap:4px
+}
+.cf-calendar-day-total{
+  display:inline-flex;align-items:center;max-width:calc(100% - 34px);margin-left:2px;padding:3px 6px;
+  overflow:hidden;border:1px solid #dce7f2;border-radius:6px;background:#edf4fb;
+  color:#315678;font-size:8.5px;font-weight:800;line-height:1;white-space:nowrap;text-overflow:ellipsis
+}
+#calendar.cf-dashboard-calendar-grid .fc-day-today .cf-calendar-day-total{
+  border-color:#f2c38f;background:#fff4e7;color:#a7510d
+}
+@media(max-width:720px){
+  .cf-calendar-day-total{display:none}
+}
