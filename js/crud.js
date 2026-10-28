@@ -2595,7 +2595,7 @@ function renderDashboard() {
       const legenda = document.getElementById("calendar-legend");
       if (legenda) {
         legenda.innerHTML = produtos.slice(0, 5).map(produto =>
-          '<span><i style="background:'+corProduto.get(produto)+'"></i>'+escaparHtml(produto)+'</span>'
+          '<span><i style="background:'+corProduto.get(produto)+'"></i>'+escapeHtmlRelatorio(produto)+'</span>'
         ).join("") + (produtos.length > 5 ? '<span class="cf-calendar-legend-more">+'+(produtos.length-5)+' produtos</span>' : "");
       }
 
@@ -2649,8 +2649,8 @@ function renderDashboard() {
           const p = arg.event.extendedProps;
           return { html:
             '<div class="cf-calendar-event">'+
-              '<span class="cf-calendar-event-client">'+escaparHtml(p.cliente)+'</span>'+
-              '<span class="cf-calendar-event-meta">'+escaparHtml(p.produto)+' · '+Number(p.quantidade||0).toLocaleString("pt-BR")+'</span>'+
+              '<span class="cf-calendar-event-client">'+escapeHtmlRelatorio(p.cliente)+'</span>'+
+              '<span class="cf-calendar-event-meta">'+escapeHtmlRelatorio(p.produto)+' · '+Number(p.quantidade||0).toLocaleString("pt-BR")+'</span>'+
             '</div>'
           };
         },
@@ -2663,7 +2663,7 @@ function renderDashboard() {
           const totalDia = Object.values(produtosDia).reduce((s,q)=>s+Number(q||0),0);
           info.el.dataset.total = totalDia.toLocaleString("pt-BR");
           const linhas = Object.entries(produtosDia)
-            .map(([prod,qtd]) => '<div><span>'+escaparHtml(prod)+'</span><strong>'+Number(qtd).toLocaleString("pt-BR")+'</strong></div>')
+            .map(([prod,qtd]) => '<div><span>'+escapeHtmlRelatorio(prod)+'</span><strong>'+Number(qtd).toLocaleString("pt-BR")+'</strong></div>')
             .join("");
           const mostrar = e => {
             tooltip.innerHTML = '<header>Resumo do dia</header>'+linhas;
