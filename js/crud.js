@@ -2579,30 +2579,54 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
             && !pedidosAdminOcultos.has(agendamento.pedidoId);
         });
 
-        // Cada produto mantém sempre a mesma cor.
+        // Cores exclusivas e fixas para os produtos principais.
         const cores = [
-          "#ef6b6b",
-          "#4f9bea",
-          "#2fcf9b",
-          "#f6b91e",
-          "#9a7bea",
-          "#f58a32",
-          "#12b6aa",
-          "#d85fa2",
-          "#6574d9"
+          "#2563eb",
+          "#059669",
+          "#ea580c",
+          "#7c3aed",
+          "#dc2626",
+          "#0891b2",
+          "#ca8a04",
+          "#db2777",
+          "#4f46e5",
+          "#0f766e",
+          "#9333ea",
+          "#c2410c"
         ];
-        const produtoCor = produto => {
-          const texto = normalizarTexto(produto || "Sem produto");
-          let hash = 0;
-          for (let i = 0; i < texto.length; i++) {
-            hash = ((hash << 5) - hash + texto.charCodeAt(i)) | 0;
-          }
-          return cores[Math.abs(hash) % cores.length];
-        };
+        const coresFixas = new Map([
+          ["telha canal", "#2563eb"],
+          ["telha colonial", "#059669"],
+          ["tijolo de 6 furos", "#ea580c"],
+          ["tijolo de 8 furos", "#7c3aed"],
+          ["banda de 6 furos", "#dc2626"],
+          ["telha canal - segunda", "#0891b2"]
+        ]);
 
         const produtosCalendario = [...new Set(
           docsVisiveis.map(doc => doc.data().produtoNome || "Sem produto")
         )].sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+        const coresPorProduto = new Map();
+        const coresUsadas = new Set();
+        produtosCalendario.forEach(produto => {
+          const chave = normalizarTexto(produto);
+          const fixa = coresFixas.get(chave);
+          if (fixa) {
+            coresPorProduto.set(produto, fixa);
+            coresUsadas.add(fixa);
+          }
+        });
+        produtosCalendario.forEach(produto => {
+          if (coresPorProduto.has(produto)) return;
+          const livre = cores.find(cor => !coresUsadas.has(cor))
+            || cores[coresPorProduto.size % cores.length];
+          coresPorProduto.set(produto, livre);
+          coresUsadas.add(livre);
+        });
+
+        const produtoCor = produto =>
+          coresPorProduto.get(produto || "Sem produto") || "#475569";
 
         const legenda = document.getElementById("dashboard-calendar-legend");
         if (legenda) {
