@@ -447,3 +447,27 @@ tbody tr:hover{background:#f9fbfe!important}
   #calendar.cf-dashboard-calendar-grid .fc-daygrid-day-number{font-size:11px}
   #calendar.cf-dashboard-calendar-grid .fc-daygrid-event{font-size:10px}
 }
+
+
+/* Controle de carregamento nos eventos */
+.cf-calendar-event-content{
+  display:flex;align-items:center;gap:5px;min-width:0;width:100%
+}
+.cf-calendar-loaded-check{
+  flex:0 0 auto;width:13px;height:13px;margin:0;
+  accent-color:#0b1f3a;cursor:pointer
+}
+.cf-calendar-loaded-check:disabled{cursor:default;opacity:.75}
+.cf-calendar-event-label{
+  display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+#calendar.cf-dashboard-calendar-grid .cf-evento-carregado{
+  box-shadow:inset 0 0 0 1px rgba(15,118,110,.45),0 2px 5px rgba(15,23,42,.08)
+}
+#calendar.cf-dashboard-calendar-grid .cf-evento-carregado .cf-calendar-event-label{
+  text-decoration:line-through;text-decoration-thickness:1px;opacity:.68
+}
+@media(max-width:720px){
+  .cf-calendar-event-content{gap:3px}
+  .cf-calendar-loaded-check{width:11px;height:11px}
+}
