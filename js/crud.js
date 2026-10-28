@@ -2669,6 +2669,17 @@ dateClick: function(info) {
             const dataISO = info.date.toISOString().split("T")[0];
             if (resumoPorDia[dataISO]) {
               const produtosDia = resumoPorDia[dataISO];
+              const totalDia = Object.values(produtosDia)
+                .reduce((soma, quantidade) => soma + Number(quantidade || 0), 0);
+              const topoDia = info.el.querySelector(".fc-daygrid-day-top");
+              if (topoDia) {
+                const totalEl = document.createElement("span");
+                totalEl.className = "cf-calendar-day-total";
+                totalEl.textContent = "Total " + totalDia.toLocaleString("pt-BR");
+                totalEl.title = "Quantidade total agendada neste dia";
+                topoDia.prepend(totalEl);
+              }
+
               const linhas = Object.entries(produtosDia)
                 .map(([prod, qtd]) => `${prod}: ${qtd.toLocaleString("pt-BR")}`)
                 .join("\n");
