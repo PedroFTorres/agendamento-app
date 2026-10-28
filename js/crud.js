@@ -2533,7 +2533,6 @@ function renderDashboard() {
             <span class="cf-dashboard-calendar-eyebrow">Planejamento operacional</span>
             <h2>Calendário de Agendamentos</h2>
             <small>Visualize os carregamentos e clique em um dia para consultar o resumo.</small>
-            <div id="dashboard-calendar-legend" class="cf-dashboard-calendar-legend"></div>
           </div>
           <div class="cf-dashboard-calendar-head-actions">
             <div class="cf-dashboard-calendar-status"><span></span> Atualização em tempo real</div>
@@ -2627,7 +2626,7 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
 
         const produtoCor = produto =>
           coresPorProduto.get(produto || "Sem produto") || "#475569";
-        const corComTransparencia = (hex, alpha = 0.84) => {
+        const corComTransparencia = (hex, alpha = 0.72) => {
           const valor = String(hex || "").replace("#", "");
           if (!/^[0-9a-f]{6}$/i.test(valor)) return hex;
           const r = parseInt(valor.slice(0, 2), 16);
@@ -2635,13 +2634,6 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
           const b = parseInt(valor.slice(4, 6), 16);
           return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         };
-
-        const legenda = document.getElementById("dashboard-calendar-legend");
-        if (legenda) {
-          legenda.innerHTML = produtosCalendario.map(produto =>
-            '<span><i style="background:'+produtoCor(produto)+'"></i>'+escapeHtmlRelatorio(produto)+'</span>'
-          ).join("");
-        }
 
         const eventos = docsVisiveis.map(doc => {
   const d = doc.data();
