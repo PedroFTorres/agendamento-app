@@ -2790,20 +2790,48 @@ dateClick: function(info) {
                 topoDia.prepend(totalEl);
               }
 
+              const dataFormatada = dataISO.split("-").reverse().join("/");
               const linhas = Object.entries(produtosDia)
-                .map(([prod, qtd]) => `${prod}: ${qtd.toLocaleString("pt-BR")}`)
-                .join("\n");
+                .sort(([produtoA], [produtoB]) => produtoA.localeCompare(produtoB, "pt-BR"))
+                .map(([prod, qtd]) =>
+                  '<div class="cf-calendar-tooltip-row">'+
+                    '<span>'+escapeHtmlRelatorio(prod)+'</span>'+
+                    '<strong>'+Number(qtd || 0).toLocaleString("pt-BR")+'</strong>'+
+                  '</div>'
+                )
+                .join("");
+
+              const posicionarTooltip = e => {
+                const margem = 12;
+                const largura = tooltip.offsetWidth || 270;
+                const altura = tooltip.offsetHeight || 120;
+                const limiteDireito = window.scrollX + window.innerWidth - largura - margem;
+                const esquerda = Math.max(
+                  window.scrollX + margem,
+                  Math.min(e.pageX + margem, limiteDireito)
+                );
+                const abaixo = e.pageY + margem;
+                const ultrapassaAbaixo = e.clientY + margem + altura > window.innerHeight;
+                const topo = ultrapassaAbaixo
+                  ? Math.max(window.scrollY + margem, e.pageY - altura - margem)
+                  : abaixo;
+                tooltip.style.left = esquerda + "px";
+                tooltip.style.top = topo + "px";
+              };
 
               info.el.addEventListener("mouseenter", e => {
-                tooltip.textContent = linhas;
+                tooltip.innerHTML =
+                  '<div class="cf-calendar-tooltip-head">'+
+                    '<span>Resumo do dia</span><strong>'+dataFormatada+'</strong>'+
+                  '</div>'+
+                  '<div class="cf-calendar-tooltip-list">'+linhas+'</div>'+
+                  '<div class="cf-calendar-tooltip-footer">'+
+                    '<span>Total agendado</span><strong>'+totalDia.toLocaleString("pt-BR")+'</strong>'+
+                  '</div>';
                 tooltip.style.opacity = "1";
-                tooltip.style.top = e.pageY + 10 + "px";
-                tooltip.style.left = e.pageX + 10 + "px";
+                posicionarTooltip(e);
               });
-              info.el.addEventListener("mousemove", e => {
-                tooltip.style.top = e.pageY + 10 + "px";
-                tooltip.style.left = e.pageX + 10 + "px";
-              });
+              info.el.addEventListener("mousemove", posicionarTooltip);
               info.el.addEventListener("mouseleave", () => {
                 tooltip.style.opacity = "0";
               });
