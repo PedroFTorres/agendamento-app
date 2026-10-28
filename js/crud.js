@@ -2498,146 +2498,221 @@ async function obterPedidosAdminOcultosDoRepresentante(user) {
 
 function renderDashboard() {
   pageContent.innerHTML = `
-    <h2 class="text-xl font-bold mb-4">Calendário de Agendamentos</h2>
-    <div id="calendar" class="bg-white p-4 rounded shadow w-full overflow-x-auto"></div>
+    <section class="cf-calendar-page">
+      <div class="cf-calendar-hero">
+        <div>
+          <span class="cf-calendar-eyebrow">Planejamento operacional</span>
+          <h2>Calendário de Agendamentos</h2>
+          <p>Acompanhe carregamentos, volumes e clientes em uma visão organizada.</p>
+        </div>
+        <div class="cf-calendar-search">
+          <i data-lucide="search"></i>
+          <input id="calendar-search" type="search" placeholder="Buscar cliente, produto ou representante">
+          <button id="calendar-search-clear" type="button" aria-label="Limpar busca">×</button>
+        </div>
+      </div>
+
+      <div class="cf-calendar-kpis" aria-label="Resumo do período exibido">
+        <article><span>Quantidade no período</span><strong id="calendar-kpi-quantidade">—</strong><small>unidades agendadas</small></article>
+        <article><span>Agendamentos</span><strong id="calendar-kpi-agendamentos">—</strong><small>itens no calendário</small></article>
+        <article><span>Clientes</span><strong id="calendar-kpi-clientes">—</strong><small>clientes diferentes</small></article>
+        <article><span>Dias ocupados</span><strong id="calendar-kpi-dias">—</strong><small>dias com carregamento</small></article>
+      </div>
+
+      <div class="cf-calendar-card">
+        <div class="cf-calendar-card-head">
+          <div>
+            <strong>Agenda comercial</strong>
+            <span>Clique em um dia para abrir o resumo completo.</span>
+          </div>
+          <div id="calendar-legend" class="cf-calendar-legend"></div>
+        </div>
+        <div id="calendar-loading" class="cf-calendar-loading">
+          <span class="cf-calendar-spinner"></span> Carregando agendamentos...
+        </div>
+        <div id="calendar" class="cf-calendar"></div>
+      </div>
+    </section>
   `;
+  if (window.lucide) window.lucide.createIcons();
 
   waitForAuth().then(async user => {
-const pedidosAdminOcultos = await obterPedidosAdminOcultosDoRepresentante(user);
-let query;
+    const pedidosAdminOcultos = await obterPedidosAdminOcultosDoRepresentante(user);
+    const query = PERFIL === "representante"
+      ? db.collection("agendamentos").where("userId", "==", user.uid)
+      : db.collection("agendamentos");
 
-if (PERFIL === "representante") {
-  query = db.collection("agendamentos")
-    .where("userId", "==", user.uid);
-} else {
-  query = db.collection("agendamentos"); // ✅ SIMPLES
-}
+    query.onSnapshot(snap => {
+      const calendarEl = document.getElementById("calendar");
+      if (!calendarEl) return;
 
-query.onSnapshot(async snap => {
-        const docsVisiveis = snap.docs.filter(doc => {
-          if (PERFIL !== "representante") return true;
-          const agendamento = doc.data();
-          return agendamento.criadoPorAdmin !== true
-            && !pedidosAdminOcultos.has(agendamento.pedidoId);
+      const docsVisiveis = snap.docs.filter(doc => {
+        if (PERFIL !== "representante") return true;
+        const agendamento = doc.data();
+        return agendamento.criadoPorAdmin !== true
+          && !pedidosAdminOcultos.has(agendamento.pedidoId);
+      });
+
+      const dados = docsVisiveis.map(doc => ({ id: doc.id, ...doc.data() }));
+      window.agendamentos = dados;
+
+      const paleta = ["#1d4ed8","#0891b2","#059669","#d97706","#7c3aed","#dc2626","#db2777","#4f46e5"];
+      const produtos = [...new Set(dados.map(d => d.produtoNome || "Sem produto"))]
+        .sort((x,y) => x.localeCompare(y, "pt-BR"));
+      const corProduto = new Map(produtos.map((produto, i) => [produto, paleta[i % paleta.length]]));
+
+      const eventos = dados.map(d => {
+        const produto = d.produtoNome || "Sem produto";
+        const cliente = d.clienteNome || "Sem cliente";
+        const quantidade = Number(d.quantidade || 0);
+        const cor = corProduto.get(produto);
+        return {
+          id: d.id,
+          title: cliente,
+          start: formatarDataISO(d.data),
+          allDay: true,
+          backgroundColor: cor,
+          borderColor: cor,
+          textColor: "#ffffff",
+          extendedProps: {
+            cliente,
+            produto,
+            quantidade,
+            representante: d.representanteNome || "Sem representante",
+            observacao: d.observacao || ""
+          }
+        };
+      });
+
+      const resumoPorDia = {};
+      dados.forEach(d => {
+        const data = d.data;
+        const produto = d.produtoNome || "Sem produto";
+        if (!resumoPorDia[data]) resumoPorDia[data] = {};
+        resumoPorDia[data][produto] = (resumoPorDia[data][produto] || 0) + Number(d.quantidade || 0);
+      });
+
+      const legenda = document.getElementById("calendar-legend");
+      if (legenda) {
+        legenda.innerHTML = produtos.slice(0, 5).map(produto =>
+          '<span><i style="background:'+corProduto.get(produto)+'"></i>'+escaparHtml(produto)+'</span>'
+        ).join("") + (produtos.length > 5 ? '<span class="cf-calendar-legend-more">+'+(produtos.length-5)+' produtos</span>' : "");
+      }
+
+      document.getElementById("calendar-loading")?.remove();
+      if (window.dashboardCalendar && typeof window.dashboardCalendar.destroy === "function") {
+        window.dashboardCalendar.destroy();
+      }
+      document.getElementById("calendar-tooltip")?.remove();
+      const tooltip = document.createElement("div");
+      tooltip.id = "calendar-tooltip";
+      tooltip.className = "cf-calendar-tooltip";
+      document.body.appendChild(tooltip);
+
+      const representanteSomenteConsulta = PERFIL === "representante";
+      const atualizarIndicadores = view => {
+        const inicio = view.activeStart;
+        const fim = view.activeEnd;
+        const noPeriodo = dados.filter(d => {
+          const data = new Date(String(d.data || "") + "T12:00:00");
+          return data >= inicio && data < fim;
         });
+        const total = noPeriodo.reduce((s,d) => s + Number(d.quantidade || 0), 0);
+        const clientes = new Set(noPeriodo.map(d => d.clienteNome).filter(Boolean)).size;
+        const dias = new Set(noPeriodo.map(d => d.data).filter(Boolean)).size;
+        const definir = (id, valor) => { const el=document.getElementById(id); if(el) el.textContent=valor; };
+        definir("calendar-kpi-quantidade", total.toLocaleString("pt-BR"));
+        definir("calendar-kpi-agendamentos", noPeriodo.length.toLocaleString("pt-BR"));
+        definir("calendar-kpi-clientes", clientes.toLocaleString("pt-BR"));
+        definir("calendar-kpi-dias", dias.toLocaleString("pt-BR"));
+      };
 
-        // Paleta de cores para eventos
-        const cores = [
-          "#f87171", // vermelho
-          "#60a5fa", // azul
-          "#34d399", // verde
-          "#fbbf24", // amarelo
-          "#a78bfa", // roxo
-          "#fb923c", // laranja
-          "#14b8a6"  // turquesa
-        ];
-        let corIndex = 0;
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: "dayGridMonth",
+        locale: "pt-br",
+        firstDay: 0,
+        height: "auto",
+        dayMaxEvents: 4,
+        fixedWeekCount: false,
+        displayEventTime: false,
+        headerToolbar: {
+          left: "prev,next today",
+          center: "title",
+          right: representanteSomenteConsulta ? "dayGridMonth,listWeek" : "dayGridMonth,timeGridWeek,listWeek"
+        },
+        buttonText: { today:"Hoje", month:"Mês", week:"Semana", list:"Lista" },
+        views: { listWeek: { buttonText:"Lista" }, timeGridWeek: { buttonText:"Semana" } },
+        events: eventos,
+        datesSet: info => atualizarIndicadores(info.view),
+        dateClick: info => abrirResumoDoDia(info.dateStr),
+        eventContent: arg => {
+          const p = arg.event.extendedProps;
+          return { html:
+            '<div class="cf-calendar-event">'+
+              '<span class="cf-calendar-event-client">'+escaparHtml(p.cliente)+'</span>'+
+              '<span class="cf-calendar-event-meta">'+escaparHtml(p.produto)+' · '+Number(p.quantidade||0).toLocaleString("pt-BR")+'</span>'+
+            '</div>'
+          };
+        },
+        dayCellDidMount: info => {
+          const local = new Date(info.date.getTime() - info.date.getTimezoneOffset() * 60000);
+          const dataISO = local.toISOString().split("T")[0];
+          if (!resumoPorDia[dataISO]) return;
+          info.el.classList.add("cf-calendar-day-busy");
+          const produtosDia = resumoPorDia[dataISO];
+          const totalDia = Object.values(produtosDia).reduce((s,q)=>s+Number(q||0),0);
+          info.el.dataset.total = totalDia.toLocaleString("pt-BR");
+          const linhas = Object.entries(produtosDia)
+            .map(([prod,qtd]) => '<div><span>'+escaparHtml(prod)+'</span><strong>'+Number(qtd).toLocaleString("pt-BR")+'</strong></div>')
+            .join("");
+          const mostrar = e => {
+            tooltip.innerHTML = '<header>Resumo do dia</header>'+linhas;
+            tooltip.classList.add("is-visible");
+            tooltip.style.top = (e.pageY + 14) + "px";
+            tooltip.style.left = Math.min(e.pageX + 14, window.innerWidth - 300) + "px";
+          };
+          info.el.addEventListener("mouseenter", mostrar);
+          info.el.addEventListener("mousemove", mostrar);
+          info.el.addEventListener("mouseleave", () => tooltip.classList.remove("is-visible"));
+        },
+        eventDidMount: info => {
+          const p = info.event.extendedProps;
+          info.el.setAttribute("title", p.cliente+" — "+p.produto+" — "+Number(p.quantidade||0).toLocaleString("pt-BR"));
+        },
+        eventClick: info => {
+          if (representanteSomenteConsulta) {
+            abrirResumoDoDia(info.event.startStr?.split("T")[0] || info.event.start);
+            return;
+          }
+          abrirEdicaoAgendamento(info.event.id);
+        }
+      });
 
-        const eventos = docsVisiveis.map(doc => {
-  const d = doc.data();
-  const cor = cores[corIndex % cores.length];
-  corIndex++;
+      window.dashboardCalendar = calendar;
+      calendar.render();
+      atualizarIndicadores(calendar.view);
 
-  const nomeCliente = d.clienteNome
-    ? d.clienteNome.split(" ")[0]
-    : "Sem cliente";
-
-  return {
-    id: doc.id,
-    title: `${nomeCliente} • ${d.produtoNome || ""} (${d.quantidade || 0})`,
-    start: formatarDataISO(d.data),
-    backgroundColor: cor,
-    borderColor: cor,
-    textColor: "#000",
-    extendedProps: {
-      representante: d.representanteNome,
-      observacao: d.observacao
-    }
-  };
-});
-        window.agendamentos = docsVisiveis.map(doc => doc.data());
-
-        // Resumo por dia → produtos e quantidades
-        const resumoPorDia = {};
-        docsVisiveis.forEach(doc => {
-          const d = doc.data();
-          const data = d.data;
-          if (!resumoPorDia[data]) resumoPorDia[data] = {};
-          resumoPorDia[data][d.produtoNome] =
-            (resumoPorDia[data][d.produtoNome] || 0) + (d.quantidade || 0);
+      const busca = document.getElementById("calendar-search");
+      const limpar = document.getElementById("calendar-search-clear");
+      const filtrar = () => {
+        const termo = normalizarTexto(busca?.value);
+        calendar.getEvents().forEach(evento => {
+          const p = evento.extendedProps;
+          const texto = normalizarTexto([p.cliente,p.produto,p.representante].join(" "));
+          evento.setProp("display", !termo || texto.includes(termo) ? "auto" : "none");
         });
-
-        // Tooltip container
-        const tooltip = document.createElement("div");
-        tooltip.className = "tooltip-custom";
-        document.body.appendChild(tooltip);
-
-       const calendarEl = document.getElementById("calendar");
-if (!calendarEl) return;
-
-calendarEl.innerHTML = "";
-
-  const representanteSomenteConsulta = PERFIL === "representante";
-  
-        const calendar = new FullCalendar.Calendar(calendarEl, {
-          initialView: "dayGridMonth",
-          locale: "pt-br",
-          // ✅ Registra o clique no dia do calendário
-dateClick: function(info) {
-  abrirResumoDoDia(info.dateStr);
-},
-
-          height: "auto",
-          headerToolbar: {
-            left: "prev,next today",
-            center: "title",
-            right: representanteSomenteConsulta
-              ? "dayGridMonth"
-              : "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
-          },
-          events: eventos,
-
-          // Tooltip customizado ao passar mouse no dia
-          dayCellDidMount: function(info) {
-            const dataISO = info.date.toISOString().split("T")[0];
-            if (resumoPorDia[dataISO]) {
-              const produtosDia = resumoPorDia[dataISO];
-              const linhas = Object.entries(produtosDia)
-                .map(([prod, qtd]) => `${prod}: ${qtd.toLocaleString("pt-BR")}`)
-                .join("\n");
-
-              info.el.addEventListener("mouseenter", e => {
-                tooltip.textContent = linhas;
-                tooltip.style.opacity = "1";
-                tooltip.style.top = e.pageY + 10 + "px";
-                tooltip.style.left = e.pageX + 10 + "px";
-              });
-              info.el.addEventListener("mousemove", e => {
-                tooltip.style.top = e.pageY + 10 + "px";
-                tooltip.style.left = e.pageX + 10 + "px";
-              });
-              info.el.addEventListener("mouseleave", () => {
-                tooltip.style.opacity = "0";
-              });
-            }
-          },
-
-          eventClick: function(info) {
-  if (representanteSomenteConsulta) {
-    abrirResumoDoDia(info.event.startStr?.split("T")[0] || info.event.start);
-    return;
-  }
-  abrirEdicaoAgendamento(info.event.id);
-}
-        });
-
-       calendar.render();
-},
-err => {
-  console.error("🔥 ERRO NO CALENDÁRIO:", err);
-});
+        if (limpar) limpar.classList.toggle("is-visible", Boolean(termo));
+      };
+      if (busca) busca.oninput = filtrar;
+      if (limpar) limpar.onclick = () => { busca.value=""; filtrar(); busca.focus(); };
+    }, err => {
+      console.error("🔥 ERRO NO CALENDÁRIO:", err);
+      const loading = document.getElementById("calendar-loading");
+      if (loading) loading.innerHTML = '<span class="text-red-600">Não foi possível carregar o calendário.</span>';
+    });
   });
 }
+
 async function abrirModalAgendamento(dataSelecionada) {
   const user = await waitForAuth();
 
