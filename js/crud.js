@@ -1246,7 +1246,7 @@ if (type === "clientes") {
    
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (type === "clientes" && PERFIL === "representante") return;
+    if (type === "clientes") return;
 
     const user = await waitForAuth();
     const uid = user.uid;
