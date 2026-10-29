@@ -2505,6 +2505,40 @@ function limparRecursosDashboard() {
 
   document.querySelectorAll(".tooltip-custom[data-dashboard-tooltip='true']").forEach(el => el.remove());
 }
+
+async function abrirPedidoVinculadoAoAgendamento(pedidoId) {
+  const vinculo = String(pedidoId || "").trim();
+  if (!vinculo) {
+    alert("Este é um agendamento antigo ou manual e não possui pedido vinculado.");
+    return;
+  }
+
+  if (typeof window.editarPedidoAprovado !== "function") {
+    alert("O editor de pedidos ainda não está disponível. Atualize a página e tente novamente.");
+    return;
+  }
+
+  let pedidoDoc = null;
+  const porCodigo = await db.collection("pedidos")
+    .where("codigo", "==", vinculo)
+    .limit(1)
+    .get();
+
+  if (!porCodigo.empty) {
+    pedidoDoc = porCodigo.docs[0];
+  } else {
+    const porId = await db.collection("pedidos").doc(vinculo).get();
+    if (porId.exists) pedidoDoc = porId;
+  }
+
+  if (!pedidoDoc) {
+    alert("Não foi possível encontrar o pedido vinculado a este agendamento.");
+    return;
+  }
+
+  await window.editarPedidoAprovado(pedidoDoc.id);
+}
+
 async function obterPedidosAdminOcultosDoRepresentante(user) {
   if (PERFIL !== "representante" || !user?.uid) return new Set();
 
@@ -2654,6 +2688,7 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
       cliente: d.clienteNome || "",
       produto: d.produtoNome || "",
       representante: d.representanteNome || "",
+      pedidoId: d.pedidoId || "",
       observacao: d.observacao,
       carregado: d.carregado === true
     }
@@ -2884,7 +2919,11 @@ dateClick: function(info) {
     abrirResumoDoDia(info.event.startStr?.split("T")[0] || info.event.start);
     return;
   }
-  abrirEdicaoAgendamento(info.event.id);
+  abrirPedidoVinculadoAoAgendamento(info.event.extendedProps.pedidoId)
+    .catch(erro => {
+      console.error("Erro ao abrir pedido pelo calendário:", erro);
+      alert("Não foi possível abrir o pedido para edição.");
+    });
 }
         });
 
