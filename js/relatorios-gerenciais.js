@@ -2,6 +2,7 @@
   const escRG = valor => String(valor ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
   const normRG = valor => String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
   const qtdRG = valor => Math.floor(Number(valor || 0)).toLocaleString("pt-BR");
+  const moedaRG = valor => Number(valor || 0).toLocaleString("pt-BR", {style:"currency",currency:"BRL",minimumFractionDigits:2,maximumFractionDigits:2});
   const hojeRG = () => {
     const d = new Date();
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -53,9 +54,16 @@
     const fim = estadoRG.fim || hojeRG();
     const inicioData = new Date(inicio + "T00:00:00");
     const fimData = new Date(fim + "T23:59:59.999");
-    let agQuery = db.collection("agendamentos")
-      .where("createdAt", ">=", firebase.firestore.Timestamp.fromDate(inicioData))
-      .where("createdAt", "<=", firebase.firestore.Timestamp.fromDate(fimData));
+    let agQuery = db.collection("agendamentos");
+    if (estadoRG.aba === "relacao") {
+      agQuery = agQuery
+        .where("data", ">=", inicio)
+        .where("data", "<=", fim);
+    } else {
+      agQuery = agQuery
+        .where("createdAt", ">=", firebase.firestore.Timestamp.fromDate(inicioData))
+        .where("createdAt", "<=", firebase.firestore.Timestamp.fromDate(fimData));
+    }
     const cliQuery = perfil === "representante"
       ? db.collection("clientes").where("userId", "==", user.uid)
       : db.collection("clientes");
@@ -127,6 +135,67 @@
       '<div class="bg-white overflow-hidden"><div class="p-5 border-b"><h3 class="font-bold">Pedidos agendados no período</h3><p class="text-sm text-gray-500">“Agendado em” é quando o pedido entrou no sistema. “Carregamento” é a data marcada para o cliente.</p></div><div class="overflow-x-auto"><table><thead><tr><th>Agendado em</th><th>Carregamento</th><th>Pedido</th><th>Cliente</th><th>Produto</th><th>Representante</th><th class="text-right">Quantidade</th></tr></thead><tbody>'+(detalhes || '<tr><td colspan="7" class="text-center text-gray-500">Nenhum agendamento criado no período.</td></tr>')+'</tbody></table></div></div>';
   }
 
+  async function renderRelacaoRG() {
+    const area = document.getElementById("relatorio-resultado");
+    area.innerHTML = '<div class="bg-white p-8 text-center text-gray-500">Calculando valores e cidades dos agendamentos...</div>';
+
+    const dados = filtrarAgendamentosRG().map(item => ({...item}));
+    if (typeof aplicarValoresAgendamentosRelatorio === "function") {
+      await aplicarValoresAgendamentosRelatorio(dados, {uid:estadoRG.userId});
+    } else {
+      dados.forEach(item => {
+        item.valorVenda = Number(item.valorVenda || item.valorTotal || 0);
+      });
+    }
+
+    const clientesPorNome = new Map(
+      estadoRG.clientes.map(cliente => [normRG(cliente.nome), cliente])
+    );
+    dados.forEach(item => {
+      const cliente = clientesPorNome.get(normRG(item.clienteNome)) || {};
+      item.cidade = cliente.cidade || cliente.localidade || "";
+      item.uf = cliente.uf || "";
+    });
+    dados.sort((a,b) =>
+      String(a.data || "").localeCompare(String(b.data || "")) ||
+      String(a.produtoNome || "").localeCompare(String(b.produtoNome || ""),"pt-BR") ||
+      String(a.clienteNome || "").localeCompare(String(b.clienteNome || ""),"pt-BR")
+    );
+
+    const totalQtd = dados.reduce((s,item)=>s+Number(item.quantidade||0),0);
+    const totalValor = dados.reduce((s,item)=>s+Number(item.valorVenda||0),0);
+    const totalClientes = new Set(dados.map(item=>normRG(item.clienteNome)).filter(Boolean)).size;
+    const corpo = dados.map(item => {
+      const cidade = [item.cidade,item.uf].filter(Boolean).join(" / ") || "-";
+      return '<tr>'+
+        '<td class="whitespace-nowrap">'+dataBRRG(item.data)+'</td>'+
+        '<td class="font-semibold">'+escRG(item.clienteNome || "-")+'</td>'+
+        '<td>'+escRG(cidade)+'</td>'+
+        '<td>'+escRG(item.produtoNome || "-")+'</td>'+
+        '<td>'+escRG(item.representanteNome || "-")+'</td>'+
+        '<td class="text-right font-bold">'+qtdRG(item.quantidade)+'</td>'+
+        '<td class="text-right whitespace-nowrap">'+moedaRG(item.valorVenda)+'</td>'+
+      '</tr>';
+    }).join("");
+
+    area.innerHTML =
+      '<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">'+
+        '<div class="bg-white p-5"><p class="text-xs uppercase tracking-wider text-gray-500">Quantidade no período</p><strong class="text-2xl text-blue-900">'+qtdRG(totalQtd)+'</strong></div>'+
+        '<div class="bg-white p-5"><p class="text-xs uppercase tracking-wider text-gray-500">Valor total das vendas</p><strong class="text-2xl text-green-700">'+moedaRG(totalValor)+'</strong></div>'+
+        '<div class="bg-white p-5"><p class="text-xs uppercase tracking-wider text-gray-500">Clientes</p><strong class="text-2xl text-blue-900">'+qtdRG(totalClientes)+'</strong></div>'+
+      '</div>'+
+      '<div class="bg-white overflow-hidden">'+
+        '<div class="p-5 border-b"><h3 class="font-bold">Relação de agendamentos por carregamento</h3>'+
+        '<p class="text-sm text-gray-500">Período de '+dataBRRG(estadoRG.inicio)+' a '+dataBRRG(estadoRG.fim)+'.</p></div>'+
+        '<div class="overflow-x-auto"><table><thead><tr>'+
+          '<th>Data</th><th>Cliente</th><th>Cidade</th><th>Produto</th><th>Representante</th>'+
+          '<th class="text-right">Quantidade</th><th class="text-right">Valor</th>'+
+        '</tr></thead><tbody>'+
+          (corpo || '<tr><td colspan="7" class="text-center text-gray-500">Nenhum agendamento encontrado no período.</td></tr>')+
+        '</tbody></table></div>'+
+      '</div>';
+  }
+
   async function calcularInativosRG() {
     const userId = estadoRG.userId;
     const perfil = estadoRG.perfil;
@@ -171,7 +240,7 @@
   }
 
   function imprimirRG() {
-    const titulo = estadoRG.aba === "agendados" ? "Produtos agendados por dia" : "Clientes sem comprar";
+    const titulo = estadoRG.aba === "agendados" ? "Produtos agendados por dia" : (estadoRG.aba === "relacao" ? "Relação de agendamentos por período" : "Clientes sem comprar");
     const conteudo = document.getElementById("relatorio-resultado")?.innerHTML || "";
     const janela = window.open("","","width=1100,height=800");
     if (!janela) return alert("Permita a abertura de janelas para imprimir o relatório.");
@@ -192,7 +261,9 @@
       if(rep) rep.innerHTML=opcoesRG(reps,estadoRG.representante,"Todos os representantes");
       if(prod) prod.innerHTML=opcoesRG(prods,estadoRG.produto,"Todos os produtos");
       const area=document.getElementById("relatorio-resultado");
-      if(estadoRG.aba==="agendados") area.innerHTML=renderAgendadosRG(); else await renderInativosRG();
+      if(estadoRG.aba==="agendados") area.innerHTML=renderAgendadosRG();
+      else if(estadoRG.aba==="relacao") await renderRelacaoRG();
+      else await renderInativosRG();
     } catch(e) {
       console.error("Erro nos relatórios gerenciais:",e);
       document.getElementById("relatorio-resultado").innerHTML='<div class="bg-white p-6 text-red-600">Não foi possível carregar o relatório.</div>';
@@ -214,6 +285,7 @@
     const somenteRepresentante = estadoRG.perfil === "representante";
     pageContent.innerHTML = '<div class="bg-white p-3 flex flex-wrap gap-2 mb-4">'+
       '<button id="rg-tab-agendados" class="px-4 py-2 '+(estadoRG.aba==="agendados"?"bg-blue-700 text-white":"bg-gray-100")+'">Agendamentos realizados</button>'+
+      '<button id="rg-tab-relacao" class="px-4 py-2 '+(estadoRG.aba==="relacao"?"bg-blue-700 text-white":"bg-gray-100")+'">Relação por carregamento</button>'+
       '<button id="rg-tab-inativos" class="px-4 py-2 '+(estadoRG.aba==="inativos"?"bg-blue-700 text-white":"bg-gray-100")+'">Clientes sem comprar</button>'+
       '</div>'+
       '<div class="bg-white p-5 mb-5"><div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">'+
@@ -228,6 +300,7 @@
     document.getElementById("rg-atualizar").onclick=()=>{lerFiltros();atualizarRG();};
     document.getElementById("rg-imprimir").onclick=imprimirRG;
     document.getElementById("rg-tab-agendados").onclick=()=>{lerFiltros();estadoRG.aba="agendados";if(!estadoRG.inicio)estadoRG.inicio=hojeRG();window.renderRelatoriosGerenciais();};
+    document.getElementById("rg-tab-relacao").onclick=()=>{lerFiltros();estadoRG.aba="relacao";if(!estadoRG.inicio)estadoRG.inicio=hojeRG();if(!estadoRG.fim)estadoRG.fim=hojeRG();window.renderRelatoriosGerenciais();};
     document.getElementById("rg-tab-inativos").onclick=()=>{lerFiltros();estadoRG.aba="inativos";estadoRG.inicio="";window.renderRelatoriosGerenciais();};
     await atualizarRG();
     const prod=document.getElementById("rg-wrap-prod"); if(prod) prod.classList.toggle("hidden",estadoRG.aba==="inativos");
