@@ -119,7 +119,7 @@
     URL.revokeObjectURL(url);
   }
 
-  function exportarPdfComissoes() {
+  async function exportarPdfComissoes() {
     if (!window.jspdf?.jsPDF) {
       alert("Gerador de PDF não está disponível.");
       return;
@@ -133,86 +133,152 @@
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const mes = document.getElementById("comissao-mes")?.value || "";
     const status = document.getElementById("comissao-status")?.selectedOptions?.[0]?.textContent || "";
+    const representante = document.getElementById("comissao-representante")?.selectedOptions?.[0]?.textContent || "Representante logado";
     const percentual = Math.max(0, Number(document.getElementById("comissao-percentual")?.value || 0));
     const totalVendas = dadosRelatorioComissao.reduce((soma, grupo) => soma + grupo.total, 0);
+    const totalPedidos = dadosRelatorioComissao.reduce((soma, grupo) => soma + grupo.pedidos.length, 0);
     const totalComissao = totalVendas * percentual / 100;
-    let y = 16;
+    const azul = [31,59,100], laranja = [242,140,40], cinza = [107,114,128], borda = [226,232,240];
+    const emissao = new Date().toLocaleString("pt-BR");
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(17);
-    doc.setTextColor(31, 59, 100);
-    doc.text("Relatório de Vendas e Comissões", 14, y);
-    y += 7;
+    let logo = null;
+    try {
+      if (typeof carregarLogoDataUrl === "function") {
+        logo = await carregarLogoDataUrl();
+      } else {
+        logo = await fetch("img/logo.png").then(resposta => resposta.blob()).then(blob => new Promise((resolve,reject) => {
+          const leitor = new FileReader();
+          leitor.onload = () => resolve(leitor.result);
+          leitor.onerror = reject;
+          leitor.readAsDataURL(blob);
+        }));
+      }
+    } catch (erro) {
+      console.warn("Não foi possível carregar a logomarca no relatório de comissões:", erro);
+    }
+    if (logo) doc.addImage(logo, "PNG", 14, 9, 20, 20);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(70, 70, 70);
-    doc.text(`Mês do carregamento: ${mes || "-"}   |   Pedidos: ${status}   |   Comissão: ${percentual.toLocaleString("pt-BR")}%`, 14, y);
-    y += 6;
-    doc.setFont("helvetica", "bold");
-    doc.text(`Total vendido: ${moeda(totalVendas)}   |   Comissão estimada: ${moeda(totalComissao)}`, 14, y);
-    y += 8;
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(18);
+    doc.setTextColor(...azul);
+    doc.text("Relatório de Vendas e Comissões", logo ? 39 : 14, 17);
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...cinza);
+    doc.text("Conferência mensal de vendas por data de carregamento", logo ? 39 : 14, 23);
+    doc.text("Emitido em "+emissao, 283, 17, {align:"right"});
+    doc.setDrawColor(...azul);
+    doc.setLineWidth(0.5);
+    doc.line(14,32,283,32);
 
+    const filtros = [
+      ["Mês do carregamento", mes || "-", 14, 61],
+      ["Pedidos", status || "-", 78, 52],
+      ["Representante", representante || "Todos", 133, 82],
+      ["Comissão", percentual.toLocaleString("pt-BR")+"%", 218, 65]
+    ];
+    filtros.forEach(([rotulo,valor,x,largura]) => {
+      doc.setFillColor(248,250,252);
+      doc.setDrawColor(...borda);
+      doc.roundedRect(x,36,largura,15,2,2,"FD");
+      doc.setFont("helvetica","bold");
+      doc.setFontSize(7);
+      doc.setTextColor(...cinza);
+      doc.text(rotulo,x+4,41);
+      doc.setFont("helvetica","normal");
+      doc.setFontSize(9);
+      doc.setTextColor(31,41,55);
+      doc.text(doc.splitTextToSize(String(valor),largura-8).slice(0,2),x+4,47);
+    });
+
+    const cards = [
+      ["PEDIDOS", quantidade(totalPedidos), 14, [239,246,255], azul],
+      ["TOTAL VENDIDO", moeda(totalVendas), 105, [248,250,252], azul],
+      ["COMISSÃO ESTIMADA", moeda(totalComissao), 196, [236,253,245], [4,120,87]]
+    ];
+    cards.forEach(([rotulo,valor,x,fundo,texto]) => {
+      doc.setFillColor(...fundo);
+      doc.setDrawColor(...borda);
+      doc.roundedRect(x,56,87,18,2,2,"FD");
+      doc.setFont("helvetica","normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...cinza);
+      doc.text(rotulo,x+4,62);
+      doc.setFont("helvetica","bold");
+      doc.setFontSize(13);
+      doc.setTextColor(...texto);
+      doc.text(String(valor),x+4,70);
+    });
+
+    let y = 82;
     dadosRelatorioComissao.forEach((grupo, indice) => {
-      if (indice > 0 && y > 175) {
+      if (indice > 0 && y > 174) {
         doc.addPage();
         y = 16;
       }
 
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(31, 59, 100);
-      doc.text(grupo.nome, 14, y);
-      doc.setFontSize(9);
-      doc.setTextColor(60, 60, 60);
+      doc.setFillColor(248,250,252);
+      doc.setDrawColor(...borda);
+      doc.roundedRect(14,y-5,269,13,2,2,"FD");
+      doc.setFont("helvetica","bold");
+      doc.setFontSize(11);
+      doc.setTextColor(...azul);
+      doc.text(grupo.nome,18,y);
+      doc.setFont("helvetica","normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...cinza);
       doc.text(
-        `${grupo.pedidos.length} pedido(s) | Vendas: ${moeda(grupo.total)} | Comissão: ${moeda(grupo.total * percentual / 100)}`,
-        14,
-        y + 5
+        grupo.pedidos.length+" pedido(s)  |  Vendas: "+moeda(grupo.total)+"  |  Comissão: "+moeda(grupo.total*percentual/100),
+        18,y+5
       );
 
       doc.autoTable({
-        startY: y + 8,
-        margin: { left: 14, right: 14 },
-        head: [["Carregamento", "Pedido", "Cliente", "Produtos", "Qtd.", "Valor", "Comissão"]],
-        body: grupo.pedidos
-          .slice()
-          .sort((a, b) => b.data - a.data)
-          .map(pedido => [
-            pedido.dataFormatada,
-            pedido.codigo || pedido.id,
-            pedido.clienteNome || "-",
-            pedido.produtosResumo || pedido.produtoNome || "-",
-            quantidade(pedido.quantidade),
-            moeda(pedido.valorVenda),
-            moeda(pedido.valorVenda * percentual / 100)
-          ]),
-        theme: "striped",
-        styles: { fontSize: 7, cellPadding: 1.8, overflow: "linebreak" },
-        headStyles: { fillColor: [31, 59, 100], textColor: 255 },
-        columnStyles: {
-          0: { cellWidth: 20 },
-          1: { cellWidth: 43 },
-          2: { cellWidth: 55 },
-          3: { cellWidth: 60 },
-          4: { cellWidth: 15, halign: "right" },
-          5: { cellWidth: 25, halign: "right" },
-          6: { cellWidth: 25, halign: "right" }
+        startY:y+11,
+        margin:{left:14,right:14,top:16,bottom:17},
+        head:[["Carregamento","Pedido","Cliente","Produtos","Qtd.","Valor","Comissão"]],
+        body:grupo.pedidos.slice().sort((a,b)=>b.data-a.data).map(pedido=>[
+          pedido.dataFormatada,
+          pedido.codigo||pedido.id,
+          pedido.clienteNome||"-",
+          pedido.produtosResumo||pedido.produtoNome||"-",
+          quantidade(pedido.quantidade),
+          moeda(pedido.valorVenda),
+          moeda(pedido.valorVenda*percentual/100)
+        ]),
+        theme:"grid",
+        styles:{font:"helvetica",fontSize:7.2,cellPadding:2,textColor:[55,65,81],lineColor:borda,lineWidth:0.15,valign:"middle",overflow:"linebreak"},
+        headStyles:{fillColor:azul,textColor:[255,255,255],fontStyle:"bold",fontSize:7.5,cellPadding:2.5},
+        alternateRowStyles:{fillColor:[248,250,252]},
+        columnStyles:{
+          0:{cellWidth:21},
+          1:{cellWidth:45},
+          2:{cellWidth:54,fontStyle:"bold"},
+          3:{cellWidth:61},
+          4:{cellWidth:17,halign:"right",fontStyle:"bold"},
+          5:{cellWidth:25,halign:"right"},
+          6:{cellWidth:26,halign:"right",textColor:[4,120,87],fontStyle:"bold"}
         }
       });
-
-      y = Number(doc.lastAutoTable?.finalY || y + 15) + 10;
+      y=Number(doc.lastAutoTable?.finalY||y+15)+11;
     });
 
-    const totalPaginas = doc.internal.getNumberOfPages();
-    for (let pagina = 1; pagina <= totalPaginas; pagina += 1) {
+    const paginas=doc.internal.getNumberOfPages();
+    for(let pagina=1;pagina<=paginas;pagina+=1){
       doc.setPage(pagina);
-      doc.setFontSize(8);
-      doc.setTextColor(110, 110, 110);
-      doc.text(`Página ${pagina} de ${totalPaginas}`, 283, 200, { align: "right" });
+      doc.setDrawColor(...borda);
+      doc.setLineWidth(0.2);
+      doc.line(14,196,283,196);
+      doc.setFont("helvetica","normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(...cinza);
+      doc.text("AgendaCF - Gestão Comercial",14,201);
+      doc.text("Relatório de Vendas e Comissões",148.5,201,{align:"center"});
+      doc.text("Página "+pagina+" de "+paginas,283,201,{align:"right"});
+      doc.setFillColor(...laranja);
+      doc.rect(14,204,269,1,"F");
     }
 
-    doc.save(`relatorio-comissoes-${mes || "periodo"}.pdf`);
+    doc.save("relatorio-comissoes-"+(mes||"periodo")+".pdf");
   }
 
   async function gerarRelatorioComissoes() {
