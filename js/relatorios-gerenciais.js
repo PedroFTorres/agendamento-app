@@ -29,6 +29,7 @@
   };
 
   let estadoRG = { aba:"agendados", inicio:hojeRG(), fim:hojeRG(), representante:"", produto:"", dias:15, agendamentos:[], clientes:[], perfil:"", userId:"" };
+  const cacheCepRG = new Map();
 
   async function confirmarEscopoRG() {
     const user = await waitForAuth();
@@ -148,11 +149,47 @@
       });
     }
 
-    const clientesPorNome = new Map(
-      estadoRG.clientes.map(cliente => [normRG(cliente.nome), cliente])
-    );
+    const clientesPorNome = new Map();
+    estadoRG.clientes.forEach(cliente => {
+      const chave = normRG(cliente.nome);
+      if (!clientesPorNome.has(chave)) clientesPorNome.set(chave, []);
+      clientesPorNome.get(chave).push(cliente);
+    });
+    const clienteDoAgendamento = item => {
+      const candidatos = clientesPorNome.get(normRG(item.clienteNome)) || [];
+      return candidatos.find(cliente => item.representanteUserId && cliente.userId === item.representanteUserId)
+        || candidatos.find(cliente => normRG(cliente.vinculadoPor) === normRG(item.representanteNome))
+        || candidatos[0]
+        || {};
+    };
+
+    const clientesSemCidade = new Map();
     dados.forEach(item => {
-      const cliente = clientesPorNome.get(normRG(item.clienteNome)) || {};
+      const cliente = clienteDoAgendamento(item);
+      const cep = String(cliente.cep || "").replace(/\D/g, "");
+      if (!cliente.cidade && !cliente.localidade && cep.length === 8) {
+        clientesSemCidade.set(cliente.id || cep, cliente);
+      }
+    });
+    await Promise.all([...clientesSemCidade.values()].map(async cliente => {
+      const cep = String(cliente.cep || "").replace(/\D/g, "");
+      try {
+        let enderecoCep = cacheCepRG.get(cep);
+        if (!enderecoCep) {
+          const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+          enderecoCep = await resposta.json();
+          if (!resposta.ok || enderecoCep.erro) enderecoCep = {};
+          cacheCepRG.set(cep, enderecoCep);
+        }
+        cliente.cidade = cliente.cidade || enderecoCep.localidade || "";
+        cliente.uf = cliente.uf || enderecoCep.uf || "";
+      } catch (erro) {
+        console.warn("Não foi possível completar a cidade pelo CEP:", cep, erro);
+      }
+    }));
+
+    dados.forEach(item => {
+      const cliente = clienteDoAgendamento(item);
       item.cidade = cliente.cidade || cliente.localidade || "";
       item.uf = cliente.uf || "";
     });
