@@ -205,8 +205,7 @@ function formatarDataISO(data) {
 // ================== FORMULÁRIOS ==================
 function formHTML(type) {
   if (type === "clientes") {
-   if (PERFIL === "representante") {
-      return `
+    return `
         <button id="btn-abrir-modal-cliente" type="button" class="w-full md:w-auto text-white p-2 rounded" style="background-color: #E67E22;">+ Novo Cliente</button>
 
         <div id="modal-cliente" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 p-0 md:p-4">
@@ -238,23 +237,6 @@ function formHTML(type) {
           <input type="file" id="import-clientes" accept=".xlsx" class="border p-2 rounded w-full">
         </div>
       `;
-    }
-    return `
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <input id="clientes-nome" class="border p-2 rounded" placeholder="Nome do cliente" required>
-        <input id="clientes-whatsapp" class="border p-2 rounded" placeholder="WhatsApp (ex: 98991234567)">
-        <input id="clientes-cnpj" class="border p-2 rounded" placeholder="CNPJ">
-<input id="clientes-ie" class="border p-2 rounded" placeholder="Inscrição Estadual">
-<input id="clientes-cep" class="border p-2 rounded" placeholder="CEP">
-        
-      </div>
-      <button class="bg-blue-600 text-white p-2 rounded mt-3">Salvar</button>
-
-      <div class="mt-4">
-        <label class="block text-sm font-medium mb-1">Importar Clientes de Planilha (.xlsx)</label>
-        <input type="file" id="import-clientes" accept=".xlsx" class="border p-2 rounded w-full">
-      </div>
-    `;
   }
   if (type === "representantes") {
     return `
@@ -298,7 +280,6 @@ function formHTML(type) {
   `;
 }
 function bindModalNovoClienteRepresentante() {
-  if (PERFIL !== "representante") return;
 
   const modal = document.getElementById("modal-cliente");
   const abrir = document.getElementById("btn-abrir-modal-cliente");
@@ -602,6 +583,13 @@ if (type === "clientes") {
 <input id="edit-ie" class="border p-2 rounded" value="${d.ie || ""}" placeholder="Inscrição Estadual">
 
 <input id="edit-cep" class="border p-2 rounded" value="${d.cep || ""}" placeholder="CEP">
+<input id="edit-endereco" class="border p-2 rounded" value="${d.endereco || ""}" placeholder="Endereço (logradouro)">
+<input id="edit-numero" class="border p-2 rounded" value="${d.numero || ""}" placeholder="Número">
+<input id="edit-bairro" class="border p-2 rounded" value="${d.bairro || ""}" placeholder="Bairro">
+<input id="edit-cidade" class="border p-2 rounded" value="${d.cidade || d.localidade || ""}" placeholder="Cidade">
+<input id="edit-uf" class="border p-2 rounded" maxlength="2" value="${d.uf || ""}" placeholder="UF">
+<input id="edit-complemento" class="border p-2 rounded" value="${d.complemento || ""}" placeholder="Complemento (opcional)">
+<p id="edit-cep-help" class="text-xs text-gray-500"></p>
           ${PERFIL === "admin" ? `
 <select id="edit-user" class="border p-2 rounded"></select>
 <label class="flex items-center gap-2 border border-red-200 bg-red-50 p-3 rounded">
@@ -625,6 +613,13 @@ if (type === "clientes") {
 const cnpjInput = modal.querySelector("#edit-cnpj");
 const cepInput = modal.querySelector("#edit-cep");
 const ieInput = modal.querySelector("#edit-ie");
+const editEndereco = modal.querySelector("#edit-endereco");
+const editNumero = modal.querySelector("#edit-numero");
+const editBairro = modal.querySelector("#edit-bairro");
+const editCidade = modal.querySelector("#edit-cidade");
+const editUf = modal.querySelector("#edit-uf");
+const editComplemento = modal.querySelector("#edit-complemento");
+const editCepHelp = modal.querySelector("#edit-cep-help");
 
 // 👉 AGORA SIM pode usar
 cnpjInput?.addEventListener("input", (e) => {
@@ -654,6 +649,31 @@ cepInput?.addEventListener("input", (e) => {
 // IE
 ieInput?.addEventListener("input", (e) => {
   e.target.value = e.target.value.replace(/\D/g, "");
+});
+editUf?.addEventListener("input", (e) => {
+  e.target.value = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2);
+});
+cepInput?.addEventListener("blur", async () => {
+  const cepLimpo = (cepInput.value || "").replace(/\D/g, "");
+  if (cepLimpo.length !== 8) return;
+  try {
+    if (editCepHelp) editCepHelp.textContent = "Buscando endereço pelo CEP...";
+    const resp = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+    const dadosCep = await resp.json();
+    if (!resp.ok || dadosCep.erro) {
+      if (editCepHelp) editCepHelp.textContent = "CEP não encontrado. Confira ou preencha o endereço manualmente.";
+      return;
+    }
+    editEndereco.value = dadosCep.logradouro || editEndereco.value || "";
+    editBairro.value = dadosCep.bairro || editBairro.value || "";
+    editCidade.value = dadosCep.localidade || editCidade.value || "";
+    editUf.value = (dadosCep.uf || editUf.value || "").toUpperCase();
+    editComplemento.value = dadosCep.complemento || editComplemento.value || "";
+    if (editCepHelp) editCepHelp.textContent = "Endereço atualizado pelo CEP. Confira antes de salvar.";
+  } catch (erro) {
+    console.error("Erro ao consultar CEP na edição:", erro);
+    if (editCepHelp) editCepHelp.textContent = "Não foi possível consultar o CEP. Preencha o endereço manualmente.";
+  }
 });
 
 
@@ -688,6 +708,12 @@ const whatsapp = $whats.value.trim();
 const cnpj = normalizarDocumento(modal.querySelector("#edit-cnpj").value);
 const ie = modal.querySelector("#edit-ie").value.trim();
 const cep = modal.querySelector("#edit-cep").value.trim();
+const endereco = editEndereco.value.trim();
+const numero = editNumero.value.trim();
+const bairro = editBairro.value.trim();
+const cidade = editCidade.value.trim();
+const uf = editUf.value.trim().toUpperCase();
+const complemento = editComplemento.value.trim();
       // 🔒 VALIDAÇÃO
 if (PERFIL === "representante") {
   if (!nome || !whatsapp || !cnpj || !cep) {
@@ -702,7 +728,13 @@ if (PERFIL === "representante") {
   whatsapp,
   cnpj,
   ie,
-  cep
+  cep,
+  endereco,
+  numero,
+  bairro,
+  cidade,
+  uf,
+  complemento
 };
 
 if (PERFIL === "admin") {
