@@ -276,13 +276,63 @@
       '<div class="bg-white overflow-hidden"><div class="p-5 border-b"><h3 class="font-bold">Clientes sem comprar</h3><p class="text-sm text-gray-500">Posição calculada até '+dataBRRG(estadoRG.fim)+'.</p></div><div class="overflow-x-auto"><table><thead><tr><th>Cliente</th><th>Representante</th><th>WhatsApp</th><th>Última compra</th><th>Último produto</th><th class="text-right">Dias sem comprar</th></tr></thead><tbody>'+(corpo || '<tr><td colspan="6" class="text-center text-gray-500">Nenhum cliente inativo encontrado.</td></tr>')+'</tbody></table></div></div>';
   }
 
-  function imprimirRG() {
-    const titulo = estadoRG.aba === "agendados" ? "Produtos agendados por dia" : (estadoRG.aba === "relacao" ? "Relação de agendamentos por período" : "Clientes sem comprar");
+  async function imprimirRG() {
+    const titulo = estadoRG.aba === "agendados"
+      ? "Produtos agendados por dia"
+      : (estadoRG.aba === "relacao" ? "Relação de agendamentos por período" : "Clientes sem comprar");
     const conteudo = document.getElementById("relatorio-resultado")?.innerHTML || "";
     const janela = window.open("","","width=1100,height=800");
     if (!janela) return alert("Permita a abertura de janelas para imprimir o relatório.");
-    janela.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+titulo+'</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Arial;color:#172033;font-size:11px}h1{color:#102a4c}table{width:100%;border-collapse:collapse}th{background:#102a4c;color:white;text-align:left;padding:7px}td{border-bottom:1px solid #ddd;padding:7px}.grid{display:flex;gap:12px}.bg-white{border:1px solid #ddd;padding:10px;margin-bottom:10px}.text-right{text-align:right}.font-bold,.font-semibold,strong{font-weight:700}.text-gray-500{color:#667085}.text-red-600{color:#c33}button{display:none}</style></head><body><h1>'+titulo+'</h1><p>Período: '+dataBRRG(estadoRG.inicio)+' a '+dataBRRG(estadoRG.fim)+'</p>'+conteudo+'</body></html>');
-    janela.document.close(); janela.onload=()=>setTimeout(()=>janela.print(),200);
+
+    let logo = "";
+    try {
+      logo = await fetch("img/logo.png")
+        .then(resposta => resposta.blob())
+        .then(blob => new Promise((resolve,reject) => {
+          const leitor = new FileReader();
+          leitor.onload = () => resolve(leitor.result);
+          leitor.onerror = reject;
+          leitor.readAsDataURL(blob);
+        }));
+    } catch (erro) {
+      console.warn("Não foi possível carregar a logomarca para impressão:", erro);
+    }
+
+    const periodo = estadoRG.inicio && estadoRG.fim
+      ? dataBRRG(estadoRG.inicio)+" a "+dataBRRG(estadoRG.fim)
+      : (estadoRG.fim ? "Até "+dataBRRG(estadoRG.fim) : "Todos os períodos");
+    const emitido = new Date().toLocaleString("pt-BR");
+    const cabecalho =
+      '<header class="cabecalho-impressao">'+
+        (logo ? '<img src="'+logo+'" alt="Logomarca AgendaCF">' : '')+
+        '<div class="marca"><strong>AgendaCF</strong><span>GESTÃO COMERCIAL</span></div>'+
+        '<div class="titulo-relatorio"><h1>'+escRG(titulo)+'</h1><p>Período: '+escRG(periodo)+'</p></div>'+
+        '<div class="emissao">Emitido em<br><strong>'+escRG(emitido)+'</strong></div>'+
+      '</header><div class="linha-marca"></div>';
+    const rodape =
+      '<footer><span>AgendaCF — Gestão Comercial</span><span>'+escRG(titulo)+'</span></footer>';
+
+    janela.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>'+escRG(titulo)+'</title><style>'+
+      '@page{size:A4 landscape;margin:12mm 12mm 16mm}*{box-sizing:border-box}'+
+      'body{font-family:Arial,Helvetica,sans-serif;color:#1f2937;font-size:10px;margin:0;background:#fff}'+
+      '.cabecalho-impressao{display:flex;align-items:center;gap:10px;min-height:25mm;padding-bottom:5mm}'+
+      '.cabecalho-impressao img{width:20mm;height:20mm;object-fit:contain}'+
+      '.marca{display:flex;flex-direction:column;color:#1f3b64;min-width:32mm}.marca strong{font-size:17px}.marca span{font-size:7px;letter-spacing:1.5px;margin-top:2px}'+
+      '.titulo-relatorio{flex:1;border-left:1px solid #dbe3ee;padding-left:10mm}.titulo-relatorio h1{font-size:18px;color:#1f3b64;margin:0 0 3px}.titulo-relatorio p{color:#6b7280;margin:0;font-size:9px}'+
+      '.emissao{text-align:right;color:#6b7280;font-size:8px;line-height:1.5}.emissao strong{color:#374151}'+
+      '.linha-marca{height:2px;background:linear-gradient(90deg,#1f3b64 0 82%,#f28c28 82% 100%);margin-bottom:5mm}'+
+      'h1,h2,h3{color:#1f3b64}table{width:100%;border-collapse:collapse;page-break-inside:auto}thead{display:table-header-group}tr{page-break-inside:avoid}'+
+      'th{background:#1f3b64!important;color:#fff!important;text-align:left;padding:6px;font-size:8px;text-transform:uppercase;letter-spacing:.3px}'+
+      'td{border-bottom:1px solid #dfe6ef;padding:6px;vertical-align:top}tbody tr:nth-child(even){background:#f8fafc}'+
+      '.grid{display:flex;gap:10px}.grid>div{flex:1}.bg-white{border:1px solid #dbe3ee;border-radius:5px;padding:9px;margin-bottom:9px}'+
+      '.p-5,.p-6,.p-8{padding:9px}.mb-5{margin-bottom:10px}.border-b{border-bottom:1px solid #dbe3ee}.overflow-x-auto{overflow:visible}'+
+      '.text-right{text-align:right}.font-bold,.font-semibold,strong{font-weight:700}.text-2xl{font-size:17px}.text-blue-900{color:#1f3b64}.text-green-700{color:#047857}'+
+      '.text-gray-500{color:#6b7280}.text-red-600{color:#c53030}.uppercase{text-transform:uppercase}.tracking-wider{letter-spacing:.5px}.whitespace-nowrap{white-space:nowrap}button{display:none}'+
+      'footer{position:fixed;left:0;right:0;bottom:-10mm;border-top:1px solid #dbe3ee;padding-top:3mm;display:flex;justify-content:space-between;color:#6b7280;font-size:7.5px}'+
+      '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'+
+      '</style></head><body>'+cabecalho+'<main>'+conteudo+'</main>'+rodape+'</body></html>');
+    janela.document.close();
+    janela.onload=()=>setTimeout(()=>janela.print(),250);
   }
 
   async function atualizarRG() {
