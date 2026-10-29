@@ -1193,5 +1193,6 @@ async function excluirPedidoCompleto(id) {
 }
 // Garante disponibilidade global para chamadas vindas de outros scripts.
 window.imprimirPedidoPdf = imprimirPedidoPdf;
+window.editarPedidoAprovado = editarPedidoAprovado;
 window.abrirModalDetalhesPedido = abrirModalDetalhesPedido;
 window.abrirWhatsappPedidoAtualizado = abrirWhatsappPedidoAtualizado;
