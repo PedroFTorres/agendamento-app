@@ -280,7 +280,6 @@
     const registrarVinculoPedido = async (orcamento, pedidoId, pedidoCodigo) => {
       return db.runTransaction(async transacao => {
         const orcamentoRef = db.collection(COLECAO_ORCAMENTOS).doc(orcamento.id);
-        const pedidoRef = db.collection("pedidos").doc(pedidoId);
         const snap = await transacao.get(orcamentoRef);
         if (!snap.exists) throw new Error("Orçamento não encontrado.");
         const dadosAtuais = snap.data() || {};
@@ -299,10 +298,6 @@
           vinculadoEm:agora,
           updatedAt:firebase.firestore.FieldValue.serverTimestamp()
         });
-        transacao.set(pedidoRef,{
-          orcamentoId:orcamento.id,
-          orcamentoCodigo:orcamento.codigo || ""
-        },{merge:true});
         return true;
       });
     };
@@ -464,7 +459,9 @@
           console.error("Erro ao vincular orçamento:",erro);
           confirmar.disabled=false;
           confirmar.textContent="Confirmar vínculo";
-          alert("Não foi possível vincular o orçamento ao pedido.");
+          alert(erro?.code === "permission-denied"
+            ? "O Firebase não permitiu atualizar este orçamento. Atualize a página e confirme se o orçamento foi criado pelo seu usuário."
+            : "Não foi possível vincular o orçamento ao pedido.");
         }
       };
       if(select.options.length) select.selectedIndex=0;
