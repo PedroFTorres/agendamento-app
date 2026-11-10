@@ -457,7 +457,7 @@
         linha.querySelectorAll(".orc-quantidade,.orc-preco").forEach(input => input.oninput = atualizarTotais);
         linha.querySelector(".orc-remover").onclick = () => { linha.remove(); if (!itensEl.children.length) adicionarItem(); atualizarTotais(); };
       };
-      modal.querySelector("#orc-cliente").value = orcamentoEditando?.clienteId || "";
+      modal.querySelector("#orc-cliente").value = orcamentoEditando?.clienteId || clientes.find(cliente => cliente.nome === orcamentoEditando?.clienteNome)?.id || "";
       modal.querySelector("#orc-pagamento").value = orcamentoEditando?.formaPagamento || "À vista";
       if (orcamentoEditando?.itens?.length) orcamentoEditando.itens.forEach(item => adicionarItem(item));
       else adicionarItem();
@@ -519,8 +519,17 @@
     let query = db.collection(COLECAO_ORCAMENTOS);
     if (PERFIL === "representante") query = query.where("criadoPor", "==", user.uid);
     unsubscribeOrcamentos = query.onSnapshot(snapshot => {
-      orcamentos = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
-        .sort((a, b) => Number(b.createdAt?.seconds || 0) - Number(a.createdAt?.seconds || 0));
+      orcamentos = snapshot.docs.map(doc => {
+        const dados = doc.data() || {};
+        const cliente = clientes.find(item => item.id === dados.clienteId)
+          || clientes.find(item => item.nome === dados.clienteNome);
+        return {
+          id:doc.id,
+          ...dados,
+          representanteNome:cliente?.vinculadoPor || dados.representanteNome || "Administrativo",
+          representanteUserId:cliente?.userId || dados.representanteUserId || ""
+        };
+      }).sort((a, b) => Number(b.createdAt?.seconds || 0) - Number(a.createdAt?.seconds || 0));
       renderLista();
     }, erro => {
       console.error(erro);
