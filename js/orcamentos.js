@@ -261,6 +261,144 @@
     document.getElementById("orc-busca").oninput = renderLista;
     document.getElementById("orc-filtro-status").onchange = renderLista;
 
+    const clienteAtualDoOrcamento = async (orcamento) => {
+      if (orcamento.clienteId) {
+        const snap = await db.collection("clientes").doc(orcamento.clienteId).get();
+        if (snap.exists) return {id:snap.id,...(snap.data() || {})};
+      }
+      return clientes.find(cliente => cliente.nome === orcamento.clienteNome) || null;
+    };
+
+    const registrarVinculoPedido = async (orcamento, pedidoId, pedidoCodigo) => {
+      const lote = db.batch();
+      lote.update(db.collection(COLECAO_ORCAMENTOS).doc(orcamento.id), {
+        pedidoId,
+        pedidoCodigo,
+        convertidoEmPedido: true,
+        vinculadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      lote.set(db.collection("pedidos").doc(pedidoId), {
+        orcamentoId: orcamento.id,
+        orcamentoCodigo: orcamento.codigo || ""
+      }, {merge:true});
+      await lote.commit();
+    };
+
+    const transformarOrcamentoEmPedido = async (orcamento) => {
+      if (orcamento.pedidoId) return alert("Este orçamento já está vinculado ao pedido "+(orcamento.pedidoCodigo || orcamento.pedidoId)+".");
+      if (!confirm("Criar um novo pedido pendente com os dados deste orçamento?")) return;
+      const cliente = await clienteAtualDoOrcamento(orcamento);
+      if (!cliente) return alert("O cliente deste orçamento não foi encontrado no cadastro.");
+      if (cliente.bloqueado === true) {
+        const motivo = cliente.motivoBloqueio ? " Motivo: "+cliente.motivoBloqueio : "";
+        return alert("Este cliente está bloqueado para novos pedidos."+motivo);
+      }
+      const itens = (orcamento.itens || []).map(item => ({
+        produtoNome:item.produtoNome || "",
+        quantidade:Number(item.quantidade || 0),
+        precoNegociado:Number(item.precoUnitario || 0),
+        precoUnitario:Number(item.precoUnitario || 0),
+        valorTotal:Number(item.valorTotal || (Number(item.quantidade || 0)*Number(item.precoUnitario || 0))),
+        precoOrigem:"orcamento",
+        precoManual:true
+      })).filter(item => item.produtoNome && item.quantidade > 0);
+      if (!itens.length) return alert("O orçamento não possui itens válidos para criar o pedido.");
+      const codigo = await codigoNovoPedidoDoOrcamento();
+      const quantidade = itens.reduce((total,item)=>total+item.quantidade,0);
+      const pedido = {
+        codigo,
+        userId:user.uid,
+        criadoPor:user.uid,
+        representanteUserId:cliente.userId || orcamento.representanteUserId || "",
+        representanteNome:cliente.vinculadoPor || orcamento.representanteNome || "Administrativo",
+        clienteNome:cliente.nome || orcamento.clienteNome || "",
+        clienteCnpj:cliente.cnpj || orcamento.clienteCnpj || "",
+        clienteWhatsapp:cliente.whatsapp || orcamento.clienteWhatsapp || "",
+        clienteIe:cliente.ie || "",
+        clienteEndereco:cliente.endereco || "",
+        clienteNumero:cliente.numero || "",
+        clienteBairro:cliente.bairro || "",
+        clienteCidade:cliente.cidade || "",
+        clienteUf:cliente.uf || "",
+        produtoNome:itens[0]?.produtoNome || "",
+        produtosResumo:itens.map(item=>item.produtoNome+" ("+quantidadeOrcamento(item.quantidade)+")").join(", "),
+        itens,
+        prazoPagamento:orcamento.formaPagamento || "",
+        observacao:orcamento.observacao || "",
+        quantidade,
+        representanteNomeOrcamento:orcamento.representanteNome || "",
+        orcamentoId:orcamento.id,
+        orcamentoCodigo:orcamento.codigo || "",
+        status:"pendente",
+        criadoPorAdmin:PERFIL === "admin",
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      };
+      try {
+        const ref = await db.collection("pedidos").add(pedido);
+        await registrarVinculoPedido(orcamento,ref.id,codigo);
+        try {
+          const admins = await db.collection("usuarios").where("perfil","==","admin").get();
+          await Promise.all(admins.docs.map(doc=>(doc.data()||{}).uid || doc.id).filter(Boolean).map(uid=>
+            db.collection("notificacoes").add({
+              userId:uid,
+              pedidoId:codigo,
+              texto:"Novo pedido "+codigo+" criado a partir do orçamento "+(orcamento.codigo || ""),
+              lida:false,
+              createdAt:firebase.firestore.FieldValue.serverTimestamp()
+            })
+          ));
+        } catch (erroNotificacao) {
+          console.warn("Pedido criado, mas a notificação não pôde ser enviada.",erroNotificacao);
+        }
+        alert("Pedido "+codigo+" criado como pendente e vinculado ao orçamento.");
+      } catch (erro) {
+        console.error("Erro ao transformar orçamento em pedido:",erro);
+        alert("Não foi possível criar o pedido a partir do orçamento.");
+      }
+    };
+
+    const abrirVinculoPedido = async (orcamento) => {
+      if (orcamento.pedidoId) return alert("Este orçamento já está vinculado ao pedido "+(orcamento.pedidoCodigo || orcamento.pedidoId)+".");
+      const snap = await db.collection("pedidos").where("clienteNome","==",orcamento.clienteNome).get();
+      const pedidos = snap.docs.map(doc=>({id:doc.id,...(doc.data()||{})}))
+        .filter(pedido => PERFIL !== "representante" || (pedido.criadoPor ? pedido.criadoPor === user.uid : pedido.userId === user.uid))
+        .sort((a,b)=>Number(b.createdAt?.seconds||0)-Number(a.createdAt?.seconds||0));
+      if (!pedidos.length) return alert("Não foi encontrado nenhum pedido acessível deste cliente para vincular.");
+
+      const modal = document.createElement("div");
+      modal.className = "fixed inset-0 bg-black bg-opacity-50 z-50 p-3 overflow-y-auto";
+      modal.innerHTML = `<div class="bg-white max-w-2xl mx-auto my-10 rounded-xl shadow-xl overflow-hidden">
+        <div class="px-5 py-4 text-white flex justify-between items-center" style="background:#1f3b64"><div><h3 class="text-lg font-bold">Vincular orçamento a um pedido</h3><p class="text-xs text-blue-100">${escOrcamento(orcamento.clienteNome)}</p></div><button class="vinc-fechar text-2xl">&times;</button></div>
+        <div class="p-5 space-y-3">
+          <input id="vinc-busca" class="border p-2 rounded w-full" placeholder="Pesquisar número, produto ou situação">
+          <select id="vinc-pedido" size="9" class="border p-2 rounded w-full">${pedidos.map(p=>`<option value="${escOrcamento(p.id)}">${escOrcamento(p.codigo || p.id)} • ${escOrcamento(p.produtosResumo || p.produtoNome || "Sem produto")} • ${escOrcamento(p.status || "-")}</option>`).join("")}</select>
+          <p class="text-xs text-gray-500">Somente pedidos deste cliente e permitidos para o usuário atual são apresentados.</p>
+        </div>
+        <div class="p-4 border-t bg-gray-50 flex justify-end gap-2"><button class="vinc-fechar bg-gray-500 text-white px-4 py-2 rounded">Cancelar</button><button id="vinc-confirmar" class="bg-orange-500 text-white px-4 py-2 rounded">Vincular pedido</button></div>
+      </div>`;
+      document.body.appendChild(modal);
+      modal.querySelectorAll(".vinc-fechar").forEach(botao=>botao.onclick=()=>modal.remove());
+      const select=modal.querySelector("#vinc-pedido");
+      modal.querySelector("#vinc-busca").oninput=(evento)=>{
+        const termo=String(evento.target.value||"").toLowerCase();
+        [...select.options].forEach(opcao=>opcao.hidden=termo && !opcao.textContent.toLowerCase().includes(termo));
+      };
+      modal.querySelector("#vinc-confirmar").onclick=async()=>{
+        const pedido=pedidos.find(item=>item.id===select.value);
+        if(!pedido) return alert("Selecione o pedido que será vinculado.");
+        if(!confirm("Vincular o orçamento "+(orcamento.codigo||"")+" ao pedido "+(pedido.codigo||pedido.id)+"?")) return;
+        try{
+          await registrarVinculoPedido(orcamento,pedido.id,pedido.codigo||pedido.id);
+          modal.remove();
+          alert("Orçamento vinculado ao pedido "+(pedido.codigo||pedido.id)+".");
+        }catch(erro){
+          console.error("Erro ao vincular orçamento:",erro);
+          alert("Não foi possível vincular o orçamento ao pedido.");
+        }
+      };
+    };
+
     const abrirNovo = (orcamentoEditando = null) => {
       const modal = document.createElement("div");
       modal.className = "fixed inset-0 bg-black bg-opacity-50 z-50 p-2 md:p-4 overflow-y-auto";
