@@ -370,34 +370,79 @@
       const modal = document.createElement("div");
       modal.className = "fixed inset-0 bg-black bg-opacity-50 z-50 p-3 overflow-y-auto";
       modal.innerHTML = `<div class="bg-white max-w-2xl mx-auto my-10 rounded-xl shadow-xl overflow-hidden">
-        <div class="px-5 py-4 text-white flex justify-between items-center" style="background:#1f3b64"><div><h3 class="text-lg font-bold">Vincular orçamento a um pedido</h3><p class="text-xs text-blue-100">${escOrcamento(orcamento.clienteNome)}</p></div><button class="vinc-fechar text-2xl">&times;</button></div>
-        <div class="p-5 space-y-3">
-          <input id="vinc-busca" class="border p-2 rounded w-full" placeholder="Pesquisar número, produto ou situação">
-          <select id="vinc-pedido" size="9" class="border p-2 rounded w-full">${pedidos.map(p=>`<option value="${escOrcamento(p.id)}">${escOrcamento(p.codigo || p.id)} • ${escOrcamento(p.produtosResumo || p.produtoNome || "Sem produto")} • ${escOrcamento(p.status || "-")}</option>`).join("")}</select>
-          <p class="text-xs text-gray-500">Somente pedidos deste cliente e permitidos para o usuário atual são apresentados.</p>
+        <div class="px-5 py-4 text-white flex justify-between items-center" style="background:#1f3b64">
+          <div><h3 class="text-lg font-bold">Vincular orçamento a um pedido</h3><p class="text-xs text-blue-100">${escOrcamento(orcamento.clienteNome)}</p></div>
+          <button type="button" class="vinc-fechar text-2xl" style="color:#fff;background:transparent;border:0">&times;</button>
         </div>
-        <div class="p-4 border-t bg-gray-50 flex justify-end gap-2"><button class="vinc-fechar bg-gray-500 text-white px-4 py-2 rounded">Cancelar</button><button id="vinc-confirmar" class="bg-orange-500 text-white px-4 py-2 rounded">Vincular pedido</button></div>
+        <div class="p-5 space-y-3">
+          <label class="block"><span class="font-semibold text-sm block mb-1">Localizar pedido</span><input id="vinc-busca" class="border p-2 rounded w-full" placeholder="Pesquisar número, produto ou situação"></label>
+          <label class="block"><span class="font-semibold text-sm block mb-1">Selecione o pedido *</span><select id="vinc-pedido" size="6" class="border p-2 rounded w-full">${pedidos.map(p=>`<option value="${escOrcamento(p.id)}">${escOrcamento(p.codigo || p.id)} • ${escOrcamento(p.produtosResumo || p.produtoNome || "Sem produto")} • ${escOrcamento(p.status || "-")}</option>`).join("")}</select></label>
+          <div id="vinc-resumo" class="border border-blue-200 bg-blue-50 rounded-lg p-4"></div>
+          <p class="text-xs text-gray-500">Confira os dados acima. O vínculo não altera nem aprova o pedido.</p>
+        </div>
+        <div class="p-4 border-t bg-gray-50 flex flex-col-reverse sm:flex-row justify-end gap-2">
+          <button type="button" class="vinc-fechar px-4 py-2 rounded" style="background:#6b7280;color:#fff;border:0">Cancelar</button>
+          <button type="button" id="vinc-confirmar" class="px-5 py-2 rounded font-semibold" style="background:#f28c28;color:#fff;border:0;box-shadow:0 3px 8px rgba(242,140,40,.25)">Confirmar vínculo</button>
+        </div>
       </div>`;
       document.body.appendChild(modal);
       modal.querySelectorAll(".vinc-fechar").forEach(botao=>botao.onclick=()=>modal.remove());
       const select=modal.querySelector("#vinc-pedido");
-      modal.querySelector("#vinc-busca").oninput=(evento)=>{
-        const termo=String(evento.target.value||"").toLowerCase();
-        [...select.options].forEach(opcao=>opcao.hidden=termo && !opcao.textContent.toLowerCase().includes(termo));
+      const resumo=modal.querySelector("#vinc-resumo");
+      const confirmar=modal.querySelector("#vinc-confirmar");
+
+      const atualizarResumo=()=>{
+        const pedido=pedidos.find(item=>item.id===select.value);
+        if(!pedido){
+          resumo.innerHTML='<p class="text-gray-500">Selecione um pedido na lista.</p>';
+          confirmar.disabled=true;
+          confirmar.style.opacity=".5";
+          return;
+        }
+        const dataPedido=pedido.dataAgendada || pedido.data || pedido.dataCarregamento || "";
+        resumo.innerHTML=`<div class="text-xs uppercase tracking-wide text-blue-700 mb-1">Pedido selecionado</div>
+          <div class="font-bold text-lg text-blue-900">${escOrcamento(pedido.codigo || pedido.id)}</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-sm">
+            <div><span class="text-gray-500 block">Produtos</span><strong>${escOrcamento(pedido.produtosResumo || pedido.produtoNome || "-")}</strong></div>
+            <div><span class="text-gray-500 block">Quantidade</span><strong>${quantidadeOrcamento(pedido.quantidade || 0)}</strong></div>
+            <div><span class="text-gray-500 block">Situação</span><strong>${escOrcamento(pedido.status || "-")}</strong></div>
+            <div><span class="text-gray-500 block">Data</span><strong>${escOrcamento(dataBR(dataPedido))}</strong></div>
+          </div>`;
+        confirmar.disabled=false;
+        confirmar.style.opacity="1";
       };
-      modal.querySelector("#vinc-confirmar").onclick=async()=>{
+
+      select.onchange=atualizarResumo;
+      select.ondblclick=()=>confirmar.click();
+      modal.querySelector("#vinc-busca").oninput=(evento)=>{
+        const termo=String(evento.target.value||"").toLowerCase().trim();
+        const visiveis=[...select.options].filter(opcao=>{
+          const exibir=!termo || opcao.textContent.toLowerCase().includes(termo);
+          opcao.hidden=!exibir;
+          return exibir;
+        });
+        if(visiveis.length && (select.selectedOptions[0]?.hidden || !select.value)) select.value=visiveis[0].value;
+        atualizarResumo();
+      };
+      confirmar.onclick=async()=>{
         const pedido=pedidos.find(item=>item.id===select.value);
         if(!pedido) return alert("Selecione o pedido que será vinculado.");
-        if(!confirm("Vincular o orçamento "+(orcamento.codigo||"")+" ao pedido "+(pedido.codigo||pedido.id)+"?")) return;
+        if(!confirm("Confirmar o vínculo do orçamento "+(orcamento.codigo||"")+" com o pedido "+(pedido.codigo||pedido.id)+"?")) return;
+        confirmar.disabled=true;
+        confirmar.textContent="Vinculando...";
         try{
           await registrarVinculoPedido(orcamento,pedido.id,pedido.codigo||pedido.id);
           modal.remove();
           alert("Orçamento vinculado ao pedido "+(pedido.codigo||pedido.id)+".");
         }catch(erro){
           console.error("Erro ao vincular orçamento:",erro);
+          confirmar.disabled=false;
+          confirmar.textContent="Confirmar vínculo";
           alert("Não foi possível vincular o orçamento ao pedido.");
         }
       };
+      if(select.options.length) select.selectedIndex=0;
+      atualizarResumo();
     };
 
     const abrirNovo = (orcamentoEditando = null) => {
