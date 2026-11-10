@@ -54,6 +54,13 @@
     return `ORC-${agora.getFullYear()}${pad(agora.getMonth() + 1)}${pad(agora.getDate())}-${pad(agora.getHours())}${pad(agora.getMinutes())}${pad(agora.getSeconds())}-${pad(Math.floor(Math.random() * 100))}`;
   };
 
+  const codigoNovoPedidoDoOrcamento = async () => {
+    if (typeof gerarCodigoPedidoUnico === "function") return gerarCodigoPedidoUnico();
+    const agora = new Date();
+    const pad = (n, t = 2) => String(n).padStart(t, "0");
+    return `PED-${agora.getFullYear()}${pad(agora.getMonth()+1)}${pad(agora.getDate())}-${pad(agora.getHours())}${pad(agora.getMinutes())}${pad(agora.getSeconds())}${pad(agora.getMilliseconds(),3)}-${pad(Math.floor(Math.random()*100))}`;
+  };
+
   const obterCampoPreco = (prazo) => {
     const chave = String(prazo || "").toLowerCase();
     if (chave.includes("10")) return "preco10Dias";
@@ -224,35 +231,53 @@
               <div class="text-sm text-gray-600">${(item.itens || []).length} item(ns) - ${quantidadeOrcamento(item.quantidadeTotal)} unidades - validade ${escOrcamento(dataBR(item.validade))}</div>
               <div class="font-bold text-green-700 mt-1">${moedaOrcamento(item.valorTotal)}</div>
             </div>
-            <button data-pdf="${escOrcamento(item.id)}" class="bg-blue-700 text-white px-4 py-2 rounded">Gerar PDF</button>
+            <div class="flex flex-wrap gap-2 justify-end">
+              <button data-editar="${escOrcamento(item.id)}" class="border border-blue-700 text-blue-700 px-3 py-2 rounded">Editar</button>
+              <button data-pdf="${escOrcamento(item.id)}" class="bg-blue-700 text-white px-3 py-2 rounded">Gerar PDF</button>
+              ${item.pedidoCodigo
+                ? `<span class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded text-sm">Pedido ${escOrcamento(item.pedidoCodigo)}</span>`
+                : `<button data-converter="${escOrcamento(item.id)}" class="bg-orange-500 text-white px-3 py-2 rounded">Criar pedido</button><button data-vincular="${escOrcamento(item.id)}" class="border border-orange-500 text-orange-700 px-3 py-2 rounded">Vincular pedido</button>`}
+            </div>
           </div>
         </article>`).join("");
       lista.querySelectorAll("[data-pdf]").forEach(botao => botao.onclick = () => {
         const item = orcamentos.find(orcamento => orcamento.id === botao.dataset.pdf);
         if (item) gerarPdfOrcamento(item);
       });
+      lista.querySelectorAll("[data-editar]").forEach(botao => botao.onclick = () => {
+        const item = orcamentos.find(orcamento => orcamento.id === botao.dataset.editar);
+        if (item) abrirNovo(item);
+      });
+      lista.querySelectorAll("[data-converter]").forEach(botao => botao.onclick = () => {
+        const item = orcamentos.find(orcamento => orcamento.id === botao.dataset.converter);
+        if (item) transformarOrcamentoEmPedido(item);
+      });
+      lista.querySelectorAll("[data-vincular]").forEach(botao => botao.onclick = () => {
+        const item = orcamentos.find(orcamento => orcamento.id === botao.dataset.vincular);
+        if (item) abrirVinculoPedido(item);
+      });
     };
 
     document.getElementById("orc-busca").oninput = renderLista;
     document.getElementById("orc-filtro-status").onchange = renderLista;
 
-    const abrirNovo = () => {
+    const abrirNovo = (orcamentoEditando = null) => {
       const modal = document.createElement("div");
       modal.className = "fixed inset-0 bg-black bg-opacity-50 z-50 p-2 md:p-4 overflow-y-auto";
       modal.innerHTML = `
         <div class="bg-white max-w-4xl mx-auto my-4 rounded-xl shadow-xl overflow-hidden">
-          <div class="px-5 py-4 text-white flex items-center justify-between" style="background:#1f3b64"><div><h3 class="text-xl font-bold">Novo orçamento</h3><p class="text-xs text-blue-100">Proposta comercial</p></div><button type="button" class="orc-fechar text-2xl">&times;</button></div>
+          <div class="px-5 py-4 text-white flex items-center justify-between" style="background:#1f3b64"><div><h3 class="text-xl font-bold">${orcamentoEditando ? "Editar orçamento" : "Novo orçamento"}</h3><p class="text-xs text-blue-100">${orcamentoEditando ? escOrcamento(orcamentoEditando.codigo || "") : "Proposta comercial"}</p></div><button type="button" class="orc-fechar text-2xl">&times;</button></div>
           <div class="p-4 md:p-5 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
               <label class="md:col-span-2"><span class="font-semibold text-sm block mb-1">Cliente *</span><select id="orc-cliente" class="border p-2 rounded w-full"><option value="">Selecione o cliente</option>${clientes.map(c => `<option value="${escOrcamento(c.id)}">${escOrcamento(c.nome)}</option>`).join("")}</select></label>
-              <label><span class="font-semibold text-sm block mb-1">Validade da proposta *</span><input id="orc-validade" type="date" value="${adicionarDias(dataISOHoje(), 7)}" min="${dataISOHoje()}" class="border p-2 rounded w-full"></label>
+              <label><span class="font-semibold text-sm block mb-1">Validade da proposta *</span><input id="orc-validade" type="date" value="${escOrcamento(orcamentoEditando?.validade || adicionarDias(dataISOHoje(), 7))}" min="${dataISOHoje()}" class="border p-2 rounded w-full"></label>
               <label class="md:col-span-2"><span class="font-semibold text-sm block mb-1">Forma de pagamento *</span><select id="orc-pagamento" class="border p-2 rounded w-full"><option>À vista</option><option>10 dias</option><option>20 dias</option><option>30 dias</option><option>45 dias</option><option>30/60 dias</option></select></label>
             </div>
             <div><div class="flex items-center justify-between mb-2"><h4 class="font-bold text-blue-900">Itens da proposta</h4><button id="orc-adicionar-item" type="button" class="border border-blue-700 text-blue-700 px-3 py-1 rounded">+ Adicionar produto</button></div><div id="orc-itens" class="space-y-2"></div></div>
-            <label><span class="font-semibold text-sm block mb-1">Observações</span><textarea id="orc-observacao" rows="3" class="border p-2 rounded w-full" placeholder="Condições, prazo de entrega ou outras informações"></textarea></label>
+            <label><span class="font-semibold text-sm block mb-1">Observações</span><textarea id="orc-observacao" rows="3" class="border p-2 rounded w-full" placeholder="Condições, prazo de entrega ou outras informações">${escOrcamento(orcamentoEditando?.observacao || "")}</textarea></label>
             <div class="grid grid-cols-2 gap-3 bg-blue-50 border border-blue-100 rounded-lg p-4"><div><span class="text-xs text-gray-500">QUANTIDADE TOTAL</span><strong id="orc-qtd-total" class="block text-xl text-blue-900">0</strong></div><div class="text-right"><span class="text-xs text-gray-500">VALOR TOTAL</span><strong id="orc-valor-total" class="block text-xl text-green-700">R$ 0,00</strong></div></div>
           </div>
-          <div class="p-4 border-t bg-gray-50 flex justify-end gap-2"><button type="button" class="orc-fechar bg-gray-500 text-white px-4 py-2 rounded">Cancelar</button><button id="orc-salvar" class="bg-blue-700 text-white px-4 py-2 rounded">Salvar orçamento</button></div>
+          <div class="p-4 border-t bg-gray-50 flex justify-end gap-2"><button type="button" class="orc-fechar bg-gray-500 text-white px-4 py-2 rounded">Cancelar</button><button id="orc-salvar" class="bg-blue-700 text-white px-4 py-2 rounded">${orcamentoEditando ? "Salvar alterações" : "Salvar orçamento"}</button></div>
         </div>`;
       document.body.appendChild(modal);
       modal.querySelectorAll(".orc-fechar").forEach(botao => botao.onclick = () => modal.remove());
@@ -280,17 +305,26 @@
         atualizarTotais();
       };
 
-      const adicionarItem = () => {
+      const adicionarItem = (itemInicial = null) => {
         const linha = document.createElement("div");
         linha.className = "orc-item grid grid-cols-1 md:grid-cols-12 gap-2 items-center border rounded-lg p-2";
         linha.innerHTML = `<select class="orc-produto border p-2 rounded md:col-span-4"><option value="">Selecione o produto</option>${produtos.map(p => `<option value="${escOrcamento(p.id)}">${escOrcamento(p.nome)}</option>`).join("")}</select><input class="orc-quantidade border p-2 rounded md:col-span-2" type="text" inputmode="numeric" placeholder="Quantidade"><input class="orc-preco border p-2 rounded md:col-span-2" type="text" inputmode="decimal" placeholder="Valor unitário" ${PERFIL === "admin" ? "" : "readonly"}><div class="orc-total-item md:col-span-3 font-bold text-right text-green-700">R$ 0,00</div><button type="button" class="orc-remover bg-red-600 text-white p-2 rounded md:col-span-1">&times;</button>`;
         itensEl.appendChild(linha);
+        if (itemInicial) {
+          linha.querySelector(".orc-produto").value = itemInicial.produtoId || produtos.find(p => p.nome === itemInicial.produtoNome)?.id || "";
+          linha.querySelector(".orc-quantidade").value = itemInicial.quantidade || "";
+          linha.querySelector(".orc-preco").value = Number(itemInicial.precoUnitario || 0) ? Number(itemInicial.precoUnitario).toFixed(3).replace(".", ",") : "";
+        }
         linha.querySelector(".orc-produto").onchange = () => atualizarPrecoLinha(linha);
         linha.querySelectorAll(".orc-quantidade,.orc-preco").forEach(input => input.oninput = atualizarTotais);
         linha.querySelector(".orc-remover").onclick = () => { linha.remove(); if (!itensEl.children.length) adicionarItem(); atualizarTotais(); };
       };
-      adicionarItem();
-      modal.querySelector("#orc-adicionar-item").onclick = adicionarItem;
+      modal.querySelector("#orc-cliente").value = orcamentoEditando?.clienteId || "";
+      modal.querySelector("#orc-pagamento").value = orcamentoEditando?.formaPagamento || "À vista";
+      if (orcamentoEditando?.itens?.length) orcamentoEditando.itens.forEach(item => adicionarItem(item));
+      else adicionarItem();
+      atualizarTotais();
+      modal.querySelector("#orc-adicionar-item").onclick = () => adicionarItem();
       modal.querySelector("#orc-cliente").onchange = () => itensEl.querySelectorAll(".orc-item").forEach(atualizarPrecoLinha);
       modal.querySelector("#orc-pagamento").onchange = () => itensEl.querySelectorAll(".orc-item").forEach(atualizarPrecoLinha);
 
@@ -311,20 +345,32 @@
         const valorTotal = itens.reduce((t, item) => t + item.valorTotal, 0);
         const botao = modal.querySelector("#orc-salvar"); botao.disabled = true; botao.textContent = "Salvando...";
         const dados = {
-          codigo: codigoNovoOrcamento(), userId: user.uid, criadoPor: user.uid,
-          representanteNome: REPRESENTANTE_ATUAL || "Administrativo",
+          codigo: orcamentoEditando?.codigo || codigoNovoOrcamento(),
+          userId: orcamentoEditando?.userId || user.uid,
+          criadoPor: orcamentoEditando?.criadoPor || user.uid,
+          representanteNome: cliente.vinculadoPor || "Administrativo",
+          representanteUserId: cliente.userId || "",
           clienteId: cliente.id, clienteNome: cliente.nome, clienteCnpj: cliente.cnpj || "", clienteWhatsapp: cliente.whatsapp || "",
           clienteEndereco: [cliente.endereco, cliente.numero, cliente.bairro, cliente.cidade, cliente.uf].filter(Boolean).join(", "),
-          itens, quantidadeTotal, valorTotal, formaPagamento, validade, dataEmissao: dataISOHoje(),
-          observacao: modal.querySelector("#orc-observacao").value.trim(),
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          itens, quantidadeTotal, valorTotal, formaPagamento, validade,
+          dataEmissao: orcamentoEditando?.dataEmissao || dataISOHoje(),
+          observacao: modal.querySelector("#orc-observacao").value.trim()
         };
         try {
-          const ref = await db.collection(COLECAO_ORCAMENTOS).add(dados);
-          modal.remove();
-          await gerarPdfOrcamento({ id: ref.id, ...dados });
+          let ref;
+          if (orcamentoEditando?.id) {
+            ref = db.collection(COLECAO_ORCAMENTOS).doc(orcamentoEditando.id);
+            await ref.update({...dados, updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+            modal.remove();
+            alert("Orçamento atualizado com sucesso.");
+          } else {
+            dados.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            ref = await db.collection(COLECAO_ORCAMENTOS).add(dados);
+            modal.remove();
+            await gerarPdfOrcamento({id:ref.id,...dados});
+          }
         } catch (erro) {
-          console.error(erro); botao.disabled = false; botao.textContent = "Salvar orçamento";
+          console.error(erro); botao.disabled = false; botao.textContent = orcamentoEditando ? "Salvar alterações" : "Salvar orçamento";
           alert(erro?.code === "permission-denied" ? "O Firebase ainda não permite salvar orçamentos. É necessário liberar a coleção orcamentos para os usuários autorizados." : "Não foi possível salvar o orçamento.");
         }
       };
