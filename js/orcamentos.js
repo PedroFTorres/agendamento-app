@@ -211,6 +211,13 @@
     `;
 
     let orcamentos = [];
+    const vinculosDoOrcamento = orcamento => {
+      const atuais = Array.isArray(orcamento?.pedidosVinculados) ? orcamento.pedidosVinculados.filter(Boolean) : [];
+      if (atuais.length) return atuais;
+      return orcamento?.pedidoId
+        ? [{pedidoId:orcamento.pedidoId,pedidoCodigo:orcamento.pedidoCodigo || orcamento.pedidoId}]
+        : [];
+    };
     const lista = document.getElementById("orc-lista");
     const renderLista = () => {
       const busca = String(document.getElementById("orc-busca")?.value || "").toLowerCase().trim();
@@ -235,9 +242,9 @@
             <div class="flex flex-wrap gap-2 justify-end">
               <button data-editar="${escOrcamento(item.id)}" class="border border-blue-700 text-blue-700 px-3 py-2 rounded">Editar</button>
               <button data-pdf="${escOrcamento(item.id)}" class="bg-blue-700 text-white px-3 py-2 rounded">Gerar PDF</button>
-              ${item.pedidoCodigo
-                ? `<span class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded text-sm">Pedido ${escOrcamento(item.pedidoCodigo)}</span>`
-                : `<button data-converter="${escOrcamento(item.id)}" class="bg-orange-500 text-white px-3 py-2 rounded">Criar pedido</button><button data-vincular="${escOrcamento(item.id)}" class="border border-orange-500 text-orange-700 px-3 py-2 rounded">Vincular pedido</button>`}
+              <button data-converter="${escOrcamento(item.id)}" class="bg-orange-500 text-white px-3 py-2 rounded">Criar pedido</button>
+              <button data-vincular="${escOrcamento(item.id)}" class="border border-orange-500 text-orange-700 px-3 py-2 rounded">Vincular outro pedido</button>
+              ${vinculosDoOrcamento(item).map(vinculo => `<span class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded text-sm">Pedido ${escOrcamento(vinculo.pedidoCodigo || vinculo.pedidoId)}</span>`).join("")}
             </div>
           </div>
         </article>`).join("");
@@ -271,24 +278,37 @@
     };
 
     const registrarVinculoPedido = async (orcamento, pedidoId, pedidoCodigo) => {
-      const lote = db.batch();
-      lote.update(db.collection(COLECAO_ORCAMENTOS).doc(orcamento.id), {
-        pedidoId,
-        pedidoCodigo,
-        convertidoEmPedido: true,
-        vinculadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      return db.runTransaction(async transacao => {
+        const orcamentoRef = db.collection(COLECAO_ORCAMENTOS).doc(orcamento.id);
+        const pedidoRef = db.collection("pedidos").doc(pedidoId);
+        const snap = await transacao.get(orcamentoRef);
+        if (!snap.exists) throw new Error("Orçamento não encontrado.");
+        const dadosAtuais = snap.data() || {};
+        const existentes = vinculosDoOrcamento(dadosAtuais);
+        if (existentes.some(item => item.pedidoId === pedidoId)) return false;
+        const agora = firebase.firestore.Timestamp.now();
+        const novoVinculo = {pedidoId,pedidoCodigo:pedidoCodigo || pedidoId,vinculadoEm:agora};
+        const todos = [...existentes,novoVinculo];
+        transacao.update(orcamentoRef,{
+          pedidosVinculados:todos,
+          pedidoIds:todos.map(item=>item.pedidoId),
+          pedidoCodigos:todos.map(item=>item.pedidoCodigo),
+          pedidoId:dadosAtuais.pedidoId || todos[0].pedidoId,
+          pedidoCodigo:dadosAtuais.pedidoCodigo || todos[0].pedidoCodigo,
+          convertidoEmPedido:true,
+          vinculadoEm:agora,
+          updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+        });
+        transacao.set(pedidoRef,{
+          orcamentoId:orcamento.id,
+          orcamentoCodigo:orcamento.codigo || ""
+        },{merge:true});
+        return true;
       });
-      lote.set(db.collection("pedidos").doc(pedidoId), {
-        orcamentoId: orcamento.id,
-        orcamentoCodigo: orcamento.codigo || ""
-      }, {merge:true});
-      await lote.commit();
     };
 
     const transformarOrcamentoEmPedido = async (orcamento) => {
-      if (orcamento.pedidoId) return alert("Este orçamento já está vinculado ao pedido "+(orcamento.pedidoCodigo || orcamento.pedidoId)+".");
-      if (!confirm("Criar um novo pedido pendente com os dados deste orçamento?")) return;
+      if (!confirm("Criar um novo pedido pendente e adicioná-lo aos vínculos deste orçamento?")) return;
       const cliente = await clienteAtualDoOrcamento(orcamento);
       if (!cliente) return alert("O cliente deste orçamento não foi encontrado no cadastro.");
       if (cliente.bloqueado === true) {
@@ -360,12 +380,13 @@
     };
 
     const abrirVinculoPedido = async (orcamento) => {
-      if (orcamento.pedidoId) return alert("Este orçamento já está vinculado ao pedido "+(orcamento.pedidoCodigo || orcamento.pedidoId)+".");
       const snap = await db.collection("pedidos").where("clienteNome","==",orcamento.clienteNome).get();
+      const idsJaVinculados = new Set(vinculosDoOrcamento(orcamento).map(item=>item.pedidoId));
       const pedidos = snap.docs.map(doc=>({id:doc.id,...(doc.data()||{})}))
         .filter(pedido => PERFIL !== "representante" || (pedido.criadoPor ? pedido.criadoPor === user.uid : pedido.userId === user.uid))
+        .filter(pedido => !idsJaVinculados.has(pedido.id))
         .sort((a,b)=>Number(b.createdAt?.seconds||0)-Number(a.createdAt?.seconds||0));
-      if (!pedidos.length) return alert("Não foi encontrado nenhum pedido acessível deste cliente para vincular.");
+      if (!pedidos.length) return alert("Não há outros pedidos disponíveis deste cliente. Os pedidos encontrados já estão vinculados ou não são permitidos para este usuário.");
 
       const modal = document.createElement("div");
       modal.className = "fixed inset-0 bg-black bg-opacity-50 z-50 p-3 overflow-y-auto";
@@ -431,9 +452,14 @@
         confirmar.disabled=true;
         confirmar.textContent="Vinculando...";
         try{
-          await registrarVinculoPedido(orcamento,pedido.id,pedido.codigo||pedido.id);
+          const registrado = await registrarVinculoPedido(orcamento,pedido.id,pedido.codigo||pedido.id);
+          if (!registrado) {
+            confirmar.disabled=false;
+            confirmar.textContent="Confirmar vínculo";
+            return alert("Este pedido já está vinculado ao orçamento.");
+          }
           modal.remove();
-          alert("Orçamento vinculado ao pedido "+(pedido.codigo||pedido.id)+".");
+          alert("Pedido "+(pedido.codigo||pedido.id)+" adicionado aos vínculos do orçamento.");
         }catch(erro){
           console.error("Erro ao vincular orçamento:",erro);
           confirmar.disabled=false;
@@ -569,9 +595,13 @@
         const dados = doc.data() || {};
         const cliente = clientes.find(item => item.id === dados.clienteId)
           || clientes.find(item => item.nome === dados.clienteNome);
+        const pedidosVinculados = Array.isArray(dados.pedidosVinculados) && dados.pedidosVinculados.length
+          ? dados.pedidosVinculados
+          : (dados.pedidoId ? [{pedidoId:dados.pedidoId,pedidoCodigo:dados.pedidoCodigo || dados.pedidoId}] : []);
         return {
           id:doc.id,
           ...dados,
+          pedidosVinculados,
           representanteNome:cliente?.vinculadoPor || dados.representanteNome || "Administrativo",
           representanteUserId:cliente?.userId || dados.representanteUserId || ""
         };
