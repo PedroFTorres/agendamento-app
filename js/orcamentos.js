@@ -229,6 +229,7 @@
               <div class="text-xs text-gray-500">${escOrcamento(item.codigo || "-")} - emitido em ${escOrcamento(dataBR(item.dataEmissao))}</div>
               <h3 class="font-bold text-blue-900">${escOrcamento(item.clienteNome || "-")}</h3>
               <div class="text-sm text-gray-600">${(item.itens || []).length} item(ns) - ${quantidadeOrcamento(item.quantidadeTotal)} unidades - validade ${escOrcamento(dataBR(item.validade))}</div>
+              <div class="text-sm text-gray-600">Representante: <strong>${escOrcamento(item.representanteNome || "Administrativo")}</strong></div>
               <div class="font-bold text-green-700 mt-1">${moedaOrcamento(item.valorTotal)}</div>
             </div>
             <div class="flex flex-wrap gap-2 justify-end">
