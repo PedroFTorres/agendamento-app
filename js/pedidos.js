@@ -131,11 +131,22 @@ function normalizarNumeroWhatsapp(valor) {
   return `55${digitos}`;
 }
 
-function abrirUrlWhatsapp(numero, mensagem) {
+function abrirUrlWhatsapp(numero, mensagem, janelaReservada = null) {
   const numeroNormalizado = normalizarNumeroWhatsapp(numero);
-  if (!numeroNormalizado) return false;
+  if (!numeroNormalizado) {
+    janelaReservada?.close();
+    return false;
+  }
+
   const url = `https://wa.me/${numeroNormalizado}?text=${encodeURIComponent(mensagem)}`;
-  window.open(url, "_blank", "noopener");
+
+  if (janelaReservada && !janelaReservada.closed) {
+    janelaReservada.opener = null;
+    janelaReservada.location.href = url;
+  } else {
+    window.open(url, "_blank", "noopener");
+  }
+
   return true;
 }
 
@@ -157,7 +168,7 @@ async function abrirWhatsappPedidoAprovado(pedido, dataAgendada) {
 }
 
 
-async function abrirWhatsappPedidoCancelado(pedido, motivo) {
+async function abrirWhatsappPedidoCancelado(pedido, motivo, janelaWhatsapp = null) {
   const cliente = await buscarDadosClientePedido(pedido);
   await imprimirPedidoPdf(pedido, cliente);
 
@@ -169,7 +180,7 @@ async function abrirWhatsappPedidoCancelado(pedido, motivo) {
     "Em caso de dúvida, entre em contato com seu representante."
   ].join("\n");
 
-  if (!abrirUrlWhatsapp(cliente.whatsapp || pedido.clienteWhatsapp, mensagem)) {
+  if (!abrirUrlWhatsapp(cliente.whatsapp || pedido.clienteWhatsapp, mensagem, janelaWhatsapp)) {
     alert("Pedido cancelado, mas este cliente não tem WhatsApp cadastrado.");
   }
 }
@@ -727,6 +738,14 @@ async function cancelarPedido(id, btn) {
     return;
   }
 
+  // Reserva a aba durante o clique do usuário para evitar bloqueio de pop-up
+  // depois das operações assíncronas de cancelamento e geração do PDF.
+  const janelaWhatsapp = window.open("", "_blank");
+  if (janelaWhatsapp) {
+    janelaWhatsapp.document.title = "Abrindo WhatsApp...";
+    janelaWhatsapp.document.body.textContent = "Aguarde, preparando o aviso de cancelamento...";
+  }
+
   try {
 
     const docPedido = await db.collection("pedidos").doc(id).get();
@@ -799,10 +818,12 @@ async function cancelarPedido(id, btn) {
       motivoCancelamento: motivo,
       agendamentoId: "",
       agendamentoIds: []
-    }, motivo);
+    }, motivo, janelaWhatsapp);
 
   } catch (e) {
+    janelaWhatsapp?.close();
     if (btn) btn.disabled = false;
+    console.error(e);
     alert("Erro ao cancelar pedido");
   }
 }
