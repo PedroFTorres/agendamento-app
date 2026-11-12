@@ -1,4 +1,3 @@
-Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.
 // ================== AGENDA DE RETORNOS ==================
 (function () {
   "use strict";
@@ -294,7 +293,7 @@ Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' 
                 ${item.resultado ? `<div class="mt-3 bg-green-50 border border-green-100 rounded p-2 text-sm"><strong>Resultado:</strong> ${escapeHtml(item.resultado)}</div>` : ""}
               </div>
               <div class="flex flex-wrap gap-2 sm:justify-end">
-                ${!concluido ? `<button data-acao="whatsapp" data-id="${item.id}" class="bg-green-600 text-white px-3 py-2 rounded text-sm">WhatsApp</button><button data-acao="adiar" data-id="${item.id}" class="bg-orange-500 text-white px-3 py-2 rounded text-sm">Adiar</button><button data-acao="concluir" data-id="${item.id}" class="bg-blue-600 text-white px-3 py-2 rounded text-sm">✓ Concluir</button>` : `<button data-acao="reabrir" data-id="${item.id}" class="bg-yellow-500 text-white px-3 py-2 rounded text-sm">Reabrir</button>`}
+                ${!concluido ? `<button data-acao="whatsapp" data-id="${item.id}" class="bg-green-600 text-white px-3 py-2 rounded text-sm">WhatsApp</button><button data-acao="adiar" data-id="${item.id}" class="bg-orange-500 text-white px-3 py-2 rounded text-sm">Adiar</button><label class="bg-green-50 text-green-700 border border-green-500 px-3 py-2 rounded text-sm cursor-pointer flex items-center gap-2"><input type="checkbox" data-acao="concluir" data-id="${item.id}" class="h-4 w-4"> Concluir</label>` : `<button data-acao="reabrir" data-id="${item.id}" class="bg-yellow-500 text-white px-3 py-2 rounded text-sm">Reabrir</button>`}
                 <button data-acao="editar" data-id="${item.id}" class="bg-gray-600 text-white px-3 py-2 rounded text-sm">Editar</button>
                 <button data-acao="excluir" data-id="${item.id}" class="border border-red-500 text-red-600 px-3 py-2 rounded text-sm">Excluir</button>
               </div>
