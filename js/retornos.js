@@ -2,7 +2,8 @@
 (function () {
   "use strict";
 
-  const COLECAO = "retornosClientes";
+  const COLECAO = "notas";
+  const TIPO_REGISTRO = "retorno_cliente";
 
   function escapeHtml(valor) {
     return String(valor ?? "")
@@ -81,6 +82,7 @@
 
       for (const documento of snap.docs) {
         const retorno = documento.data() || {};
+        if (retorno.tipo !== TIPO_REGISTRO) continue;
         const horario = new Date(retorno.retornoEm || "");
         if (
           retorno.status === "concluido" ||
@@ -324,6 +326,7 @@
         const user = await waitForAuth();
         const dados = {
           userId: user.uid,
+          tipo: TIPO_REGISTRO,
           clienteId,
           clienteNome,
           clienteWhatsapp,
@@ -416,7 +419,9 @@
 
         if (window.__UNSUB_RETORNOS__) window.__UNSUB_RETORNOS__();
         window.__UNSUB_RETORNOS__ = db.collection(COLECAO).where("userId", "==", user.uid).onSnapshot((snap) => {
-          retornos = snap.docs.map(documento => ({ id: documento.id, ...(documento.data() || {}) }));
+          retornos = snap.docs
+            .map(documento => ({ id: documento.id, ...(documento.data() || {}) }))
+            .filter(retorno => retorno.tipo === TIPO_REGISTRO);
           renderizar();
         }, (erro) => {
           console.error("Erro ao carregar retornos:", erro);
