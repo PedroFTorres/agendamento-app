@@ -19,7 +19,7 @@ Este documento registra qual arquivo é responsável por cada área. A intençã
 - `js/producao.js`: produção.
 - `js/containers-v2.js`: controle atual de contêineres.
 - `js/ficha-atendimento.js`: fichas de atendimento.
-- `js/notas.js`: bloco de anotações.
+- `js/retornos.js`: agenda de retornos, lembretes e acompanhamento de clientes.
 - `js/notificacoes.js`: notificações internas e do dispositivo.
 - `js/recibo.js`: recibos.
 
