@@ -170,8 +170,6 @@ async function abrirWhatsappPedidoAprovado(pedido, dataAgendada) {
 
 async function abrirWhatsappPedidoCancelado(pedido, motivo, janelaWhatsapp = null) {
   const cliente = await buscarDadosClientePedido(pedido);
-  await imprimirPedidoPdf(pedido, cliente);
-
   const mensagem = [
     `Olá, ${pedido.clienteNome || "cliente"}.`,
     `Seu pedido ${pedido.codigo || ""} foi cancelado.`,
@@ -180,7 +178,17 @@ async function abrirWhatsappPedidoCancelado(pedido, motivo, janelaWhatsapp = nul
     "Em caso de dúvida, entre em contato com seu representante."
   ].join("\n");
 
-  if (!abrirUrlWhatsapp(cliente.whatsapp || pedido.clienteWhatsapp, mensagem, janelaWhatsapp)) {
+  // Abre primeiro o WhatsApp com a mensagem preenchida. A geração do PDF
+  // acontece depois para não interromper ou bloquear o redirecionamento.
+  const whatsappAberto = abrirUrlWhatsapp(
+    cliente.whatsapp || pedido.clienteWhatsapp,
+    mensagem,
+    janelaWhatsapp
+  );
+
+  await imprimirPedidoPdf(pedido, cliente);
+
+  if (!whatsappAberto) {
     alert("Pedido cancelado, mas este cliente não tem WhatsApp cadastrado.");
   }
 }
