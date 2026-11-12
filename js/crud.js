@@ -3636,7 +3636,7 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     }
     else if (page === "recibo") renderRecibo();
     else if (page === "whatsapp") renderWhatsapp();
-    else if (page === "notas") renderNotas();
+    else if (page === "retornos") renderRetornos();
     else renderForm(page);
 
     // 👇 ISSO AQUI QUE RESOLVE SEU PROBLEMA
