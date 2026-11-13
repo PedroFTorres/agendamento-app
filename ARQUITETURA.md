@@ -17,7 +17,7 @@ Este documento registra qual arquivo é responsável por cada área. A intençã
 - `js/relatorio-comissoes.js`: vendas e comissões.
 - `js/relatorio-diario-valores.js`: resumo diário e impressão dos agendamentos.
 - `js/producao.js`: produção.
-- `js/containers-v2.js`: controle atual de contêineres.
+- `js/containers-v2.js`: inventário de contêineres, localização, tempo com o cliente, condição e movimentações.
 - `js/ficha-atendimento.js`: fichas de atendimento.
 - `js/retornos.js`: agenda de retornos, lembretes e acompanhamento de clientes.
 - `js/notificacoes.js`: notificações internas e do dispositivo.
