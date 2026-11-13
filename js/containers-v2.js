@@ -13,8 +13,12 @@
       .map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
       .filter(item => !registroTipo || item.registroTipo === registroTipo);
   };
-  const statusNome = s => ({com_cliente:"Com cliente",disponivel:"Devolvido",manutencao:"Em manutenção"}[s]||s||"-");
-  const statusCor = s => s==="com_cliente"?"bg-orange-100 text-orange-800":s==="manutencao"?"bg-yellow-100 text-yellow-800":"bg-green-100 text-green-800";
+  const localizacao = item => item.status === "com_cliente" ? "com_cliente" : "patio";
+  const localizacaoNome = item => localizacao(item) === "com_cliente" ? "Com cliente" : "No pátio";
+  const localizacaoCor = item => localizacao(item) === "com_cliente" ? "bg-orange-100 text-orange-800" : "bg-green-100 text-green-800";
+  const condicao = item => item.condicao || (item.status === "manutencao" ? "danificado" : "normal");
+  const condicaoNome = item => condicao(item) === "danificado" ? "Danificado" : "Normal";
+  const condicaoCor = item => condicao(item) === "danificado" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800";
   const dataPedido = p => {
     const valor=p.dataCarregamento||p.dataAgendada||p.data||"";
     if(typeof valor==="string") return valor.slice(0,10);
@@ -37,8 +41,8 @@
   }
 
   function exportarCsv(lista) {
-    const linhas=[["Número","Cliente","Pedido","Data carregamento","Dias com cliente","Situação","Data devolução","Observação"],
-      ...lista.map(i=>[i.numero,i.clienteAtual,i.pedidoCodigo,i.dataSaida,i.status==="com_cliente"?dias(i.dataSaida):i.diasUltimaPermanencia,statusNome(i.status),i.status==="com_cliente"?"":i.ultimaDevolucao,i.observacaoSaida||i.observacaoDevolucao||""])];
+    const linhas=[["Número","Localização","Cliente","Pedido","Data de saída","Dias com cliente","Condição","Última devolução","Observação"],
+      ...lista.map(i=>[i.numero,localizacaoNome(i),i.clienteAtual,i.pedidoCodigo,i.dataSaida,localizacao(i)==="com_cliente"?dias(i.dataSaida):i.diasUltimaPermanencia,condicaoNome(i),localizacao(i)==="com_cliente"?"":i.ultimaDevolucao,i.observacaoCondicao||i.observacaoSaida||i.observacaoDevolucao||""])];
     const texto="\ufeff"+linhas.map(l=>l.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(";")).join("\n");
     const url=URL.createObjectURL(new Blob([texto],{type:"text/csv;charset=utf-8"}));
     const a=document.createElement("a");a.href=url;a.download="controle-containers.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -51,9 +55,9 @@
     const doc=new window.jspdf.jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
     const azul=[31,59,100],azulClaro=[239,246,255],cinza=[107,114,128],borda=[226,232,240],laranja=[242,140,40];
     const total=lista.length;
-    const comCliente=lista.filter(i=>i.status==="com_cliente").length;
-    const devolvidos=lista.filter(i=>i.status==="disponivel").length;
-    const manutencao=lista.filter(i=>i.status==="manutencao").length;
+    const comCliente=lista.filter(i=>localizacao(i)==="com_cliente").length;
+    const noPatio=lista.filter(i=>localizacao(i)==="patio").length;
+    const danificados=lista.filter(i=>condicao(i)==="danificado").length;
     const emissao=new Date().toLocaleString("pt-BR");
 
     let logo=null;
@@ -77,7 +81,7 @@
 
     const campos=[
       ["Cliente",filtros.cliente||"Todos os clientes",14,74],
-      ["Situação",filtros.status||"Todas as situações",91,55],
+      ["Localização",filtros.localizacao||"Todos os locais",91,55],
       ["Período",dataBR(filtros.inicio)+" a "+dataBR(filtros.fim),149,74]
     ];
     campos.forEach(([rotulo,valor,x,largura])=>{
@@ -94,8 +98,8 @@
     const cards=[
       ["TOTAL",total,14,azulClaro,azul],
       ["COM CLIENTES",comCliente,81,[248,250,252],[31,41,55]],
-      ["DEVOLVIDOS",devolvidos,148,[236,253,245],[4,120,87]],
-      ["MANUTENÇÃO",manutencao,215,[255,247,237],[194,65,12]]
+      ["NO PÁTIO",noPatio,148,[236,253,245],[4,120,87]],
+      ["DANIFICADOS",danificados,215,[254,242,242],[185,28,28]]
     ];
     cards.forEach(([rotulo,valor,x,fundo,texto])=>{
       doc.setFillColor(...fundo);doc.setDrawColor(...borda);
@@ -109,16 +113,16 @@
     doc.autoTable({
       startY:79,
       margin:{left:14,right:14,bottom:16},
-      head:[["Número","Cliente","Pedido","Carregamento","Dias","Situação","Devolução","Observação"]],
+      head:[["Número","Cliente","Pedido","Saída","Dias","Localização","Condição","Observação"]],
       body:lista.map(i=>[
         i.numero,
         i.clienteAtual||"-",
         i.pedidoCodigo||"-",
         dataBR(i.dataSaida),
-        i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-"),
-        statusNome(i.status),
-        dataBR(i.status==="com_cliente"?"":i.ultimaDevolucao),
-        i.observacaoSaida||i.observacaoDevolucao||"-"
+        localizacao(i)==="com_cliente"?dias(i.dataSaida):"-",
+        localizacaoNome(i),
+        condicaoNome(i),
+        i.observacaoCondicao||i.observacaoSaida||i.observacaoDevolucao||"-"
       ]),
       theme:"grid",
       styles:{font:"helvetica",fontSize:7.5,cellPadding:2.4,textColor:[55,65,81],lineColor:borda,lineWidth:0.15,valign:"middle",overflow:"linebreak"},
@@ -138,8 +142,7 @@
         if(dados.section!=="body"||dados.column.index!==5)return;
         const valor=String(dados.cell.raw||"").toLowerCase();
         if(valor.includes("com cliente"))dados.cell.styles.textColor=azul;
-        else if(valor.includes("devolvido"))dados.cell.styles.textColor=[4,120,87];
-        else if(valor.includes("manutenção"))dados.cell.styles.textColor=[194,65,12];
+        else if(valor.includes("pátio"))dados.cell.styles.textColor=[4,120,87];
       }
     });
 
@@ -154,112 +157,127 @@
     }
 
     const clienteArquivo=norm(filtros.cliente||"todos").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-    const statusArquivo=norm(filtros.status||"todas").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-    doc.save("containers-"+clienteArquivo+"-"+statusArquivo+".pdf");
-  }
-
-  function imprimirDetalhesCliente(nome, lista, filtros = {}) {
-    if(!lista.length){alert("Nenhum contêiner encontrado para imprimir.");return;}
-    const janela=window.open("","_blank","width=1000,height=750");
-    if(!janela){alert("Permita a abertura de janelas para imprimir.");return;}
-    const linhas=lista.map(i=>`<tr><td>${esc(i.numero)}</td><td>${esc(i.pedidoCodigo||"-")}</td><td>${dataBR(i.dataSaida)}</td><td>${i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-")}</td><td>${esc(statusNome(i.status))}</td><td>${dataBR(i.status==="com_cliente"?"":i.ultimaDevolucao)}</td><td>${esc(i.observacaoSaida||i.observacaoDevolucao||"-")}</td></tr>`).join("");
-    janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Contêineres de ${esc(nome)}</title><style>
-      @page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#1f2937;font-size:11px}h1{color:#1f3b64;margin:0 0 5px}.filtros{color:#4b5563;margin-bottom:14px}.resumo{display:flex;gap:10px;margin:12px 0}.card{border:1px solid #d1d5db;border-radius:6px;padding:8px 14px}.card strong{font-size:16px}table{width:100%;border-collapse:collapse}th{background:#1f3b64;color:white;text-align:left;padding:7px}td{border-bottom:1px solid #dfe6f1;padding:6px;vertical-align:top}tbody tr:nth-child(even){background:#f8fafc}.rodape{text-align:right;color:#6b7280;margin-top:10px;font-size:9px}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
-    </style></head><body><h1>Contêineres de ${esc(nome)}</h1><div class="filtros">Situação: ${esc(filtros.status||"Todas")} &nbsp;|&nbsp; Período: ${dataBR(filtros.inicio)} a ${dataBR(filtros.fim)}</div>
-    <div class="resumo"><div class="card">Total<br><strong>${lista.length}</strong></div><div class="card">Com cliente<br><strong>${lista.filter(i=>i.status==="com_cliente").length}</strong></div><div class="card">Devolvidos<br><strong>${lista.filter(i=>i.status==="disponivel").length}</strong></div><div class="card">Manutenção<br><strong>${lista.filter(i=>i.status==="manutencao").length}</strong></div></div>
-    <table><thead><tr><th>Número</th><th>Pedido</th><th>Saída</th><th>Dias</th><th>Situação</th><th>Devolução</th><th>Observação</th></tr></thead><tbody>${linhas}</tbody></table>
-    <div class="rodape">Emitido em ${new Date().toLocaleString("pt-BR")}</div></body></html>`);
-    janela.document.close();
-    janela.onload=()=>setTimeout(()=>janela.print(),200);
+    const localArquivo=norm(filtros.localizacao||"todos").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    doc.save("containers-"+clienteArquivo+"-"+localArquivo+".pdf");
   }
 
   async function renderContainers() {
     if(PERFIL!=="admin"){pageContent.innerHTML='<div class="bg-red-50 text-red-700 p-4 rounded">Acesso exclusivo do administrador.</div>';return;}
     pageContent.innerHTML=`
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
-        <div><h2 class="text-xl font-bold text-blue-900">Contêineres Retornáveis</h2><p class="text-sm text-gray-500">Visão resumida por cliente. Clique para consultar os contêineres.</p></div>
-        <div class="flex gap-2"><button id="ct-cadastrar" class="bg-blue-700 text-white px-4 py-2 rounded">+ Cadastrar contêineres</button><button id="ct-devolver" class="bg-green-700 text-white px-4 py-2 rounded">Registrar devolução</button></div>
+        <div><h2 class="text-xl font-bold text-blue-900">Controle de Contêineres</h2><p class="text-sm text-gray-500">Localização, tempo com o cliente e condição atual de cada contêiner.</p></div>
+        <div class="flex flex-wrap gap-2"><button id="ct-cadastrar" class="bg-blue-700 text-white px-4 py-2 rounded">+ Registrar saída</button><button id="ct-devolver" class="bg-green-700 text-white px-4 py-2 rounded">Registrar devolução</button></div>
       </div>
       <div id="ct-cards" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
       <section class="bg-white p-4 rounded-xl shadow mb-4">
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-2">
+          <label class="text-xs text-gray-500 xl:col-span-2">Pesquisar<input id="ct-busca" class="border p-2 rounded w-full mt-1" placeholder="Número, cliente ou pedido"></label>
           <label class="text-xs text-gray-500">Cliente<select id="ct-cliente" class="border p-2 rounded w-full mt-1"><option value="">Todos os clientes</option></select></label>
-          <label class="text-xs text-gray-500">Situação<select id="ct-status" class="border p-2 rounded w-full mt-1"><option value="">Todas as situações</option><option value="com_cliente">Com o cliente</option><option value="disponivel">Já devolvidos</option><option value="manutencao">Em manutenção</option></select></label>
-          <label class="text-xs text-gray-500">Mês<input id="ct-mes" type="month" class="border p-2 rounded w-full mt-1"></label>
-          <label class="text-xs text-gray-500">Data inicial<input id="ct-inicio" type="date" class="border p-2 rounded w-full mt-1"></label>
-          <label class="text-xs text-gray-500">Data final<input id="ct-fim" type="date" class="border p-2 rounded w-full mt-1"></label>
+          <label class="text-xs text-gray-500">Localização<select id="ct-localizacao" class="border p-2 rounded w-full mt-1"><option value="">Todos os locais</option><option value="com_cliente">Com cliente</option><option value="patio">No pátio</option></select></label>
+          <label class="text-xs text-gray-500">Condição<select id="ct-condicao" class="border p-2 rounded w-full mt-1"><option value="">Todas as condições</option><option value="normal">Normal</option><option value="danificado">Danificado</option></select></label>
           <button id="ct-limpar" class="border border-gray-400 rounded p-2 self-end">Limpar filtros</button>
         </div>
+        <details class="mt-3">
+          <summary class="text-sm text-blue-700 cursor-pointer">Filtrar por período de movimentação</summary>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+            <label class="text-xs text-gray-500">Mês<input id="ct-mes" type="month" class="border p-2 rounded w-full mt-1"></label>
+            <label class="text-xs text-gray-500">Data inicial<input id="ct-inicio" type="date" class="border p-2 rounded w-full mt-1"></label>
+            <label class="text-xs text-gray-500">Data final<input id="ct-fim" type="date" class="border p-2 rounded w-full mt-1"></label>
+          </div>
+        </details>
         <div class="flex gap-2 mt-3"><button id="ct-csv" class="border border-green-700 text-green-700 px-3 py-2 rounded">Exportar CSV</button><button id="ct-pdf" class="border border-red-700 text-red-700 px-3 py-2 rounded">Exportar PDF</button></div>
       </section>
       <section class="bg-white rounded-xl shadow overflow-hidden">
-        <div class="px-4 py-3 border-b"><h3 class="font-bold text-blue-900">Clientes no período</h3><p class="text-xs text-gray-500">Uma linha por cliente, sem duplicação.</p></div>
-        <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="text-left p-3">Cliente</th><th class="text-right p-3">Total enviados</th><th class="text-right p-3">Com cliente</th><th class="text-right p-3">Devolvidos</th><th class="text-right p-3">Manutenção</th><th class="text-left p-3">Última movimentação</th><th class="text-right p-3">Detalhes</th></tr></thead><tbody id="ct-lista-clientes"></tbody></table></div>
+        <div class="px-4 py-3 border-b"><h3 class="font-bold text-blue-900">Relação de todos os contêineres</h3><p class="text-xs text-gray-500">A condição pode ser alterada a qualquer momento, independentemente da localização.</p></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="text-left p-3">Número</th><th class="text-left p-3">Localização</th><th class="text-left p-3">Cliente</th><th class="text-left p-3">Desde</th><th class="text-right p-3">Dias</th><th class="text-left p-3">Condição</th><th class="text-left p-3">Observação</th><th class="text-right p-3">Ação</th></tr></thead><tbody id="ct-lista"></tbody></table></div>
       </section>
     `;
 
-    let containers=await buscar(CT,"container"), historico=await buscar(MOV,"container_movimento");
+    let containers=await buscar(CT,"container");
     const clientes=await buscar("clientes"), pedidos=await buscar("pedidos");
     let visiveis=[];
     const clienteFiltro=document.getElementById("ct-cliente");
     [...new Set(containers.map(i=>String(i.clienteAtual||"").trim()).filter(Boolean))]
       .sort((a,b)=>a.localeCompare(b,"pt-BR"))
       .forEach(nome=>clienteFiltro.add(new Option(nome,nome)));
-    document.getElementById("ct-mes").value=hoje().slice(0,7);
 
     function periodoSelecionado() {
       const mes=document.getElementById("ct-mes").value,inicio=document.getElementById("ct-inicio").value,fim=document.getElementById("ct-fim").value;
-      if(inicio||fim)return {inicio:inicio||"0000-01-01",fim:fim||"9999-12-31"};
-      if(mes){const [ano,numero]=mes.split("-").map(Number),ultimo=new Date(ano,numero,0).getDate();return {inicio:mes+"-01",fim:mes+"-"+String(ultimo).padStart(2,"0")};}
-      return {inicio:"0000-01-01",fim:"9999-12-31"};
+      if(inicio||fim)return {inicio:inicio||"0000-01-01",fim:fim||"9999-12-31",ativo:true};
+      if(mes){const [ano,numero]=mes.split("-").map(Number),ultimo=new Date(ano,numero,0).getDate();return {inicio:mes+"-01",fim:mes+"-"+String(ultimo).padStart(2,"0"),ativo:true};}
+      return {inicio:"0000-01-01",fim:"9999-12-31",ativo:false};
     }
-    function dentro(data,periodo){return data&&data>=periodo.inicio&&data<=periodo.fim;}
+    function dentro(data,periodo){return !periodo.ativo||(data&&data>=periodo.inicio&&data<=periodo.fim);}
 
     function atualizar() {
-      const cliente=document.getElementById("ct-cliente").value,status=document.getElementById("ct-status").value,periodo=periodoSelecionado();
+      const termo=norm(document.getElementById("ct-busca").value);
+      const cliente=document.getElementById("ct-cliente").value;
+      const local=document.getElementById("ct-localizacao").value;
+      const estado=document.getElementById("ct-condicao").value;
+      const periodo=periodoSelecionado();
       visiveis=containers.filter(i=>{
-        const dataReferencia=status==="disponivel" ? i.ultimaDevolucao : i.dataSaida;
-        return dentro(dataReferencia,periodo)&&(!cliente||i.clienteAtual===cliente)&&(!status||i.status===status);
-      });
-      const grupos=new Map();
-      visiveis.forEach(item=>{
-        const nome=item.clienteAtual||"Cliente não informado";
-        if(!grupos.has(nome))grupos.set(nome,{nome,itens:[],comCliente:0,devolvidos:0,manutencao:0,ultima:""});
-        const grupo=grupos.get(nome);grupo.itens.push(item);
-        if(item.status==="com_cliente")grupo.comCliente++;if(item.status==="disponivel")grupo.devolvidos++;if(item.status==="manutencao")grupo.manutencao++;
-        historico.filter(m=>m.cliente===nome&&dentro(m.data,periodo)).forEach(m=>{if(m.data>grupo.ultima)grupo.ultima=m.data;});
-        if(!grupo.ultima||item.dataSaida>grupo.ultima)grupo.ultima=item.dataSaida||grupo.ultima;
-      });
-      const lista=[...grupos.values()].sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
-      const comCliente=visiveis.filter(i=>i.status==="com_cliente").length,devolvidos=visiveis.filter(i=>i.status==="disponivel").length,manutencao=visiveis.filter(i=>i.status==="manutencao").length;
-      document.getElementById("ct-cards").innerHTML=[["Clientes",lista.length,"bg-blue-50 text-blue-900"],["Com clientes",comCliente,"bg-orange-50 text-orange-800"],["Devolvidos",devolvidos,"bg-green-50 text-green-800"],["Manutenção",manutencao,"bg-yellow-50 text-yellow-800"]].map(x=>`<div class="${x[2]} border rounded-lg p-3"><div class="text-xs">${x[0]}</div><strong class="text-2xl">${x[1].toLocaleString("pt-BR")}</strong></div>`).join("");
-      document.getElementById("ct-lista-clientes").innerHTML=lista.length?lista.map(g=>`<tr class="border-t hover:bg-blue-50 cursor-pointer ct-cliente-linha" data-cliente="${esc(g.nome)}"><td class="p-3 font-semibold">${esc(g.nome)}</td><td class="p-3 text-right">${g.itens.length}</td><td class="p-3 text-right font-semibold text-orange-700">${g.comCliente}</td><td class="p-3 text-right text-green-700">${g.devolvidos}</td><td class="p-3 text-right text-yellow-700">${g.manutencao}</td><td class="p-3">${dataBR(g.ultima)}</td><td class="p-3 text-right"><button class="text-blue-700 border border-blue-200 px-3 py-1 rounded">Ver contêineres</button></td></tr>`).join(""):'<tr><td colspan="7" class="p-6 text-center text-gray-500">Nenhum cliente encontrado neste período.</td></tr>';
+        const referencia=localizacao(i)==="com_cliente"?i.dataSaida:(i.ultimaDevolucao||i.dataSaida);
+        const texto=norm(`${i.numero} ${i.clienteAtual} ${i.pedidoCodigo}`);
+        return dentro(referencia,periodo)&&(!termo||texto.includes(termo))&&(!cliente||i.clienteAtual===cliente)&&(!local||localizacao(i)===local)&&(!estado||condicao(i)===estado);
+      }).sort((a,b)=>String(a.numero).localeCompare(String(b.numero),"pt-BR",{numeric:true}));
+
+      const comCliente=visiveis.filter(i=>localizacao(i)==="com_cliente").length;
+      const patio=visiveis.filter(i=>localizacao(i)==="patio").length;
+      const danificados=visiveis.filter(i=>condicao(i)==="danificado").length;
+      document.getElementById("ct-cards").innerHTML=[
+        ["Total",visiveis.length,"bg-blue-50 text-blue-900"],
+        ["Com clientes",comCliente,"bg-orange-50 text-orange-800"],
+        ["No pátio",patio,"bg-green-50 text-green-800"],
+        ["Danificados",danificados,"bg-red-50 text-red-800"]
+      ].map(x=>`<div class="${x[2]} border rounded-lg p-3"><div class="text-xs">${x[0]}</div><strong class="text-2xl">${x[1].toLocaleString("pt-BR")}</strong></div>`).join("");
+
+      document.getElementById("ct-lista").innerHTML=visiveis.length?visiveis.map(i=>{
+        const fora=localizacao(i)==="com_cliente";
+        const dataLocal=fora?i.dataSaida:i.ultimaDevolucao;
+        const observacao=i.observacaoCondicao||i.observacaoDevolucao||i.observacaoSaida||"-";
+        return `<tr class="border-t hover:bg-gray-50">
+          <td class="p-3 font-bold text-blue-900">${esc(i.numero)}</td>
+          <td class="p-3"><span class="px-2 py-1 rounded-full text-xs ${localizacaoCor(i)}">${localizacaoNome(i)}</span></td>
+          <td class="p-3">${esc(fora?(i.clienteAtual||"-"):"Empresa / pátio")}</td>
+          <td class="p-3">${dataBR(dataLocal)}</td>
+          <td class="p-3 text-right">${fora?dias(i.dataSaida):"-"}</td>
+          <td class="p-3"><span class="px-2 py-1 rounded-full text-xs font-semibold ${condicaoCor(i)}">${condicaoNome(i)}</span></td>
+          <td class="p-3 max-w-xs">${esc(observacao)}</td>
+          <td class="p-3 text-right"><button data-editar-condicao="${i.id}" class="border border-blue-700 text-blue-700 px-3 py-1 rounded whitespace-nowrap">Editar condição</button></td>
+        </tr>`;
+      }).join(""):'<tr><td colspan="8" class="p-6 text-center text-gray-500">Nenhum contêiner encontrado.</td></tr>';
     }
 
-    function abrirDetalhesCliente(nome) {
-      const periodo=periodoSelecionado();
-      const status=document.getElementById("ct-status").value;
-      const itens=containers.filter(i=>{
-        const dataReferencia=status==="disponivel" ? i.ultimaDevolucao : i.dataSaida;
-        return i.clienteAtual===nome&&dentro(dataReferencia,periodo)&&(!status||i.status===status);
-      }).sort((a,b)=>String(a.numero).localeCompare(String(b.numero),"pt-BR",{numeric:true}));
-      const movimentos=historico.filter(m=>m.cliente===nome&&dentro(m.data,periodo)).sort((a,b)=>String(b.data).localeCompare(String(a.data)));
-      const janela=modal("Contêineres de "+nome,`
-        <div class="mb-4 grid grid-cols-2 md:grid-cols-4 gap-2"><div class="bg-blue-50 rounded p-3"><div class="text-xs">Total</div><strong class="text-xl">${itens.length}</strong></div><div class="bg-orange-50 rounded p-3"><div class="text-xs">Com cliente</div><strong class="text-xl">${itens.filter(i=>i.status==="com_cliente").length}</strong></div><div class="bg-green-50 rounded p-3"><div class="text-xs">Devolvidos</div><strong class="text-xl">${itens.filter(i=>i.status==="disponivel").length}</strong></div><div class="bg-yellow-50 rounded p-3"><div class="text-xs">Manutenção</div><strong class="text-xl">${itens.filter(i=>i.status==="manutencao").length}</strong></div></div>
-        <div class="flex flex-wrap gap-2 mb-4"><button type="button" class="ct-imprimir-cliente bg-blue-700 text-white px-4 py-2 rounded">Imprimir</button><button type="button" class="ct-pdf-cliente border border-red-700 text-red-700 px-4 py-2 rounded">Gerar PDF</button></div>
-        <div class="overflow-x-auto border rounded"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="text-left p-2">Número</th><th class="text-left p-2">Pedido</th><th class="text-left p-2">Saída</th><th class="text-right p-2">Dias</th><th class="text-left p-2">Situação</th><th class="text-left p-2">Observação</th></tr></thead><tbody>${itens.map(i=>`<tr class="border-t"><td class="p-2 font-bold">${esc(i.numero)}</td><td class="p-2">${esc(i.pedidoCodigo||"-")}</td><td class="p-2">${dataBR(i.dataSaida)}</td><td class="p-2 text-right">${i.status==="com_cliente"?dias(i.dataSaida):(i.diasUltimaPermanencia??"-")}</td><td class="p-2"><span class="px-2 py-1 rounded-full text-xs ${statusCor(i.status)}">${statusNome(i.status)}</span></td><td class="p-2">${esc(i.observacaoSaida||i.observacaoDevolucao||"-")}</td></tr>`).join("")}</tbody></table></div>
-        <details class="mt-4 border rounded"><summary class="p-3 cursor-pointer font-semibold text-blue-900">Histórico deste cliente (${movimentos.length})</summary><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="text-left p-2">Data</th><th class="text-left p-2">Número</th><th class="text-left p-2">Movimento</th><th class="text-left p-2">Pedido</th><th class="text-left p-2">Observação</th></tr></thead><tbody>${movimentos.map(m=>`<tr class="border-t"><td class="p-2">${dataBR(m.data)}</td><td class="p-2">${esc(m.numero)}</td><td class="p-2">${m.tipo==="saida"?"Saída":"Devolução"}</td><td class="p-2">${esc(m.pedidoCodigo||"-")}</td><td class="p-2">${esc(m.observacao||m.condicao||"-")}</td></tr>`).join("")}</tbody></table></div></details>
-      `,"Fechar");
-      const statusSelect=document.getElementById("ct-status");
-      const filtrosCliente={
-        cliente:nome,
-        status:statusSelect.options[statusSelect.selectedIndex]?.text||"Todas as situações",
-        inicio:periodo.inicio,
-        fim:periodo.fim
+    function abrirEdicaoCondicao(item) {
+      const m=modal("Editar condição do contêiner "+esc(item.numero),`
+        <div class="space-y-3">
+          <div class="bg-gray-50 border rounded p-3 text-sm"><strong>Localização:</strong> ${esc(localizacaoNome(item))}${localizacao(item)==="com_cliente"?` • ${esc(item.clienteAtual||"Cliente não informado")} • ${dias(item.dataSaida)} dia(s)`:" • Empresa / pátio"}</div>
+          <label class="block"><span class="font-semibold block mb-1">Condição atual *</span><select id="condicao-valor" class="border p-2 rounded w-full"><option value="normal" ${condicao(item)==="normal"?"selected":""}>Normal</option><option value="danificado" ${condicao(item)==="danificado"?"selected":""}>Danificado</option></select></label>
+          <label class="block"><span class="font-semibold block mb-1">Observação da condição</span><textarea id="condicao-obs" rows="3" class="border p-2 rounded w-full" placeholder="Ex.: tampa quebrada, vazamento, estrutura amassada">${esc(item.observacaoCondicao||"")}</textarea></label>
+        </div>`,"Salvar condição");
+      m.querySelector(".salvar").onclick=async()=>{
+        const novoEstado=m.querySelector("#condicao-valor").value;
+        const observacao=m.querySelector("#condicao-obs").value.trim();
+        const botao=m.querySelector(".salvar");botao.disabled=true;botao.textContent="Salvando...";
+        try{
+          const usuario=await waitForAuth();
+          const batch=db.batch();
+          batch.update(db.collection(CT).doc(item.id),{
+            status:item.status==="manutencao"?"disponivel":item.status,
+            condicao:novoEstado,
+            observacaoCondicao:observacao,
+            condicaoAtualizadaEm:firebase.firestore.FieldValue.serverTimestamp(),
+            atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()
+          });
+          batch.set(db.collection(MOV).doc(),{
+            registroTipo:"container_movimento",userId:usuario.uid,containerId:item.id,numero:item.numero,
+            tipo:"condicao",data:hoje(),cliente:item.clienteAtual||"",pedidoCodigo:item.pedidoCodigo||"",
+            condicao:novoEstado,observacao,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+          });
+          await batch.commit();
+          m.remove();containers=await buscar(CT,"container");atualizar();
+        }catch(e){console.error(e);alert("Não foi possível atualizar a condição.");botao.disabled=false;botao.textContent="Salvar condição";}
       };
-      janela.querySelector(".ct-imprimir-cliente").onclick=()=>imprimirDetalhesCliente(nome,itens,filtrosCliente);
-      janela.querySelector(".ct-pdf-cliente").onclick=()=>exportarPdf(itens,filtrosCliente);
-      janela.querySelector(".salvar").onclick=()=>janela.remove();
     }
 
     function abrirCadastro() {
@@ -304,11 +322,11 @@
           numeros.forEach(numero=>{
             const antigo=containers.find(i=>norm(i.numero)===norm(numero));
             const ref=antigo?db.collection(CT).doc(antigo.id):db.collection(CT).doc();
-            const dados={registroTipo:"container",userId:usuario.uid,numero,status:"com_cliente",clienteAtual:cliente,pedidoCodigo:codigo,pedidoId:pedido.id,dataSaida,observacaoSaida:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()};
+            const dados={registroTipo:"container",userId:usuario.uid,numero,status:"com_cliente",condicao:antigo?condicao(antigo):"normal",clienteAtual:cliente,pedidoCodigo:codigo,pedidoId:pedido.id,dataSaida,observacaoSaida:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()};
             if(antigo)batch.update(ref,{...dados,ultimaDevolucao:firebase.firestore.FieldValue.delete(),diasUltimaPermanencia:firebase.firestore.FieldValue.delete(),observacaoDevolucao:firebase.firestore.FieldValue.delete()});else batch.set(ref,{...dados,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
             batch.set(db.collection(MOV).doc(),{registroTipo:"container_movimento",userId:usuario.uid,containerId:ref.id,numero,tipo:"saida",data:dataSaida,cliente,pedidoCodigo:codigo,observacao,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
           });
-          await batch.commit();m.remove();containers=await buscar(CT,"container");historico=await buscar(MOV,"container_movimento");
+          await batch.commit();m.remove();containers=await buscar(CT,"container");
           if(![...clienteFiltro.options].some(o=>o.value===cliente))clienteFiltro.add(new Option(cliente,cliente));
           atualizar();
         } catch(e){
@@ -322,35 +340,66 @@
     }
 
     function abrirDevolucao() {
-      const fora=containers.filter(i=>i.status==="com_cliente");if(!fora.length){alert("Não há contêineres com clientes.");return;}
-      const m=modal("Registrar devolução",`<div class="space-y-3"><label class="block">Data da devolução *<input id="dev-data" type="date" value="${hoje()}" class="border p-2 rounded w-full"></label><label class="block">Condição<select id="dev-condicao" class="border p-2 rounded w-full"><option>Normal</option><option>Danificado</option></select></label><input id="dev-busca" class="border p-2 rounded w-full" placeholder="Pesquisar número ou cliente"><div id="dev-lista" class="max-h-72 overflow-y-auto space-y-2">${fora.map(i=>`<label class="dev-linha flex justify-between border rounded p-2" data-busca="${esc(norm(i.numero+" "+i.clienteAtual))}"><span><input type="checkbox" class="dev-item mr-2" value="${i.id}"><strong>${esc(i.numero)}</strong> • ${esc(i.clienteAtual)}</span><span class="text-gray-500">${dias(i.dataSaida)} dias</span></label>`).join("")}</div><label class="block">Observações<textarea id="dev-obs" class="border p-2 rounded w-full"></textarea></label></div>`,"Confirmar devolução");
+      const fora=containers.filter(i=>localizacao(i)==="com_cliente");if(!fora.length){alert("Não há contêineres com clientes.");return;}
+      const m=modal("Registrar devolução",`<div class="space-y-3">
+        <div class="bg-blue-50 text-blue-900 border border-blue-100 rounded p-3 text-sm">A devolução altera apenas a localização para <strong>empresa / pátio</strong>. A condição atual do contêiner será mantida e pode ser editada separadamente.</div>
+        <label class="block">Data da devolução *<input id="dev-data" type="date" value="${hoje()}" class="border p-2 rounded w-full"></label>
+        <input id="dev-busca" class="border p-2 rounded w-full" placeholder="Pesquisar número ou cliente">
+        <div id="dev-lista" class="max-h-72 overflow-y-auto space-y-2">${fora.map(i=>`<label class="dev-linha flex justify-between border rounded p-2" data-busca="${esc(norm(i.numero+" "+i.clienteAtual))}"><span><input type="checkbox" class="dev-item mr-2" value="${i.id}"><strong>${esc(i.numero)}</strong> • ${esc(i.clienteAtual)} <span class="ml-1 px-2 py-0.5 rounded-full text-xs ${condicaoCor(i)}">${condicaoNome(i)}</span></span><span class="text-gray-500">${dias(i.dataSaida)} dias</span></label>`).join("")}</div>
+        <label class="block">Observações da devolução<textarea id="dev-obs" class="border p-2 rounded w-full"></textarea></label>
+      </div>`,"Confirmar devolução");
       m.querySelector("#dev-busca").oninput=e=>{const t=norm(e.target.value);m.querySelectorAll(".dev-linha").forEach(l=>l.classList.toggle("hidden",t&&!l.dataset.busca.includes(t)));};
       m.querySelector(".salvar").onclick=async()=>{
-        const ids=[...m.querySelectorAll(".dev-item:checked")].map(i=>i.value),data=m.querySelector("#dev-data").value,condicao=m.querySelector("#dev-condicao").value,observacao=m.querySelector("#dev-obs").value.trim();
+        const ids=[...m.querySelectorAll(".dev-item:checked")].map(i=>i.value),data=m.querySelector("#dev-data").value,observacao=m.querySelector("#dev-obs").value.trim();
         if(!data||!ids.length){alert("Informe a data e selecione os contêineres devolvidos.");return;}
-        const usuario = await waitForAuth();
-        const batch=db.batch();ids.forEach(id=>{const i=containers.find(x=>x.id===id),tempo=dias(i.dataSaida);batch.update(db.collection(CT).doc(id),{status:condicao==="Danificado"?"manutencao":"disponivel",ultimaDevolucao:data,diasUltimaPermanencia:tempo,observacaoDevolucao:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});batch.set(db.collection(MOV).doc(),{registroTipo:"container_movimento",userId:usuario.uid,containerId:id,numero:i.numero,tipo:"devolucao",data,cliente:i.clienteAtual,pedidoCodigo:i.pedidoCodigo,condicao,observacao,diasComCliente:tempo,createdAt:firebase.firestore.FieldValue.serverTimestamp()});});
-        await batch.commit();m.remove();containers=await buscar(CT,"container");historico=await buscar(MOV,"container_movimento");atualizar();
+        const botao=m.querySelector(".salvar");botao.disabled=true;botao.textContent="Salvando...";
+        try{
+          const usuario=await waitForAuth();
+          const batch=db.batch();
+          ids.forEach(id=>{
+            const i=containers.find(x=>x.id===id),tempo=dias(i.dataSaida);
+            batch.update(db.collection(CT).doc(id),{
+              status:"disponivel",condicao:condicao(i),ultimaDevolucao:data,diasUltimaPermanencia:tempo,
+              observacaoDevolucao:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()
+            });
+            batch.set(db.collection(MOV).doc(),{
+              registroTipo:"container_movimento",userId:usuario.uid,containerId:id,numero:i.numero,tipo:"devolucao",
+              data,cliente:i.clienteAtual,pedidoCodigo:i.pedidoCodigo,condicao:condicao(i),observacao,diasComCliente:tempo,
+              createdAt:firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+          await batch.commit();m.remove();containers=await buscar(CT,"container");atualizar();
+        }catch(e){console.error(e);alert("Não foi possível registrar a devolução.");botao.disabled=false;botao.textContent="Confirmar devolução";}
       };
     }
 
     document.getElementById("ct-cadastrar").onclick=abrirCadastro;
     document.getElementById("ct-devolver").onclick=abrirDevolucao;
+    document.getElementById("ct-busca").oninput=atualizar;
     document.getElementById("ct-cliente").onchange=atualizar;
-    document.getElementById("ct-status").onchange=atualizar;
+    document.getElementById("ct-localizacao").onchange=atualizar;
+    document.getElementById("ct-condicao").onchange=atualizar;
     document.getElementById("ct-mes").onchange=()=>{document.getElementById("ct-inicio").value="";document.getElementById("ct-fim").value="";atualizar();};
     document.getElementById("ct-inicio").onchange=()=>{document.getElementById("ct-mes").value="";atualizar();};
     document.getElementById("ct-fim").onchange=()=>{document.getElementById("ct-mes").value="";atualizar();};
-    document.getElementById("ct-limpar").onclick=()=>{document.getElementById("ct-cliente").value="";document.getElementById("ct-status").value="";document.getElementById("ct-mes").value="";document.getElementById("ct-inicio").value="";document.getElementById("ct-fim").value="";atualizar();};
-    document.getElementById("ct-lista-clientes").onclick=e=>{const linha=e.target.closest(".ct-cliente-linha");if(linha)abrirDetalhesCliente(linha.dataset.cliente);};
+    document.getElementById("ct-limpar").onclick=()=>{
+      ["ct-busca","ct-cliente","ct-localizacao","ct-condicao","ct-mes","ct-inicio","ct-fim"].forEach(id=>document.getElementById(id).value="");
+      atualizar();
+    };
+    document.getElementById("ct-lista").onclick=e=>{
+      const botao=e.target.closest("[data-editar-condicao]");
+      if(!botao)return;
+      const item=containers.find(i=>i.id===botao.dataset.editarCondicao);
+      if(item)abrirEdicaoCondicao(item);
+    };
     document.getElementById("ct-csv").onclick=()=>exportarCsv(visiveis);
     document.getElementById("ct-pdf").onclick=()=>{
-      const periodo=periodoSelecionado(),cliente=document.getElementById("ct-cliente"),status=document.getElementById("ct-status");
+      const periodo=periodoSelecionado(),cliente=document.getElementById("ct-cliente"),local=document.getElementById("ct-localizacao");
       exportarPdf(visiveis,{
         cliente:cliente.options[cliente.selectedIndex]?.text||"Todos os clientes",
-        status:status.options[status.selectedIndex]?.text||"Todas as situações",
-        inicio:periodo.inicio,
-        fim:periodo.fim
+        localizacao:local.options[local.selectedIndex]?.text||"Todos os locais",
+        inicio:periodo.ativo?periodo.inicio:"",
+        fim:periodo.ativo?periodo.fim:""
       });
     };
     atualizar();
