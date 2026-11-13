@@ -2828,7 +2828,7 @@ function renderInicio() {
           <div>
             <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#f28c28]">Desempenho comercial</span>
             <h2 class="text-xl font-bold text-[#1f3b64] mt-1">Pódio dos Representantes</h2>
-            <p class="text-sm text-slate-500">Classificação anual somente de usuários cadastrados como representantes. Vendas administrativas não entram no resultado.</p>
+            <p class="text-sm text-slate-500">Classificação anual dos usuários cadastrados como representantes.</p>
           </div>
           <div class="rounded-full px-4 py-2 text-sm font-bold whitespace-nowrap" style="background:#1f3b64;color:#fff;">🏆 Temporada ${anoRanking}</div>
         </div>
