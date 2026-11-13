@@ -1114,6 +1114,8 @@ async function editarPedidoAprovado(id) {
             produtoNome: item.produtoNome,
             quantidade: item.quantidade,
             representanteNome: p.representanteNome,
+            representanteUserId: p.representanteUserId || (p.criadoPorAdmin ? p.userId : ""),
+            criadoPorAdmin: p.criadoPorAdmin === true,
             pedidoId: codigoVinculo,
             data: novaData,
             previsaoHorarioChegada: novoHorarioChegada,
