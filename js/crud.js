@@ -2513,6 +2513,7 @@ async function exportarPDF() {
 
 // ================== DASHBOARD COM FULLCALENDAR ==================
 let dashboardUnsubscribe = null;
+let dashboardRankingUnsubscribe = null;
 let dashboardCalendar = null;
 let dashboardTooltip = null;
 let dashboardRenderToken = 0;
@@ -2523,6 +2524,11 @@ function limparRecursosDashboard() {
   if (typeof dashboardUnsubscribe === "function") {
     dashboardUnsubscribe();
     dashboardUnsubscribe = null;
+  }
+
+  if (typeof dashboardRankingUnsubscribe === "function") {
+    dashboardRankingUnsubscribe();
+    dashboardRankingUnsubscribe = null;
   }
 
   if (dashboardCalendar && typeof dashboardCalendar.destroy === "function") {
@@ -2587,11 +2593,149 @@ async function obterPedidosAdminOcultosDoRepresentante(user) {
   );
 }
 
+async function obterPedidosCriadosPorAdmin() {
+  const codigos = new Set();
+
+  try {
+    const snap = await db.collection("pedidos").get();
+    snap.docs.forEach(doc => {
+      const pedido = doc.data() || {};
+      if (pedido.criadoPorAdmin !== true) return;
+
+      codigos.add(doc.id);
+      if (pedido.codigo) codigos.add(String(pedido.codigo));
+    });
+  } catch (erro) {
+    console.warn("Não foi possível cruzar os pedidos administrativos no ranking.", erro);
+  }
+
+  return codigos;
+}
+
+function renderizarRankingAnualDashboard(documentos, pedidosAdmin, ano) {
+  const container = document.getElementById("dashboard-ranking-anual");
+  if (!container) return;
+
+  const totais = new Map();
+
+  documentos.forEach(doc => {
+    const venda = doc.data ? doc.data() : doc;
+    const dataVenda = formatarDataISO(venda.data);
+    if (!dataVenda || !String(dataVenda).startsWith(`${ano}-`)) return;
+    if (venda.criadoPorAdmin === true) return;
+    if (pedidosAdmin.has(String(venda.pedidoId || ""))) return;
+
+    const representante = String(venda.representanteNome || "").trim();
+    const chave = normalizarTexto(representante);
+    const quantidade = Number(venda.quantidade || 0);
+    if (!representante || !chave || quantidade <= 0) return;
+    if (["admin", "administrador", "administracao"].includes(chave)) return;
+
+    if (!totais.has(chave)) {
+      totais.set(chave, { nome: representante, quantidade: 0, pedidos: new Set() });
+    }
+
+    const item = totais.get(chave);
+    item.quantidade += quantidade;
+    item.pedidos.add(String(venda.pedidoId || doc.id || `${representante}-${dataVenda}`));
+  });
+
+  const ranking = [...totais.values()]
+    .sort((a, b) => b.quantidade - a.quantidade || a.nome.localeCompare(b.nome, "pt-BR"));
+
+  if (!ranking.length) {
+    container.innerHTML = `
+      <div class="py-10 text-center text-slate-500">
+        <div class="text-4xl mb-2">🏆</div>
+        <p class="font-semibold">Ainda não há vendas de representantes em ${ano}.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const medalhas = [
+    { posicao: 1, icone: "🥇", rotulo: "1º lugar", fundo: "linear-gradient(145deg,#fff7d6,#ffffff)", borda: "#f2b705", altura: 210 },
+    { posicao: 2, icone: "🥈", rotulo: "2º lugar", fundo: "linear-gradient(145deg,#f1f5f9,#ffffff)", borda: "#94a3b8", altura: 176 },
+    { posicao: 3, icone: "🥉", rotulo: "3º lugar", fundo: "linear-gradient(145deg,#fff0e5,#ffffff)", borda: "#c97838", altura: 158 }
+  ];
+
+  const ordemPodio = [1, 0, 2].filter(indice => ranking[indice]);
+  const podio = ordemPodio.map(indice => {
+    const item = ranking[indice];
+    const visual = medalhas[indice];
+    return `
+      <article class="rounded-2xl border shadow-sm p-5 flex flex-col items-center justify-center text-center"
+        style="min-height:${visual.altura}px;background:${visual.fundo};border-color:${visual.borda};">
+        <div class="text-4xl mb-2">${visual.icone}</div>
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-500">${visual.rotulo}</div>
+        <h3 class="mt-2 text-lg font-bold text-[#1f3b64] break-words">${escapeHtmlRelatorio(item.nome)}</h3>
+        <div class="mt-3 text-2xl font-extrabold text-[#f28c28]">${formatQuantidade(item.quantidade)}</div>
+        <div class="text-xs text-slate-500">unidades vendidas • ${item.pedidos.size} pedido(s)</div>
+      </article>
+    `;
+  }).join("");
+
+  const classificacao = ranking.slice(3, 10).map((item, indice) => `
+    <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-0">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="w-8 h-8 rounded-full bg-[#1f3b64] text-white flex items-center justify-center text-sm font-bold">${indice + 4}</span>
+        <span class="font-semibold text-slate-700 truncate">${escapeHtmlRelatorio(item.nome)}</span>
+      </div>
+      <span class="font-bold text-[#1f3b64] whitespace-nowrap">${formatQuantidade(item.quantidade)}</span>
+    </div>
+  `).join("");
+
+  container.innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">${podio}</div>
+    ${classificacao ? `
+      <div class="mt-5 border-t border-slate-200 pt-3">
+        <h4 class="text-sm font-bold text-[#1f3b64] mb-1">Classificação anual</h4>
+        ${classificacao}
+      </div>
+    ` : ""}
+  `;
+}
+
+async function iniciarRankingAnualDashboard(renderToken) {
+  const ano = new Date().getFullYear();
+  const pedidosAdmin = await obterPedidosCriadosPorAdmin();
+  if (renderToken !== dashboardRenderToken || !document.getElementById("dashboard-ranking-anual")) return;
+
+  dashboardRankingUnsubscribe = db.collection("agendamentos").onSnapshot(snap => {
+    if (renderToken !== dashboardRenderToken) return;
+    renderizarRankingAnualDashboard(snap.docs, pedidosAdmin, ano);
+  }, erro => {
+    console.error("Erro ao carregar ranking anual:", erro);
+    const container = document.getElementById("dashboard-ranking-anual");
+    if (container) {
+      container.innerHTML = '<p class="py-8 text-center text-red-600">Não foi possível carregar o ranking anual.</p>';
+    }
+  });
+}
+
 function renderDashboard() {
   limparRecursosDashboard();
   const renderToken = dashboardRenderToken;
 
+  const anoRanking = new Date().getFullYear();
+
   pageContent.innerHTML = `
+    <section class="mb-6">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#f28c28]">Desempenho comercial</span>
+            <h2 class="text-xl font-bold text-[#1f3b64] mt-1">Pódio dos Representantes</h2>
+            <p class="text-sm text-slate-500">Ranking pela quantidade vendida durante todo o ano. Vendas administrativas não são contabilizadas.</p>
+          </div>
+          <div class="rounded-full bg-[#1f3b64] text-white px-4 py-2 text-sm font-bold whitespace-nowrap">🏆 Temporada ${anoRanking}</div>
+        </div>
+        <div id="dashboard-ranking-anual" class="p-5">
+          <div class="py-10 text-center text-slate-500">Carregando classificação anual...</div>
+        </div>
+      </div>
+    </section>
+
     <section class="cf-dashboard-calendar">
       <div class="cf-dashboard-calendar-card">
         <div class="cf-dashboard-calendar-head">
@@ -2615,6 +2759,12 @@ function renderDashboard() {
 
   waitForAuth().then(async user => {
 if (renderToken !== dashboardRenderToken || !document.getElementById("calendar")) return;
+
+iniciarRankingAnualDashboard(renderToken).catch(erro => {
+  console.error("Erro ao iniciar ranking anual:", erro);
+  const container = document.getElementById("dashboard-ranking-anual");
+  if (container) container.innerHTML = '<p class="py-8 text-center text-red-600">Não foi possível carregar o ranking anual.</p>';
+});
 
 const pedidosAdminOcultos = await obterPedidosAdminOcultosDoRepresentante(user);
 if (renderToken !== dashboardRenderToken || !document.getElementById("calendar")) return;
