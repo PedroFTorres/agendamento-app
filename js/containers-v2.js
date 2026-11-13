@@ -189,7 +189,7 @@
       </section>
       <section class="bg-white rounded-xl shadow overflow-hidden">
         <div class="px-4 py-3 border-b"><h3 class="font-bold text-blue-900">Relação de todos os contêineres</h3><p class="text-xs text-gray-500">A condição pode ser alterada a qualquer momento, independentemente da localização.</p></div>
-        <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="text-left p-3">Número</th><th class="text-left p-3">Localização</th><th class="text-left p-3">Cliente</th><th class="text-left p-3">Desde</th><th class="text-right p-3">Dias</th><th class="text-left p-3">Condição</th><th class="text-left p-3">Observação</th><th class="text-right p-3">Ação</th></tr></thead><tbody id="ct-lista"></tbody></table></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="text-left p-3">Número</th><th class="text-left p-3">Localização</th><th class="text-left p-3">Cliente / último cliente</th><th class="text-left p-3">Desde</th><th class="text-right p-3">Dias</th><th class="text-left p-3">Condição</th><th class="text-left p-3">Observação</th><th class="text-right p-3">Ação</th></tr></thead><tbody id="ct-lista"></tbody></table></div>
       </section>
     `;
 
@@ -238,7 +238,7 @@
         return `<tr class="border-t hover:bg-gray-50">
           <td class="p-3 font-bold text-blue-900">${esc(i.numero)}</td>
           <td class="p-3"><span class="px-2 py-1 rounded-full text-xs ${localizacaoCor(i)}">${localizacaoNome(i)}</span></td>
-          <td class="p-3">${esc(fora?(i.clienteAtual||"-"):"Empresa / pátio")}</td>
+          <td class="p-3">${esc(i.clienteAtual||"-")}</td>
           <td class="p-3">${dataBR(dataLocal)}</td>
           <td class="p-3 text-right">${fora?dias(i.dataSaida):"-"}</td>
           <td class="p-3"><span class="px-2 py-1 rounded-full text-xs font-semibold ${condicaoCor(i)}">${condicaoNome(i)}</span></td>
@@ -251,7 +251,7 @@
     function abrirEdicaoCondicao(item) {
       const m=modal("Editar condição do contêiner "+esc(item.numero),`
         <div class="space-y-3">
-          <div class="bg-gray-50 border rounded p-3 text-sm"><strong>Localização:</strong> ${esc(localizacaoNome(item))}${localizacao(item)==="com_cliente"?` • ${esc(item.clienteAtual||"Cliente não informado")} • ${dias(item.dataSaida)} dia(s)`:" • Empresa / pátio"}</div>
+          <div class="bg-gray-50 border rounded p-3 text-sm"><strong>Localização:</strong> ${esc(localizacaoNome(item))}${item.clienteAtual?` • Cliente: ${esc(item.clienteAtual)}`:""}${localizacao(item)==="com_cliente"?` • ${dias(item.dataSaida)} dia(s)`:""}</div>
           <label class="block"><span class="font-semibold block mb-1">Condição atual *</span><select id="condicao-valor" class="border p-2 rounded w-full"><option value="normal" ${condicao(item)==="normal"?"selected":""}>Normal</option><option value="danificado" ${condicao(item)==="danificado"?"selected":""}>Danificado</option></select></label>
           <label class="block"><span class="font-semibold block mb-1">Observação da condição</span><textarea id="condicao-obs" rows="3" class="border p-2 rounded w-full" placeholder="Ex.: tampa quebrada, vazamento, estrutura amassada">${esc(item.observacaoCondicao||"")}</textarea></label>
         </div>`,"Salvar condição");
