@@ -60,7 +60,9 @@ async function carregarUsuario() {
     alert("Usuário não cadastrado");
   }
 }
-carregarUsuario();
+carregarUsuario().then(() => {
+  if (PERFIL) renderInicio();
+});
 
 function normalizarTexto(valor) {
   return String(valor || "")
@@ -2612,8 +2614,30 @@ async function obterPedidosCriadosPorAdmin() {
   return codigos;
 }
 
-function renderizarRankingAnualDashboard(documentos, pedidosAdmin, ano) {
-  const container = document.getElementById("dashboard-ranking-anual");
+async function obterRepresentantesCadastradosRanking() {
+  const snap = await db.collection("usuarios")
+    .where("perfil", "==", "representante")
+    .get();
+
+  const porUid = new Map();
+  const porNome = new Map();
+
+  snap.docs.forEach(doc => {
+    const usuario = { id: doc.id, ...(doc.data() || {}) };
+    const nome = String(usuario.nome || "").trim();
+    const uid = String(usuario.uid || doc.id || "").trim();
+    if (!nome) return;
+
+    const cadastro = { uid, nome };
+    if (uid) porUid.set(uid, cadastro);
+    porNome.set(normalizarTexto(nome), cadastro);
+  });
+
+  return { porUid, porNome };
+}
+
+function renderizarRankingAnualDashboard(documentos, pedidosAdmin, representantes, ano) {
+  const container = document.getElementById("ranking-representantes-anual");
   if (!container) return;
 
   const totais = new Map();
@@ -2625,19 +2649,31 @@ function renderizarRankingAnualDashboard(documentos, pedidosAdmin, ano) {
     if (venda.criadoPorAdmin === true) return;
     if (pedidosAdmin.has(String(venda.pedidoId || ""))) return;
 
-    const representante = String(venda.representanteNome || "").trim();
-    const chave = normalizarTexto(representante);
-    const quantidade = Number(venda.quantidade || 0);
-    if (!representante || !chave || quantidade <= 0) return;
-    if (["admin", "administrador", "administracao"].includes(chave)) return;
+    const idsPossiveis = [
+      venda.representanteUserId,
+      venda.userId,
+      venda.criadoPor
+    ].map(valor => String(valor || "").trim()).filter(Boolean);
 
+    let cadastro = idsPossiveis
+      .map(uid => representantes.porUid.get(uid))
+      .find(Boolean);
+
+    if (!cadastro) {
+      cadastro = representantes.porNome.get(normalizarTexto(venda.representanteNome));
+    }
+
+    const quantidade = Number(venda.quantidade || 0);
+    if (!cadastro || quantidade <= 0) return;
+
+    const chave = cadastro.uid || normalizarTexto(cadastro.nome);
     if (!totais.has(chave)) {
-      totais.set(chave, { nome: representante, quantidade: 0, pedidos: new Set() });
+      totais.set(chave, { nome: cadastro.nome, quantidade: 0, pedidos: new Set() });
     }
 
     const item = totais.get(chave);
     item.quantidade += quantidade;
-    item.pedidos.add(String(venda.pedidoId || doc.id || `${representante}-${dataVenda}`));
+    item.pedidos.add(String(venda.pedidoId || doc.id || `${cadastro.nome}-${dataVenda}`));
   });
 
   const ranking = [...totais.values()]
@@ -2698,44 +2734,76 @@ function renderizarRankingAnualDashboard(documentos, pedidosAdmin, ano) {
 
 async function iniciarRankingAnualDashboard(renderToken) {
   const ano = new Date().getFullYear();
-  const pedidosAdmin = await obterPedidosCriadosPorAdmin();
-  if (renderToken !== dashboardRenderToken || !document.getElementById("dashboard-ranking-anual")) return;
+  const [pedidosAdmin, representantes] = await Promise.all([
+    obterPedidosCriadosPorAdmin(),
+    obterRepresentantesCadastradosRanking()
+  ]);
+  if (renderToken !== dashboardRenderToken || !document.getElementById("ranking-representantes-anual")) return;
 
   dashboardRankingUnsubscribe = db.collection("agendamentos").onSnapshot(snap => {
     if (renderToken !== dashboardRenderToken) return;
-    renderizarRankingAnualDashboard(snap.docs, pedidosAdmin, ano);
+    renderizarRankingAnualDashboard(snap.docs, pedidosAdmin, representantes, ano);
   }, erro => {
     console.error("Erro ao carregar ranking anual:", erro);
-    const container = document.getElementById("dashboard-ranking-anual");
+    const container = document.getElementById("ranking-representantes-anual");
     if (container) {
       container.innerHTML = '<p class="py-8 text-center text-red-600">Não foi possível carregar o ranking anual.</p>';
     }
   });
 }
 
-function renderDashboard() {
+function atualizarCabecalhoPrincipal(titulo, descricao) {
+  const cabecalho = document.getElementById("dashboard-header");
+  if (!cabecalho) return;
+  const h1 = cabecalho.querySelector("h1");
+  const paragrafo = cabecalho.querySelector("p");
+  if (h1) h1.textContent = titulo;
+  if (paragrafo) paragrafo.textContent = descricao;
+}
+
+function renderInicio() {
   limparRecursosDashboard();
   const renderToken = dashboardRenderToken;
-
   const anoRanking = new Date().getFullYear();
 
+  atualizarCabecalhoPrincipal("Início", "Desempenho anual da equipe comercial.");
+
   pageContent.innerHTML = `
-    <section class="mb-6">
+    <section>
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#f28c28]">Desempenho comercial</span>
             <h2 class="text-xl font-bold text-[#1f3b64] mt-1">Pódio dos Representantes</h2>
-            <p class="text-sm text-slate-500">Ranking pela quantidade vendida durante todo o ano. Vendas administrativas não são contabilizadas.</p>
+            <p class="text-sm text-slate-500">Classificação anual somente de usuários cadastrados como representantes. Vendas administrativas não entram no resultado.</p>
           </div>
           <div class="rounded-full bg-[#1f3b64] text-white px-4 py-2 text-sm font-bold whitespace-nowrap">🏆 Temporada ${anoRanking}</div>
         </div>
-        <div id="dashboard-ranking-anual" class="p-5">
+        <div id="ranking-representantes-anual" class="p-5">
           <div class="py-10 text-center text-slate-500">Carregando classificação anual...</div>
         </div>
       </div>
     </section>
+  `;
 
+  waitForAuth()
+    .then(() => iniciarRankingAnualDashboard(renderToken))
+    .catch(erro => {
+      console.error("Erro ao iniciar ranking anual:", erro);
+      const container = document.getElementById("ranking-representantes-anual");
+      if (container) {
+        container.innerHTML = '<p class="py-8 text-center text-red-600">Não foi possível carregar o ranking anual.</p>';
+      }
+    });
+}
+
+function renderDashboard() {
+  limparRecursosDashboard();
+  const renderToken = dashboardRenderToken;
+
+  atualizarCabecalhoPrincipal("Dashboard", "Calendário e planejamento dos carregamentos.");
+
+  pageContent.innerHTML = `
     <section class="cf-dashboard-calendar">
       <div class="cf-dashboard-calendar-card">
         <div class="cf-dashboard-calendar-head">
@@ -2759,12 +2827,6 @@ function renderDashboard() {
 
   waitForAuth().then(async user => {
 if (renderToken !== dashboardRenderToken || !document.getElementById("calendar")) return;
-
-iniciarRankingAnualDashboard(renderToken).catch(erro => {
-  console.error("Erro ao iniciar ranking anual:", erro);
-  const container = document.getElementById("dashboard-ranking-anual");
-  if (container) container.innerHTML = '<p class="py-8 text-center text-red-600">Não foi possível carregar o ranking anual.</p>';
-});
 
 const pedidosAdminOcultos = await obterPedidosAdminOcultosDoRepresentante(user);
 if (renderToken !== dashboardRenderToken || !document.getElementById("calendar")) return;
@@ -3759,7 +3821,7 @@ document.querySelectorAll(".menu-item").forEach(btn => {
   btn.addEventListener("click", () => {
     const page = btn.dataset.page;
 
-    if (page !== "dashboard") {
+    if (!["inicio", "dashboard"].includes(page)) {
       limparRecursosDashboard();
     }
 
@@ -3777,6 +3839,7 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else if (page === "ranking-clientes") renderRankingClientes();
     else if (page === "relatorios-diarios" && typeof window.renderRelatoriosDiarios === "function") window.renderRelatoriosDiarios();
     else if (page === "ficha-atendimento" && typeof window.renderFichaAtendimento === "function") window.renderFichaAtendimento();
+    else if (page === "inicio") renderInicio();
     else if (page === "dashboard") renderDashboard();
     else if (page === "notificacoes") renderNotificacoes();
     else if (page === "producao") renderProducao();
