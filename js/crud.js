@@ -2595,21 +2595,17 @@ async function obterPedidosAdminOcultosDoRepresentante(user) {
   );
 }
 
-async function obterPedidosCriadosPorAdmin() {
+async function obterPedidosValidosRankingAnual() {
   const codigos = new Set();
+  const snap = await db.collection("pedidos").get();
 
-  try {
-    const snap = await db.collection("pedidos").get();
-    snap.docs.forEach(doc => {
-      const pedido = doc.data() || {};
-      if (pedido.criadoPorAdmin !== true) return;
+  snap.docs.forEach(doc => {
+    const pedido = doc.data() || {};
+    if (pedido.status !== "aprovado" || pedido.criadoPorAdmin === true) return;
 
-      codigos.add(doc.id);
-      if (pedido.codigo) codigos.add(String(pedido.codigo));
-    });
-  } catch (erro) {
-    console.warn("Não foi possível cruzar os pedidos administrativos no ranking.", erro);
-  }
+    codigos.add(String(doc.id));
+    if (pedido.codigo) codigos.add(String(pedido.codigo));
+  });
 
   return codigos;
 }
@@ -2636,7 +2632,7 @@ async function obterRepresentantesCadastradosRanking() {
   return { porUid, porNome };
 }
 
-function renderizarRankingAnualDashboard(documentos, pedidosAdmin, representantes, ano) {
+function renderizarRankingAnualDashboard(documentos, pedidosValidos, representantes, ano) {
   const container = document.getElementById("ranking-representantes-anual");
   if (!container) return;
 
@@ -2646,8 +2642,9 @@ function renderizarRankingAnualDashboard(documentos, pedidosAdmin, representante
     const venda = doc.data ? doc.data() : doc;
     const dataVenda = formatarDataISO(venda.data);
     if (!dataVenda || !String(dataVenda).startsWith(`${ano}-`)) return;
+    const pedidoId = String(venda.pedidoId || "").trim();
     if (venda.criadoPorAdmin === true) return;
-    if (pedidosAdmin.has(String(venda.pedidoId || ""))) return;
+    if (!pedidoId || !pedidosValidos.has(pedidoId)) return;
 
     const idsPossiveis = [
       venda.representanteUserId,
@@ -2787,15 +2784,15 @@ function renderizarRankingAnualDashboard(documentos, pedidosAdmin, representante
 
 async function iniciarRankingAnualDashboard(renderToken) {
   const ano = new Date().getFullYear();
-  const [pedidosAdmin, representantes] = await Promise.all([
-    obterPedidosCriadosPorAdmin(),
+  const [pedidosValidos, representantes] = await Promise.all([
+    obterPedidosValidosRankingAnual(),
     obterRepresentantesCadastradosRanking()
   ]);
   if (renderToken !== dashboardRenderToken || !document.getElementById("ranking-representantes-anual")) return;
 
   dashboardRankingUnsubscribe = db.collection("agendamentos").onSnapshot(snap => {
     if (renderToken !== dashboardRenderToken) return;
-    renderizarRankingAnualDashboard(snap.docs, pedidosAdmin, representantes, ano);
+    renderizarRankingAnualDashboard(snap.docs, pedidosValidos, representantes, ano);
   }, erro => {
     console.error("Erro ao carregar ranking anual:", erro);
     const container = document.getElementById("ranking-representantes-anual");
