@@ -2689,43 +2689,96 @@ function renderizarRankingAnualDashboard(documentos, pedidosAdmin, representante
     return;
   }
 
-  const medalhas = [
-    { posicao: 1, icone: "🥇", rotulo: "1º lugar", fundo: "linear-gradient(145deg,#fff7d6,#ffffff)", borda: "#f2b705", altura: 210 },
-    { posicao: 2, icone: "🥈", rotulo: "2º lugar", fundo: "linear-gradient(145deg,#f1f5f9,#ffffff)", borda: "#94a3b8", altura: 176 },
-    { posicao: 3, icone: "🥉", rotulo: "3º lugar", fundo: "linear-gradient(145deg,#fff0e5,#ffffff)", borda: "#c97838", altura: 158 }
+  const visuais = [
+    { classe: "primeiro", icone: "🥇", rotulo: "1º lugar", numero: 1 },
+    { classe: "segundo", icone: "🥈", rotulo: "2º lugar", numero: 2 },
+    { classe: "terceiro", icone: "🥉", rotulo: "3º lugar", numero: 3 }
   ];
 
+  // No desktop, o campeão ocupa o centro: 2º • 1º • 3º.
   const ordemPodio = [1, 0, 2].filter(indice => ranking[indice]);
-  const podio = ordemPodio.map(indice => {
+  const podio = ordemPodio.map((indice, ordem) => {
     const item = ranking[indice];
-    const visual = medalhas[indice];
+    const visual = visuais[indice];
     return `
-      <article class="rounded-2xl border shadow-sm p-5 flex flex-col items-center justify-center text-center"
-        style="min-height:${visual.altura}px;background:${visual.fundo};border-color:${visual.borda};">
-        <div class="text-4xl mb-2">${visual.icone}</div>
-        <div class="text-xs font-bold uppercase tracking-wider text-slate-500">${visual.rotulo}</div>
-        <h3 class="mt-2 text-lg font-bold text-[#1f3b64] break-words">${escapeHtmlRelatorio(item.nome)}</h3>
-        <div class="mt-3 text-2xl font-extrabold text-[#f28c28]">${formatQuantidade(item.quantidade)}</div>
-        <div class="text-xs text-slate-500">unidades vendidas • ${item.pedidos.size} pedido(s)</div>
-      </article>
+      <div class="cf-podium-unit cf-podium-${visual.classe}" style="animation-delay:${ordem * 120}ms">
+        <article class="cf-podium-card">
+          ${indice === 0 ? '<div class="cf-champion-sparkles" aria-hidden="true">✦ ✨ ✦</div>' : ""}
+          <div class="cf-podium-medal">${visual.icone}</div>
+          <div class="cf-podium-label">${visual.rotulo}</div>
+          <h3>${escapeHtmlRelatorio(item.nome)}</h3>
+          <strong class="cf-podium-total">${formatQuantidade(item.quantidade)}</strong>
+          <small>unidades vendidas</small>
+          <span>${item.pedidos.size} pedido(s)</span>
+        </article>
+        <div class="cf-podium-step" aria-hidden="true"><strong>${visual.numero}</strong></div>
+      </div>
     `;
   }).join("");
 
-  const classificacao = ranking.slice(3, 10).map((item, indice) => `
-    <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-0">
-      <div class="flex items-center gap-3 min-w-0">
-        <span class="w-8 h-8 rounded-full bg-[#1f3b64] text-white flex items-center justify-center text-sm font-bold">${indice + 4}</span>
-        <span class="font-semibold text-slate-700 truncate">${escapeHtmlRelatorio(item.nome)}</span>
+  // Todos os representantes fora do pódio continuam na classificação, sem medalhas.
+  const classificacao = ranking.slice(3).map((item, indice) => `
+    <div class="cf-ranking-row" style="animation-delay:${Math.min(indice * 60, 600)}ms">
+      <div class="cf-ranking-person">
+        <strong class="cf-ranking-position">#${indice + 4}</strong>
+        <span>${escapeHtmlRelatorio(item.nome)}</span>
       </div>
-      <span class="font-bold text-[#1f3b64] whitespace-nowrap">${formatQuantidade(item.quantidade)}</span>
+      <div class="cf-ranking-result">
+        <strong>${formatQuantidade(item.quantidade)}</strong>
+        <small>${item.pedidos.size} pedido(s)</small>
+      </div>
     </div>
   `).join("");
 
   container.innerHTML = `
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">${podio}</div>
+    <style>
+      .cf-podium-stage{display:grid;grid-template-columns:1fr 1.12fr 1fr;align-items:end;gap:16px;padding:38px 8px 0;overflow:hidden}
+      .cf-podium-unit{display:flex;flex-direction:column;justify-content:flex-end;opacity:0;animation:cfPodiumRise .65s cubic-bezier(.2,.8,.2,1) forwards}
+      .cf-podium-card{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px 14px;border:1px solid;border-radius:18px 18px 0 0;background:#fff;box-shadow:0 12px 28px rgba(31,59,100,.10)}
+      .cf-podium-primeiro .cf-podium-card{min-height:240px;border-color:#f2b705;background:linear-gradient(145deg,#fff4bd 0%,#fffdf3 72%);z-index:2;animation:cfChampionGlow 2.4s ease-in-out 1s infinite}
+      .cf-podium-segundo .cf-podium-card{min-height:190px;border-color:#94a3b8;background:linear-gradient(145deg,#e8eef5,#fff)}
+      .cf-podium-terceiro .cf-podium-card{min-height:168px;border-color:#c97838;background:linear-gradient(145deg,#ffe8d7,#fff)}
+      .cf-podium-medal{font-size:42px;line-height:1;margin-bottom:8px;filter:drop-shadow(0 4px 4px rgba(31,59,100,.16))}
+      .cf-podium-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.13em;color:#64748b}
+      .cf-podium-card h3{margin:8px 0 0;color:#1f3b64;font-size:20px;font-weight:800;overflow-wrap:anywhere}
+      .cf-podium-primeiro .cf-podium-card h3{font-size:23px}
+      .cf-podium-total{margin-top:10px;color:#f28c28;font-size:27px;line-height:1.1}
+      .cf-podium-card small{margin-top:3px;color:#64748b;font-size:11px}
+      .cf-podium-card span{margin-top:2px;color:#475569;font-size:11px;font-weight:700}
+      .cf-podium-step{display:flex;align-items:center;justify-content:center;color:#fff;border-radius:0 0 12px 12px;box-shadow:inset 0 5px 12px rgba(255,255,255,.18)}
+      .cf-podium-step strong{font-size:34px;text-shadow:0 2px 5px rgba(0,0,0,.18)}
+      .cf-podium-primeiro .cf-podium-step{height:92px;background:linear-gradient(180deg,#f2b705,#d89000)}
+      .cf-podium-segundo .cf-podium-step{height:66px;background:linear-gradient(180deg,#94a3b8,#64748b)}
+      .cf-podium-terceiro .cf-podium-step{height:48px;background:linear-gradient(180deg,#c97838,#9a4f22)}
+      .cf-champion-sparkles{position:absolute;top:-31px;left:0;right:0;color:#f2b705;font-size:20px;letter-spacing:10px;animation:cfSparkle 1.5s ease-in-out infinite}
+      .cf-ranking-board{margin-top:26px;border-top:1px solid #e2e8f0;padding-top:16px}
+      .cf-ranking-board h4{margin:0 0 8px;color:#1f3b64;font-size:15px;font-weight:800}
+      .cf-ranking-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 10px;border-bottom:1px solid #edf2f7;opacity:0;animation:cfRowEnter .4s ease-out forwards}
+      .cf-ranking-row:last-child{border-bottom:0}
+      .cf-ranking-row:hover{background:#f8fafc}
+      .cf-ranking-person{display:flex;align-items:center;gap:14px;min-width:0;color:#334155;font-weight:700}
+      .cf-ranking-position{min-width:34px;color:#1f3b64;font-size:14px}
+      .cf-ranking-result{text-align:right;white-space:nowrap}
+      .cf-ranking-result strong{display:block;color:#1f3b64;font-size:16px}
+      .cf-ranking-result small{display:block;color:#64748b;font-size:10px}
+      @keyframes cfPodiumRise{from{opacity:0;transform:translateY(46px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes cfChampionGlow{0%,100%{box-shadow:0 12px 28px rgba(31,59,100,.10)}50%{box-shadow:0 12px 34px rgba(242,183,5,.34)}}
+      @keyframes cfSparkle{0%,100%{opacity:.45;transform:translateY(3px) scale(.92)}50%{opacity:1;transform:translateY(-3px) scale(1.08)}}
+      @keyframes cfRowEnter{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+      @media(max-width:767px){
+        .cf-podium-stage{display:flex;flex-direction:column;align-items:stretch;padding-top:34px}
+        .cf-podium-primeiro{order:1}.cf-podium-segundo{order:2}.cf-podium-terceiro{order:3}
+        .cf-podium-card{min-height:150px!important;border-radius:18px}
+        .cf-podium-step{display:none}
+      }
+      @media(prefers-reduced-motion:reduce){
+        .cf-podium-unit,.cf-ranking-row,.cf-podium-primeiro .cf-podium-card,.cf-champion-sparkles{animation:none!important;opacity:1}
+      }
+    </style>
+    <div class="cf-podium-stage">${podio}</div>
     ${classificacao ? `
-      <div class="mt-5 border-t border-slate-200 pt-3">
-        <h4 class="text-sm font-bold text-[#1f3b64] mb-1">Classificação anual</h4>
+      <div class="cf-ranking-board">
+        <h4>Classificação anual completa</h4>
         ${classificacao}
       </div>
     ` : ""}
@@ -2777,7 +2830,7 @@ function renderInicio() {
             <h2 class="text-xl font-bold text-[#1f3b64] mt-1">Pódio dos Representantes</h2>
             <p class="text-sm text-slate-500">Classificação anual somente de usuários cadastrados como representantes. Vendas administrativas não entram no resultado.</p>
           </div>
-          <div class="rounded-full bg-[#1f3b64] text-white px-4 py-2 text-sm font-bold whitespace-nowrap">🏆 Temporada ${anoRanking}</div>
+          <div class="rounded-full px-4 py-2 text-sm font-bold whitespace-nowrap" style="background:#1f3b64;color:#fff;">🏆 Temporada ${anoRanking}</div>
         </div>
         <div id="ranking-representantes-anual" class="p-5">
           <div class="py-10 text-center text-slate-500">Carregando classificação anual...</div>
