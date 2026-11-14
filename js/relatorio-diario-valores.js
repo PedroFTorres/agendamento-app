@@ -293,6 +293,7 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
     maximumFractionDigits: 3
   });
   const chave = valor => normalizarChavePrecoRelatorio(valor);
+  const logoUrl = new URL("img/logo.png", window.location.href).href;
   const pesoTotal = numeroRelatorioDiario(opcoes.pesoTotal);
   const valorNota = numeroRelatorioDiario(opcoes.valorNota);
   const valorRecibo = numeroRelatorioDiario(opcoes.valorRecibo);
@@ -393,16 +394,22 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
       <style>
         @page { size: A4 ${orientacao}; margin: 10mm; }
         * { box-sizing: border-box; }
-        body { margin: 0; color: #000; background: #fff; font-family: "Courier New", Courier, monospace; font-size: 9pt; }
+        body { margin: 0; color: #000; background: #fff; font-family: "Courier New", Courier, monospace; font-size: 8pt; line-height: 1.05; }
+        .relatorio { width: 820px; max-width: 100%; }
+        .cabecalho { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 5px; border-bottom: 1px solid #000; }
+        .marca { display: flex; align-items: center; gap: 8px; }
+        .logo { width: 42px; height: 42px; object-fit: contain; }
+        .nome-relatorio { font-size: 11pt; font-weight: bold; }
+        .data-relatorio { font-weight: bold; white-space: nowrap; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        col:nth-child(1) { width: 48%; }
-        col:nth-child(2) { width: 20%; }
-        col:nth-child(3) { width: 17%; }
+        col:nth-child(1) { width: 46%; }
+        col:nth-child(2) { width: 21%; }
+        col:nth-child(3) { width: 18%; }
         col:nth-child(4) { width: 15%; }
-        td { padding: 3px 5px; vertical-align: middle; border-top: 1px solid #000; overflow-wrap: anywhere; }
+        td { height: 16px; padding: 1px 4px; line-height: 1.05; vertical-align: middle; border-top: 1px solid #000; overflow-wrap: anywhere; }
         .num { text-align: right; white-space: nowrap; }
         .titulo td { font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; }
-        .espaco td { height: 10px; border: 0; padding: 0; }
+        .espaco td { height: 4px; border: 0; padding: 0; }
         .total td { font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; }
         .total-telhas td { background: #ffff00; font-weight: bold; }
         .total-tijolos td { background: #d9ead3; font-weight: bold; }
@@ -412,14 +419,22 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
       </style>
     </head>
     <body>
-      <table>
+      <main class="relatorio">
+        <header class="cabecalho">
+          <div class="marca">
+            <img class="logo" src="${logoUrl}" alt="Logo">
+            <div class="nome-relatorio">RELATÓRIO DIÁRIO</div>
+          </div>
+          <div class="data-relatorio">${escapar(dataFormatada)}</div>
+        </header>
+        <table>
         <colgroup><col><col><col><col></colgroup>
         <tbody>
-          <tr class="titulo"><td>Forma de pagamento</td><td></td><td></td><td class="num">${escapar(dataFormatada)}</td></tr>
+          <tr class="titulo"><td>Forma de pagamento</td><td></td><td></td><td></td></tr>
           ${linhasPagamento}
           <tr class="espaco"><td colspan="4"></td></tr>
 
-          <tr class="titulo"><td>Tipo de documento</td><td></td><td></td><td class="num">${escapar(dataFormatada)}</td></tr>
+          <tr class="titulo"><td>Tipo de documento</td><td></td><td></td><td></td></tr>
           <tr><td>NOTA FISCAL</td><td class="num">${formatoNumero(valorNota)}</td><td>Pedidos:</td><td class="num">${pedidosNota}</td></tr>
           <tr><td>RECIBO</td><td class="num">${formatoNumero(valorRecibo)}</td><td>Pedidos:</td><td class="num">${pedidosRecibo}</td></tr>
           <tr class="total"><td>Valor Total</td><td class="num">${formatoNumero(valorTotal)}</td><td></td><td></td></tr>
@@ -435,7 +450,8 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
           ${linhasItens}
           <tr class="total-geral"><td>TOTAL GERAL</td><td class="num">${formatoQuantidade(totalProdutos.quantidade)}</td><td class="num">${formatoNumero(valorProdutos)}</td><td class="num">${formatoNumero(totalProdutos.medio)}</td></tr>
         </tbody>
-      </table>
+        </table>
+      </main>
       <script>
         window.addEventListener("load", function () {
           setTimeout(function () { window.print(); }, 250);
