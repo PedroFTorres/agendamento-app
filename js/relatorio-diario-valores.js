@@ -502,6 +502,30 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
   });
 
   const dadosPedidoPorVinculo = new Map();
+  const clientesAtuaisPorId = new Map();
+  const clientesAtuaisPorDocumento = new Map();
+  const clientesAtuaisPorNome = new Map();
+
+  try {
+    const clientesSnap = await db.collection("clientes").get();
+    clientesSnap.forEach(doc => {
+      const cliente = { id: doc.id, ...(doc.data() || {}) };
+      clientesAtuaisPorId.set(doc.id, cliente);
+
+      const documento = String(
+        cliente.cnpj || cliente.cpf || cliente.documento || cliente.clienteDocumento || ""
+      ).replace(/\D/g, "");
+      if (documento) clientesAtuaisPorDocumento.set(documento, cliente);
+
+      const nome = normalizarChavePrecoRelatorio(cliente.nome || cliente.clienteNome);
+      if (nome) {
+        if (!clientesAtuaisPorNome.has(nome)) clientesAtuaisPorNome.set(nome, cliente);
+        else clientesAtuaisPorNome.set(nome, null);
+      }
+    });
+  } catch (e) {
+    console.warn("Nao foi possivel consultar os cadastros atuais dos clientes.", e);
+  }
 
   async function buscarDadosPedido(agendamento) {
     const chave = agendamento.pedidoId ? `pedido:${agendamento.pedidoId}` : `agendamento:${agendamento.id}`;
@@ -526,20 +550,51 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
         if (!porIdPrincipal.empty) pedidoDoc = porIdPrincipal.docs[0];
       }
       const pedido = pedidoDoc?.data() || {};
+      const clienteDocumento = String(
+        agendamento.clienteDocumento ||
+        pedido.clienteCnpj ||
+        pedido.clienteCpf ||
+        pedido.cnpj ||
+        pedido.cpf ||
+        pedido.clienteDocumento ||
+        ""
+      ).trim();
+      const documentoNormalizado = clienteDocumento.replace(/\D/g, "");
+      const clienteId = String(agendamento.clienteId || pedido.clienteId || "").trim();
+      const nomeCliente = normalizarChavePrecoRelatorio(
+        agendamento.clienteNome || pedido.clienteNome || pedido.cliente || ""
+      );
+      const clienteAtual =
+        (clienteId ? clientesAtuaisPorId.get(clienteId) : null) ||
+        (documentoNormalizado ? clientesAtuaisPorDocumento.get(documentoNormalizado) : null) ||
+        (nomeCliente ? clientesAtuaisPorNome.get(nomeCliente) : null) ||
+        null;
+
       return {
         pedidoDocumentoId: pedidoDoc?.id || "",
         observacao: String(pedido.observacao || "").trim(),
         prazoPagamento: String(pedido.prazoPagamento || "").trim(),
         clienteDocumento: String(
-          pedido.clienteCnpj ||
-          pedido.clienteCpf ||
-          pedido.cnpj ||
-          pedido.cpf ||
-          pedido.clienteDocumento ||
+          clienteAtual?.cnpj ||
+          clienteAtual?.cpf ||
+          clienteAtual?.documento ||
+          clienteDocumento
+        ).trim(),
+        clienteCidade: String(
+          clienteAtual?.cidade ||
+          clienteAtual?.municipio ||
+          pedido.clienteCidade ||
+          pedido.cidade ||
           ""
         ).trim(),
-        clienteCidade: String(pedido.clienteCidade || pedido.cidade || "").trim(),
-        clienteUf: String(pedido.clienteUf || pedido.uf || "").trim()
+        clienteUf: String(
+          clienteAtual?.uf ||
+          clienteAtual?.estado ||
+          pedido.clienteUf ||
+          pedido.uf ||
+          ""
+        ).trim(),
+        clienteCadastroEncontrado: Boolean(clienteAtual)
       };
     })();
 
@@ -548,14 +603,6 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
   }
 
   await Promise.all(lista.map(async agendamento => {
-    if (
-      String(agendamento.observacao || "").trim() &&
-      String(agendamento.prazoPagamento || "").trim() &&
-      String(agendamento.clienteDocumento || "").trim() &&
-      String(agendamento.clienteCidade || "").trim() &&
-      String(agendamento.clienteUf || "").trim() &&
-      String(agendamento.pedidoDocumentoId || "").trim()
-    ) return;
     try {
       const dadosPedido = await buscarDadosPedido(agendamento);
       if (dadosPedido.pedidoDocumentoId) agendamento.pedidoDocumentoId = dadosPedido.pedidoDocumentoId;
@@ -566,10 +613,16 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
       if (!String(agendamento.clienteDocumento || "").trim() && dadosPedido.clienteDocumento) {
         agendamento.clienteDocumento = dadosPedido.clienteDocumento;
       }
-      if (!String(agendamento.clienteCidade || "").trim() && dadosPedido.clienteCidade) {
+      if (
+        dadosPedido.clienteCidade &&
+        (dadosPedido.clienteCadastroEncontrado || !String(agendamento.clienteCidade || "").trim())
+      ) {
         agendamento.clienteCidade = dadosPedido.clienteCidade;
       }
-      if (!String(agendamento.clienteUf || "").trim() && dadosPedido.clienteUf) {
+      if (
+        dadosPedido.clienteUf &&
+        (dadosPedido.clienteCadastroEncontrado || !String(agendamento.clienteUf || "").trim())
+      ) {
         agendamento.clienteUf = dadosPedido.clienteUf;
       }
     } catch (e) {
