@@ -370,10 +370,14 @@
       return;
     }
     const somenteRepresentante = estadoRG.perfil === "representante";
+    const botaoRelatorioDiario = estadoRG.perfil === "admin"
+      ? '<button id="rg-tab-diario" class="px-4 py-2 bg-gray-100">Relatório diário</button>'
+      : '';
     pageContent.innerHTML = '<div class="bg-white p-3 flex flex-wrap gap-2 mb-4">'+
       '<button id="rg-tab-agendados" class="px-4 py-2 '+(estadoRG.aba==="agendados"?"bg-blue-700 text-white":"bg-gray-100")+'">Agendamentos realizados</button>'+
       '<button id="rg-tab-relacao" class="px-4 py-2 '+(estadoRG.aba==="relacao"?"bg-blue-700 text-white":"bg-gray-100")+'">Relação por carregamento</button>'+
       '<button id="rg-tab-inativos" class="px-4 py-2 '+(estadoRG.aba==="inativos"?"bg-blue-700 text-white":"bg-gray-100")+'">Clientes sem comprar</button>'+
+      botaoRelatorioDiario+
       '</div>'+
       '<div class="bg-white p-5 mb-5"><div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">'+
       '<label><span class="text-sm block mb-1">'+(estadoRG.aba==="inativos"?"Última compra a partir de (opcional)":"Data inicial")+'</span><input id="rg-inicio" type="date" value="'+escRG(estadoRG.inicio)+'" class="w-full"></label>'+
@@ -389,6 +393,8 @@
     document.getElementById("rg-tab-agendados").onclick=()=>{lerFiltros();estadoRG.aba="agendados";if(!estadoRG.inicio)estadoRG.inicio=hojeRG();window.renderRelatoriosGerenciais();};
     document.getElementById("rg-tab-relacao").onclick=()=>{lerFiltros();estadoRG.aba="relacao";if(!estadoRG.inicio)estadoRG.inicio=hojeRG();if(!estadoRG.fim)estadoRG.fim=hojeRG();window.renderRelatoriosGerenciais();};
     document.getElementById("rg-tab-inativos").onclick=()=>{lerFiltros();estadoRG.aba="inativos";estadoRG.inicio="";window.renderRelatoriosGerenciais();};
+    const tabDiario = document.getElementById("rg-tab-diario");
+    if (tabDiario) tabDiario.onclick=()=>window.renderRelatoriosDiarios();
     await atualizarRG();
     const prod=document.getElementById("rg-wrap-prod"); if(prod) prod.classList.toggle("hidden",estadoRG.aba==="inativos");
   };
