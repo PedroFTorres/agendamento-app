@@ -394,27 +394,27 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
       <style>
         @page { size: A4 ${orientacao}; margin: 10mm; }
         * { box-sizing: border-box; }
-        body { margin: 0; color: #000; background: #fff; font-family: "Courier New", Courier, monospace; font-size: 8pt; line-height: 1.05; }
+        body { margin: 0; color: #17263a; background: #fff; font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; line-height: 1.15; }
         .relatorio { width: 820px; max-width: 100%; }
-        .cabecalho { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 5px; border-bottom: 1px solid #000; }
-        .marca { display: flex; align-items: center; gap: 8px; }
+        .cabecalho { display: flex; align-items: center; justify-content: space-between; min-height: 48px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #ec8218; }
+        .marca { display: flex; align-items: center; gap: 9px; }
         .logo { width: 42px; height: 42px; object-fit: contain; }
-        .nome-relatorio { font-size: 11pt; font-weight: bold; }
-        .data-relatorio { font-weight: bold; white-space: nowrap; }
+        .nome-relatorio { font-size: 12pt; font-weight: bold; }
+        .data-relatorio { color: #68778a; font-weight: bold; white-space: nowrap; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         col:nth-child(1) { width: 46%; }
         col:nth-child(2) { width: 21%; }
         col:nth-child(3) { width: 18%; }
         col:nth-child(4) { width: 15%; }
-        td { height: 16px; padding: 1px 4px; line-height: 1.05; vertical-align: middle; border-top: 1px solid #000; overflow-wrap: anywhere; }
-        .num { text-align: right; white-space: nowrap; }
-        .titulo td { font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; }
-        .espaco td { height: 4px; border: 0; padding: 0; }
-        .total td { font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; }
-        .total-telhas td { background: #ffff00; font-weight: bold; }
-        .total-tijolos td { background: #d9ead3; font-weight: bold; }
-        .total-outros td { background: #eeeeee; font-weight: bold; }
-        .total-geral td { font-weight: bold; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+        td { height: 19px; padding: 3px 6px; line-height: 1.15; vertical-align: middle; border-top: 1px solid #cfd8e3; overflow-wrap: anywhere; }
+        .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .titulo td { color: #17263a; background: #f3f5f7; font-weight: bold; border-top: 1px solid #aab6c4; border-bottom: 2px solid #ec8218; }
+        .espaco td { height: 7px; border: 0; padding: 0; background: #fff; }
+        .total td { font-weight: bold; border-top: 1px solid #cfd8e3; border-bottom: 1px solid #cfd8e3; }
+        .total-telhas td { color: #8a4707; background: #fff0df; font-weight: bold; }
+        .total-tijolos td { color: #234d2d; background: #e5f1e7; font-weight: bold; }
+        .total-outros td { color: #3f4d5d; background: #f1f3f5; font-weight: bold; }
+        .total-geral td { color: #17263a; background: #eef1f4; font-weight: bold; border-top: 2px solid #17263a; border-bottom: 2px solid #17263a; }
         @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
       </style>
     </head>
