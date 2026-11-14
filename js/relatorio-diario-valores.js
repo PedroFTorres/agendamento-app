@@ -280,196 +280,171 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
   const escapar = valor => typeof escapeHtmlRelatorio === "function"
     ? escapeHtmlRelatorio(valor)
     : String(valor || "");
-  const formatarData = data => {
-    const [ano, mes, dia] = String(data || "").split("-");
-    return dia && mes && ano ? `${dia}/${mes}/${ano}` : data;
-  };
-  const chaveTexto = valor => normalizarChavePrecoRelatorio(valor);
+  const dataFormatada = (() => {
+    const [ano, mes, dia] = String(dataSelecionada || "").split("-");
+    return dia && mes && ano ? `${dia}/${mes}/${ano}` : String(dataSelecionada || "");
+  })();
+  const formatoNumero = (valor, casas = 2) => Number(valor || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas
+  });
+  const formatoQuantidade = valor => Number(valor || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3
+  });
+  const chave = valor => normalizarChavePrecoRelatorio(valor);
   const pesoTotal = numeroRelatorioDiario(opcoes.pesoTotal);
   const valorNota = numeroRelatorioDiario(opcoes.valorNota);
   const valorRecibo = numeroRelatorioDiario(opcoes.valorRecibo);
-  const valorProdutos = (lista || []).reduce((total, item) => total + Number(item.valorVenda || 0), 0);
-  const valorDocumentos = valorNota + valorRecibo;
-  const valorTotalApresentado = valorDocumentos > 0 ? valorDocumentos : valorProdutos;
+  const pedidosNota = Math.max(0, Math.trunc(numeroRelatorioDiario(opcoes.pedidosNota)));
+  const pedidosRecibo = Math.max(0, Math.trunc(numeroRelatorioDiario(opcoes.pedidosRecibo)));
 
   const pedidos = new Map();
-  const pagamentos = new Map();
-  const cidades = new Map();
-  const clientes = new Map();
   const produtos = new Map();
 
   (lista || []).forEach((item, indice) => {
     const pedidoId = String(item.pedidoDocumentoId || item.pedidoId || `sem-pedido-${indice}`);
     if (!pedidos.has(pedidoId)) {
       pedidos.set(pedidoId, {
-        id: pedidoId,
         prazo: String(item.prazoPagamento || "Não informado").trim() || "Não informado",
         cidade: String(item.clienteCidade || "").trim(),
-        uf: String(item.clienteUf || "").trim(),
-        cliente: String(item.clienteNome || "Cliente não informado").trim()
+        uf: String(item.clienteUf || "").trim()
       });
     }
 
-    const quantidade = Number(item.quantidade || 0);
-    const valor = Number(item.valorVenda || 0);
-    const produtoNome = String(item.produtoNome || "Produto não informado").trim();
-    const produtoChave = chaveTexto(produtoNome);
-    if (!produtos.has(produtoChave)) produtos.set(produtoChave, { nome: produtoNome, quantidade: 0, valor: 0 });
-    produtos.get(produtoChave).quantidade += quantidade;
-    produtos.get(produtoChave).valor += valor;
-
-    const clienteChave = chaveTexto(item.clienteNome || "Cliente não informado");
-    if (!clientes.has(clienteChave)) {
-      clientes.set(clienteChave, { nome: item.clienteNome || "Cliente não informado", pedidos: new Set(), quantidade: 0, valor: 0 });
+    const nomeProduto = String(item.produtoNome || "Não informado").trim() || "Não informado";
+    const produtoId = chave(nomeProduto);
+    if (!produtos.has(produtoId)) {
+      produtos.set(produtoId, { nome: nomeProduto, quantidade: 0, valor: 0 });
     }
-    const cliente = clientes.get(clienteChave);
-    cliente.pedidos.add(pedidoId);
-    cliente.quantidade += quantidade;
-    cliente.valor += valor;
+    const produto = produtos.get(produtoId);
+    produto.quantidade += Number(item.quantidade || 0);
+    produto.valor += Number(item.valorVenda || 0);
   });
 
-  pedidos.forEach(pedido => {
-    const prazoChave = chaveTexto(pedido.prazo);
-    if (!pagamentos.has(prazoChave)) pagamentos.set(prazoChave, { nome: pedido.prazo, pedidos: new Set(), valor: 0 });
-    pagamentos.get(prazoChave).pedidos.add(pedido.id);
+  const pagamentos = new Map();
+  const cidades = new Map();
+  pedidos.forEach((pedido, pedidoId) => {
+    if (!pagamentos.has(pedido.prazo)) pagamentos.set(pedido.prazo, { valor: 0, pedidos: new Set() });
+    pagamentos.get(pedido.prazo).pedidos.add(pedidoId);
 
-    const cidadeNome = [pedido.uf, pedido.cidade].filter(Boolean).join(" ") || "Cidade não informada";
-    const cidadeChave = chaveTexto(cidadeNome);
-    if (!cidades.has(cidadeChave)) cidades.set(cidadeChave, { nome: cidadeNome, pedidos: new Set() });
-    cidades.get(cidadeChave).pedidos.add(pedido.id);
+    const nomeCidade = [pedido.uf, pedido.cidade].filter(Boolean).join(" ") || "Não informado";
+    if (!cidades.has(nomeCidade)) cidades.set(nomeCidade, new Set());
+    cidades.get(nomeCidade).add(pedidoId);
   });
-
   (lista || []).forEach((item, indice) => {
     const pedidoId = String(item.pedidoDocumentoId || item.pedidoId || `sem-pedido-${indice}`);
-    const pedido = pedidos.get(pedidoId);
-    if (!pedido) return;
-    const prazo = pagamentos.get(chaveTexto(pedido.prazo));
-    if (prazo) prazo.valor += Number(item.valorVenda || 0);
+    const prazo = pedidos.get(pedidoId)?.prazo || "Não informado";
+    if (!pagamentos.has(prazo)) pagamentos.set(prazo, { valor: 0, pedidos: new Set([pedidoId]) });
+    pagamentos.get(prazo).valor += Number(item.valorVenda || 0);
   });
 
-  const produtosOrdenados = [...produtos.values()].sort((a, b) => b.valor - a.valor);
-  const clientesOrdenados = [...clientes.values()].sort((a, b) => b.valor - a.valor);
-  const pagamentosOrdenados = [...pagamentos.values()].sort((a, b) => b.valor - a.valor);
-  const cidadesOrdenadas = [...cidades.values()].sort((a, b) => b.pedidos.size - a.pedidos.size || a.nome.localeCompare(b.nome, "pt-BR"));
+  const itensProdutos = [...produtos.values()]
+    .map(item => ({
+      ...item,
+      medio: item.quantidade ? (item.valor / item.quantidade) * 1000 : 0
+    }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
-  const categorias = { telhas: { quantidade: 0, valor: 0 }, tijolos: { quantidade: 0, valor: 0 }, outros: { quantidade: 0, valor: 0 } };
-  produtosOrdenados.forEach(produto => {
-    const chave = chaveTexto(produto.nome);
-    const categoria = chave.includes("telha") ? categorias.telhas : (chave.includes("tijolo") ? categorias.tijolos : categorias.outros);
-    categoria.quantidade += produto.quantidade;
-    categoria.valor += produto.valor;
+  const telhas = itensProdutos.filter(item => chave(item.nome).includes("telha"));
+  const tijolos = itensProdutos.filter(item => chave(item.nome).includes("tijolo"));
+  const outros = itensProdutos.filter(item => !chave(item.nome).includes("telha") && !chave(item.nome).includes("tijolo"));
+  const resumoCategoria = itens => ({
+    quantidade: itens.reduce((total, item) => total + item.quantidade, 0),
+    valor: itens.reduce((total, item) => total + item.valor, 0),
+    medio: itens.length ? itens.reduce((total, item) => total + item.medio, 0) / itens.length : 0
   });
+  const totalTelhas = resumoCategoria(telhas);
+  const totalTijolos = resumoCategoria(tijolos);
+  const totalOutros = resumoCategoria(outros);
+  const totalProdutos = resumoCategoria(itensProdutos);
+  const valorProdutos = totalProdutos.valor;
+  const valorDocumentos = valorNota + valorRecibo;
+  const valorTotal = valorDocumentos > 0 ? valorDocumentos : valorProdutos;
 
-  const linhasPagamento = pagamentosOrdenados.map(item => `
-    <tr><td>${escapar(item.nome)}</td><td class="numero">${item.pedidos.size}</td><td class="numero">${formatMoedaRelatorio(item.valor)}</td></tr>
-  `).join("");
-  const linhasCidade = cidadesOrdenadas.map(item => `
-    <tr><td>${escapar(item.nome)}</td><td class="numero">${item.pedidos.size}</td></tr>
-  `).join("");
-  const linhasCliente = clientesOrdenados.map(item => `
-    <tr><td>${escapar(item.nome)}</td><td class="numero">${item.pedidos.size}</td><td class="numero">${formatQuantidade(item.quantidade)}</td><td class="numero">${formatMoedaRelatorio(item.valor)}</td></tr>
-  `).join("");
-  const linhasProduto = produtosOrdenados.map(item => {
-    const mediaMilheiro = item.quantidade > 0 ? (item.valor / item.quantidade) * 1000 : 0;
-    return `<tr><td>${escapar(item.nome)}</td><td class="numero">${formatQuantidade(item.quantidade)}</td><td class="numero">${formatMoedaRelatorio(item.valor)}</td><td class="numero">${formatMoedaRelatorio(mediaMilheiro)}</td></tr>`;
-  }).join("");
+  const linhasPagamento = [...pagamentos.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
+    .map(([nome, dados]) => `<tr><td>${escapar(nome)}</td><td class="num">${formatoNumero(dados.valor)}</td><td>Pedidos:</td><td class="num">${dados.pedidos.size}</td></tr>`)
+    .join("") || '<tr><td>Não informado</td><td class="num">0,00</td><td>Pedidos:</td><td class="num">0</td></tr>';
 
-  const linhaCategoria = (nome, dados) => `
-    <tr class="subtotal"><td>${nome}</td><td class="numero">${formatQuantidade(dados.quantidade)}</td><td class="numero">${formatMoedaRelatorio(dados.valor)}</td><td></td></tr>
-  `;
+  const linhasCidades = [...cidades.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
+    .map(([nome, ids]) => `<tr><td>${escapar(nome)}</td><td class="num">${ids.size}</td><td></td><td></td></tr>`)
+    .join("") || '<tr><td>Não informado</td><td class="num">0</td><td></td><td></td></tr>';
 
-  const logoUrl = new URL("img/logo.png", window.location.href).href;
+  const linhaProduto = item => `<tr><td>${escapar(item.nome)}</td><td class="num">${formatoQuantidade(item.quantidade)}</td><td class="num">${formatoNumero(item.valor)}</td><td class="num">${formatoNumero(item.medio)}</td></tr>`;
+  const linhaTotal = (rotulo, dados, classe) => `<tr class="${classe}"><td>${rotulo}</td><td class="num">${formatoQuantidade(dados.quantidade)}</td><td class="num">${formatoNumero(dados.valor)}</td><td class="num">${formatoNumero(dados.medio)}</td></tr>`;
+  const linhasItens = [
+    ...telhas.map(linhaProduto),
+    telhas.length ? linhaTotal("TOTAL DE TELHAS", totalTelhas, "total-telhas") : "",
+    ...tijolos.map(linhaProduto),
+    tijolos.length ? linhaTotal("TOTAL DE TIJOLOS", totalTijolos, "total-tijolos") : "",
+    ...outros.map(linhaProduto),
+    outros.length ? linhaTotal("TOTAL DE OUTROS ITENS", totalOutros, "total-outros") : ""
+  ].join("") || '<tr><td>Nenhum item</td><td class="num">0</td><td class="num">0,00</td><td class="num">0,00</td></tr>';
+
+  janela.document.open();
   janela.document.write(`
     <!DOCTYPE html>
     <html lang="pt-BR">
-      <head>
-        <meta charset="utf-8">
-        <title>Relatório Gerencial - ${formatarData(dataSelecionada)}</title>
-        <style>
-          @page { size: A4 ${orientacao}; margin: 10mm; }
-          * { box-sizing: border-box; }
-          body { margin: 0; color: #1f2937; font-family: Arial, Helvetica, sans-serif; font-size: ${orientacao === "landscape" ? "9px" : "10px"}; background: #fff; }
-          header { display:flex; align-items:center; gap:12px; border-bottom:3px solid #f28c28; padding-bottom:8px; margin-bottom:10px; }
-          header img { width:48px; height:48px; object-fit:contain; }
-          h1 { margin:0 0 3px; color:#1f3b64; font-size:20px; }
-          .subtitulo { color:#6b7280; font-size:11px; }
-          .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-bottom:10px; }
-          .kpi { border:1px solid #dbe5f2; border-radius:7px; padding:8px; background:#f8fafc; }
-          .kpi span { display:block; color:#64748b; font-size:9px; margin-bottom:3px; }
-          .kpi strong { color:#1f3b64; font-size:15px; }
-          .duas-colunas { display:grid; grid-template-columns:1fr 1fr; gap:9px; align-items:start; margin-bottom:9px; }
-          .bloco { border:1px solid #dfe6f1; border-radius:7px; overflow:hidden; break-inside:avoid; }
-          .bloco h2 { margin:0; padding:6px 8px; background:#1f3b64; color:#fff; font-size:11px; }
-          table { width:100%; border-collapse:collapse; }
-          thead { display:table-header-group; }
-          th { padding:5px 6px; background:#eaf0f8; color:#1f3b64; text-align:left; font-size:9px; }
-          td { padding:5px 6px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
-          tbody tr:last-child td { border-bottom:0; }
-          tbody tr:nth-child(even) { background:#f8fafc; }
-          .numero { text-align:right; white-space:nowrap; }
-          .subtotal td { font-weight:bold; color:#1f3b64; background:#eef4ff; border-top:2px solid #cbd5e1; }
-          .documentos { display:grid; grid-template-columns:1fr 1fr; }
-          .documento { padding:8px; border-right:1px solid #e5e7eb; }
-          .documento:last-child { border-right:0; }
-          .documento span { display:block; color:#64748b; font-size:9px; }
-          .documento strong { color:#1f3b64; font-size:14px; }
-          footer { margin-top:9px; padding-top:6px; border-top:1px solid #dfe6f1; color:#6b7280; font-size:8px; text-align:right; }
-          @media print { body { print-color-adjust:exact; -webkit-print-color-adjust:exact; } tr,.bloco { break-inside:avoid; } }
-        </style>
-      </head>
-      <body>
-        <header>
-          <img src="${logoUrl}" alt="Logo">
-          <div><h1>Relatório Gerencial Diário</h1><div class="subtitulo">Data: ${formatarData(dataSelecionada)} • Orientação: ${orientacao === "landscape" ? "Horizontal" : "Vertical"}</div></div>
-        </header>
+    <head>
+      <meta charset="utf-8">
+      <title>Relatório Diário - ${escapar(dataFormatada)}</title>
+      <style>
+        @page { size: A4 ${orientacao}; margin: 10mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: #000; background: #fff; font-family: "Courier New", Courier, monospace; font-size: 9pt; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        col:nth-child(1) { width: 48%; }
+        col:nth-child(2) { width: 20%; }
+        col:nth-child(3) { width: 17%; }
+        col:nth-child(4) { width: 15%; }
+        td { padding: 3px 5px; vertical-align: middle; border-top: 1px solid #000; overflow-wrap: anywhere; }
+        .num { text-align: right; white-space: nowrap; }
+        .titulo td { font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; }
+        .espaco td { height: 10px; border: 0; padding: 0; }
+        .total td { font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; }
+        .total-telhas td { background: #ffff00; font-weight: bold; }
+        .total-tijolos td { background: #d9ead3; font-weight: bold; }
+        .total-outros td { background: #eeeeee; font-weight: bold; }
+        .total-geral td { font-weight: bold; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+        @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+      </style>
+    </head>
+    <body>
+      <table>
+        <colgroup><col><col><col><col></colgroup>
+        <tbody>
+          <tr class="titulo"><td>Forma de pagamento</td><td></td><td></td><td class="num">${escapar(dataFormatada)}</td></tr>
+          ${linhasPagamento}
+          <tr class="espaco"><td colspan="4"></td></tr>
 
-        <section class="kpis">
-          <div class="kpi"><span>Valor total dos documentos</span><strong>${formatMoedaRelatorio(valorTotalApresentado)}</strong></div>
-          <div class="kpi"><span>Valor calculado dos produtos</span><strong>${formatMoedaRelatorio(valorProdutos)}</strong></div>
-          <div class="kpi"><span>Peso total informado</span><strong>${pesoTotal ? pesoTotal.toLocaleString("pt-BR", { maximumFractionDigits: 3 }) + " kg" : "-"}</strong></div>
-          <div class="kpi"><span>Quantidade de pedidos</span><strong>${pedidos.size}</strong></div>
-        </section>
+          <tr class="titulo"><td>Tipo de documento</td><td></td><td></td><td class="num">${escapar(dataFormatada)}</td></tr>
+          <tr><td>NOTA FISCAL</td><td class="num">${formatoNumero(valorNota)}</td><td>Pedidos:</td><td class="num">${pedidosNota}</td></tr>
+          <tr><td>RECIBO</td><td class="num">${formatoNumero(valorRecibo)}</td><td>Pedidos:</td><td class="num">${pedidosRecibo}</td></tr>
+          <tr class="total"><td>Valor Total</td><td class="num">${formatoNumero(valorTotal)}</td><td></td><td></td></tr>
+          <tr><td>Peso Total</td><td class="num">${formatoNumero(pesoTotal, 3)}</td><td></td><td></td></tr>
+          <tr><td>Quantidade de Pedidos</td><td class="num">${pedidos.size}</td><td></td><td></td></tr>
+          <tr class="espaco"><td colspan="4"></td></tr>
 
-        <section class="duas-colunas">
-          <div class="bloco">
-            <h2>Forma de pagamento</h2>
-            <table><thead><tr><th>Condição</th><th class="numero">Pedidos</th><th class="numero">Valor</th></tr></thead><tbody>${linhasPagamento || '<tr><td colspan="3">Nenhum registro.</td></tr>'}</tbody></table>
-          </div>
-          <div class="bloco">
-            <h2>Tipo de documento</h2>
-            <div class="documentos">
-              <div class="documento"><span>Nota fiscal</span><strong>${valorNota ? formatMoedaRelatorio(valorNota) : "-"}</strong></div>
-              <div class="documento"><span>Recibo</span><strong>${valorRecibo ? formatMoedaRelatorio(valorRecibo) : "-"}</strong></div>
-            </div>
-          </div>
-        </section>
+          <tr class="titulo"><td>Resumo por Cidade</td><td class="num">Qtd Pedidos</td><td></td><td></td></tr>
+          ${linhasCidades}
+          <tr class="espaco"><td colspan="4"></td></tr>
 
-        <section class="duas-colunas">
-          <div class="bloco"><h2>Resumo por cidade</h2><table><thead><tr><th>Cidade</th><th class="numero">Pedidos</th></tr></thead><tbody>${linhasCidade || '<tr><td colspan="2">Cidade não informada.</td></tr>'}</tbody></table></div>
-          <div class="bloco"><h2>Resumo por cliente</h2><table><thead><tr><th>Cliente</th><th class="numero">Pedidos</th><th class="numero">Qtd.</th><th class="numero">Valor</th></tr></thead><tbody>${linhasCliente || '<tr><td colspan="4">Nenhum cliente.</td></tr>'}</tbody></table></div>
-        </section>
-
-        <section class="bloco">
-          <h2>Resumo por produto</h2>
-          <table>
-            <thead><tr><th>Produto</th><th class="numero">Quantidade</th><th class="numero">Valor</th><th class="numero">Valor médio / milheiro</th></tr></thead>
-            <tbody>
-              ${linhasProduto || '<tr><td colspan="4">Nenhum produto.</td></tr>'}
-              ${linhaCategoria("TOTAL DE TELHAS", categorias.telhas)}
-              ${linhaCategoria("TOTAL DE TIJOLOS", categorias.tijolos)}
-              ${categorias.outros.quantidade ? linhaCategoria("OUTROS PRODUTOS", categorias.outros) : ""}
-              ${linhaCategoria("TOTAL GERAL", { quantidade: categorias.telhas.quantidade + categorias.tijolos.quantidade + categorias.outros.quantidade, valor: valorProdutos })}
-            </tbody>
-          </table>
-        </section>
-
-        <footer>Emitido em ${new Date().toLocaleString("pt-BR")} pelo AgendaCF</footer>
-      </body>
+          <tr class="titulo"><td>Resumo por Item</td><td class="num">Qtd Itens</td><td class="num">Valor</td><td class="num">Valor Médio</td></tr>
+          ${linhasItens}
+          <tr class="total-geral"><td>TOTAL GERAL</td><td class="num">${formatoQuantidade(totalProdutos.quantidade)}</td><td class="num">${formatoNumero(valorProdutos)}</td><td class="num">${formatoNumero(totalProdutos.medio)}</td></tr>
+        </tbody>
+      </table>
+      <script>
+        window.addEventListener("load", function () {
+          setTimeout(function () { window.print(); }, 250);
+        });
+      <\/script>
+    </body>
     </html>
   `);
-  janela.onload = () => setTimeout(() => janela.print(), 300);
   janela.document.close();
-  janela.focus();
 }
 
 async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
@@ -762,8 +737,16 @@ function renderRelatoriosDiarios() {
               <input id="relatorio-diario-nota" inputmode="decimal" class="border rounded p-3 w-full" placeholder="R$ 0,00">
             </label>
             <label class="block">
+              <span class="block font-semibold mb-1">Pedidos com nota fiscal</span>
+              <input id="relatorio-diario-nota-pedidos" type="number" min="0" step="1" class="border rounded p-3 w-full" placeholder="0">
+            </label>
+            <label class="block">
               <span class="block font-semibold mb-1">Valor de recibo</span>
               <input id="relatorio-diario-recibo" inputmode="decimal" class="border rounded p-3 w-full" placeholder="R$ 0,00">
+            </label>
+            <label class="block">
+              <span class="block font-semibold mb-1">Pedidos com recibo</span>
+              <input id="relatorio-diario-recibo-pedidos" type="number" min="0" step="1" class="border rounded p-3 w-full" placeholder="0">
             </label>
           </div>
         </div>
@@ -790,6 +773,8 @@ function renderRelatoriosDiarios() {
   const peso = document.getElementById("relatorio-diario-peso");
   const nota = document.getElementById("relatorio-diario-nota");
   const recibo = document.getElementById("relatorio-diario-recibo");
+  const notaPedidos = document.getElementById("relatorio-diario-nota-pedidos");
+  const reciboPedidos = document.getElementById("relatorio-diario-recibo-pedidos");
   const botaoAbrir = document.getElementById("relatorio-diario-abrir");
   const botaoPdf = document.getElementById("relatorio-diario-pdf");
   const status = document.getElementById("relatorio-diario-status");
@@ -832,6 +817,8 @@ function renderRelatoriosDiarios() {
         pesoTotal: peso.value,
         valorNota: nota.value,
         valorRecibo: recibo.value,
+        pedidosNota: notaPedidos.value,
+        pedidosRecibo: reciboPedidos.value,
         janelaReservada
       });
       status.textContent = "";
