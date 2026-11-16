@@ -505,6 +505,7 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
   const clientesAtuaisPorId = new Map();
   const clientesAtuaisPorDocumento = new Map();
   const clientesAtuaisPorNome = new Map();
+  const cidadesPorCep = new Map();
 
   try {
     const clientesSnap = await db.collection("clientes").get();
@@ -519,8 +520,8 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
 
       const nome = normalizarChavePrecoRelatorio(cliente.nome || cliente.clienteNome);
       if (nome) {
-        if (!clientesAtuaisPorNome.has(nome)) clientesAtuaisPorNome.set(nome, cliente);
-        else clientesAtuaisPorNome.set(nome, null);
+        if (!clientesAtuaisPorNome.has(nome)) clientesAtuaisPorNome.set(nome, []);
+        clientesAtuaisPorNome.get(nome).push(cliente);
       }
     });
   } catch (e) {
@@ -564,11 +565,45 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
       const nomeCliente = normalizarChavePrecoRelatorio(
         agendamento.clienteNome || pedido.clienteNome || pedido.cliente || ""
       );
+      const candidatosPorNome = nomeCliente ? (clientesAtuaisPorNome.get(nomeCliente) || []) : [];
+      const clientePorNome =
+        candidatosPorNome.find(cliente =>
+          agendamento.representanteUserId &&
+          cliente.userId === agendamento.representanteUserId
+        ) ||
+        candidatosPorNome.find(cliente =>
+          normalizarChavePrecoRelatorio(cliente.vinculadoPor) ===
+          normalizarChavePrecoRelatorio(agendamento.representanteNome)
+        ) ||
+        candidatosPorNome[0] ||
+        null;
       const clienteAtual =
         (clienteId ? clientesAtuaisPorId.get(clienteId) : null) ||
         (documentoNormalizado ? clientesAtuaisPorDocumento.get(documentoNormalizado) : null) ||
-        (nomeCliente ? clientesAtuaisPorNome.get(nomeCliente) : null) ||
+        clientePorNome ||
         null;
+
+      if (
+        clienteAtual &&
+        !String(clienteAtual.cidade || clienteAtual.localidade || clienteAtual.municipio || "").trim()
+      ) {
+        const cep = String(clienteAtual.cep || "").replace(/\D/g, "");
+        if (cep.length === 8) {
+          try {
+            let enderecoCep = cidadesPorCep.get(cep);
+            if (!enderecoCep) {
+              const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+              enderecoCep = await resposta.json();
+              if (!resposta.ok || enderecoCep.erro) enderecoCep = {};
+              cidadesPorCep.set(cep, enderecoCep);
+            }
+            clienteAtual.localidade = clienteAtual.localidade || enderecoCep.localidade || "";
+            clienteAtual.uf = clienteAtual.uf || enderecoCep.uf || "";
+          } catch (erro) {
+            console.warn("Nao foi possivel completar a cidade pelo CEP:", cep, erro);
+          }
+        }
+      }
 
       return {
         pedidoDocumentoId: pedidoDoc?.id || "",
@@ -582,6 +617,7 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
         ).trim(),
         clienteCidade: String(
           clienteAtual?.cidade ||
+          clienteAtual?.localidade ||
           clienteAtual?.municipio ||
           pedido.clienteCidade ||
           pedido.cidade ||
