@@ -13,7 +13,78 @@
       .map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
       .filter(item => !registroTipo || item.registroTipo === registroTipo);
   };
-  const localizacao = item => item.status === "com_cliente" ? "com_cliente" : "patio";
+  const tiposSaida = new Set(["saida", "entrega", "carregamento"]);
+  const tiposDevolucao = new Set(["devolucao", "retorno", "entrada"]);
+  const tipoMovimento = item => norm(item?.tipo).replace(/[\s-]+/g, "_");
+  const instanteMovimento = item => {
+    if (item?.createdAt?.toMillis) return item.createdAt.toMillis();
+    if (Number.isFinite(Number(item?.createdAt?.seconds))) return Number(item.createdAt.seconds) * 1000;
+    const valor = Date.parse(String(item?.data || "") + "T12:00:00");
+    return Number.isFinite(valor) ? valor : 0;
+  };
+
+  function reconciliarContainers(registros, movimentos) {
+    const movimentosLocalizacao = (movimentos || [])
+      .filter(item => tiposSaida.has(tipoMovimento(item)) || tiposDevolucao.has(tipoMovimento(item)))
+      .sort((a, b) => instanteMovimento(a) - instanteMovimento(b));
+    const ultimoPorId = new Map();
+    const ultimoPorNumero = new Map();
+    movimentosLocalizacao.forEach(item => {
+      if (item.containerId) ultimoPorId.set(String(item.containerId), item);
+      if (item.numero) ultimoPorNumero.set(norm(item.numero), item);
+    });
+
+    const aplicar = (container, movimento) => {
+      if (!movimento) return container;
+      if (tiposSaida.has(tipoMovimento(movimento))) {
+        return {
+          ...container,
+          status: "com_cliente",
+          numero: container.numero || movimento.numero,
+          clienteAtual: movimento.cliente || container.clienteAtual || "",
+          pedidoCodigo: movimento.pedidoCodigo || container.pedidoCodigo || "",
+          dataSaida: movimento.data || container.dataSaida || "",
+          observacaoSaida: movimento.observacao || container.observacaoSaida || ""
+        };
+      }
+      return {
+        ...container,
+        status: "disponivel",
+        numero: container.numero || movimento.numero,
+        ultimaDevolucao: movimento.data || container.ultimaDevolucao || "",
+        observacaoDevolucao: movimento.observacao || container.observacaoDevolucao || ""
+      };
+    };
+
+    const resultado = (registros || []).map(container => aplicar(
+      container,
+      ultimoPorId.get(String(container.id || "")) || ultimoPorNumero.get(norm(container.numero))
+    ));
+    const numerosExistentes = new Set(resultado.map(item => norm(item.numero)).filter(Boolean));
+
+    ultimoPorNumero.forEach((movimento, numeroNormalizado) => {
+      if (numerosExistentes.has(numeroNormalizado)) return;
+      resultado.push(aplicar({
+        id: movimento.containerId || "movimento-" + movimento.id,
+        registroTipo: "container",
+        numero: movimento.numero,
+        condicao: movimento.condicao || "normal"
+      }, movimento));
+      numerosExistentes.add(numeroNormalizado);
+    });
+    return resultado;
+  }
+
+  const localizacao = item => {
+    const dataSaida = String(item.dataSaida || "").slice(0, 10);
+    const dataDevolucao = String(item.ultimaDevolucao || "").slice(0, 10);
+    if (dataSaida && (!dataDevolucao || dataSaida > dataDevolucao)) return "com_cliente";
+    if (dataDevolucao && (!dataSaida || dataDevolucao >= dataSaida)) return "patio";
+    const status = norm(item.status).replace(/[\s-]+/g, "_");
+    return ["com_cliente", "cliente", "em_cliente", "em_uso", "fora"].includes(status)
+      ? "com_cliente"
+      : "patio";
+  };
   const localizacaoNome = item => localizacao(item) === "com_cliente" ? "Com cliente" : "No pátio";
   const localizacaoCor = item => localizacao(item) === "com_cliente" ? "bg-orange-100 text-orange-800" : "bg-green-100 text-green-800";
   const condicao = item => item.condicao || (item.status === "manutencao" ? "danificado" : "normal");
@@ -193,7 +264,8 @@
       </section>
     `;
 
-    let containers=await buscar(CT,"container");
+    let movimentos=await buscar(MOV,"container_movimento");
+    let containers=reconciliarContainers(await buscar(CT,"container"),movimentos);
     const clientes=await buscar("clientes"), pedidos=await buscar("pedidos");
     let visiveis=[];
     const clienteFiltro=document.getElementById("ct-cliente");
@@ -275,7 +347,7 @@
             condicao:novoEstado,observacao,createdAt:firebase.firestore.FieldValue.serverTimestamp()
           });
           await batch.commit();
-          m.remove();containers=await buscar(CT,"container");atualizar();
+          m.remove();movimentos=await buscar(MOV,"container_movimento");containers=reconciliarContainers(await buscar(CT,"container"),movimentos);atualizar();
         }catch(e){console.error(e);alert("Não foi possível atualizar a condição.");botao.disabled=false;botao.textContent="Salvar condição";}
       };
     }
@@ -326,7 +398,7 @@
             if(antigo)batch.update(ref,{...dados,ultimaDevolucao:firebase.firestore.FieldValue.delete(),diasUltimaPermanencia:firebase.firestore.FieldValue.delete(),observacaoDevolucao:firebase.firestore.FieldValue.delete()});else batch.set(ref,{...dados,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
             batch.set(db.collection(MOV).doc(),{registroTipo:"container_movimento",userId:usuario.uid,containerId:ref.id,numero,tipo:"saida",data:dataSaida,cliente,pedidoCodigo:codigo,observacao,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
           });
-          await batch.commit();m.remove();containers=await buscar(CT,"container");
+          await batch.commit();m.remove();movimentos=await buscar(MOV,"container_movimento");containers=reconciliarContainers(await buscar(CT,"container"),movimentos);
           if(![...clienteFiltro.options].some(o=>o.value===cliente))clienteFiltro.add(new Option(cliente,cliente));
           atualizar();
         } catch(e){
@@ -368,7 +440,7 @@
               createdAt:firebase.firestore.FieldValue.serverTimestamp()
             });
           });
-          await batch.commit();m.remove();containers=await buscar(CT,"container");atualizar();
+          await batch.commit();m.remove();movimentos=await buscar(MOV,"container_movimento");containers=reconciliarContainers(await buscar(CT,"container"),movimentos);atualizar();
         }catch(e){console.error(e);alert("Não foi possível registrar a devolução.");botao.disabled=false;botao.textContent="Confirmar devolução";}
       };
     }
