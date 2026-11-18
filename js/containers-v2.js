@@ -22,6 +22,15 @@
     const valor = Date.parse(String(item?.data || "") + "T12:00:00");
     return Number.isFinite(valor) ? valor : 0;
   };
+  const dataRegistroMovimento = item => {
+    let data = null;
+    if (item?.createdAt?.toDate) data = item.createdAt.toDate();
+    else if (Number.isFinite(Number(item?.createdAt?.seconds))) data = new Date(Number(item.createdAt.seconds) * 1000);
+    else if (item?.createdAt) data = new Date(item.createdAt);
+    if (!data || Number.isNaN(data.getTime())) return "";
+    const local = new Date(data.getTime() - data.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  };
 
   function reconciliarContainers(registros, movimentos) {
     const movimentosLocalizacao = (movimentos || [])
@@ -44,6 +53,7 @@
           clienteAtual: movimento.cliente || container.clienteAtual || "",
           pedidoCodigo: movimento.pedidoCodigo || container.pedidoCodigo || "",
           dataSaida: movimento.data || container.dataSaida || "",
+          dataRegistroSaida: dataRegistroMovimento(movimento) || container.dataRegistroSaida || "",
           observacaoSaida: movimento.observacao || container.observacaoSaida || ""
         };
       }
@@ -52,6 +62,7 @@
         status: "disponivel",
         numero: container.numero || movimento.numero,
         ultimaDevolucao: movimento.data || container.ultimaDevolucao || "",
+        dataRegistroDevolucao: dataRegistroMovimento(movimento) || container.dataRegistroDevolucao || "",
         observacaoDevolucao: movimento.observacao || container.observacaoDevolucao || ""
       };
     };
@@ -288,7 +299,9 @@
       const estado=document.getElementById("ct-condicao").value;
       const periodo=periodoSelecionado();
       visiveis=containers.filter(i=>{
-        const referencia=localizacao(i)==="com_cliente"?i.dataSaida:(i.ultimaDevolucao||i.dataSaida);
+        const referencia=localizacao(i)==="com_cliente"
+          ? (i.dataRegistroSaida||i.dataSaida)
+          : (i.dataRegistroDevolucao||i.ultimaDevolucao||i.dataRegistroSaida||i.dataSaida);
         const texto=norm(`${i.numero} ${i.clienteAtual} ${i.pedidoCodigo}`);
         return dentro(referencia,periodo)&&(!termo||texto.includes(termo))&&(!cliente||i.clienteAtual===cliente)&&(!local||localizacao(i)===local)&&(!estado||condicao(i)===estado);
       }).sort((a,b)=>String(a.numero).localeCompare(String(b.numero),"pt-BR",{numeric:true}));
