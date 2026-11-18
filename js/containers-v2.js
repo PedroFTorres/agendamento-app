@@ -7,6 +7,8 @@
   const hoje = () => new Date().toISOString().slice(0,10);
   const dataBR = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v||"")) ? String(v).split("-").reverse().join("/") : "-";
   const dias = v => v ? Math.max(0,Math.floor((new Date(hoje()+"T00:00:00")-new Date(v+"T00:00:00"))/86400000)) : 0;
+  const dataSaidaAtual = item => item?.dataRegistroSaida || item?.dataSaida || "";
+  const dataDevolucaoAtual = item => item?.dataRegistroDevolucao || item?.ultimaDevolucao || "";
   const buscar = async (nome, registroTipo = "") => {
     const snap = await db.collection(nome).get();
     return snap.docs
@@ -87,8 +89,8 @@
   }
 
   const localizacao = item => {
-    const dataSaida = String(item.dataSaida || "").slice(0, 10);
-    const dataDevolucao = String(item.ultimaDevolucao || "").slice(0, 10);
+    const dataSaida = String(dataSaidaAtual(item)).slice(0, 10);
+    const dataDevolucao = String(dataDevolucaoAtual(item)).slice(0, 10);
     if (dataSaida && (!dataDevolucao || dataSaida > dataDevolucao)) return "com_cliente";
     if (dataDevolucao && (!dataSaida || dataDevolucao >= dataSaida)) return "patio";
     const status = norm(item.status).replace(/[\s-]+/g, "_");
@@ -124,7 +126,7 @@
 
   function exportarCsv(lista) {
     const linhas=[["Número","Localização","Cliente","Pedido","Data de saída","Dias com cliente","Condição","Última devolução","Observação"],
-      ...lista.map(i=>[i.numero,localizacaoNome(i),i.clienteAtual,i.pedidoCodigo,i.dataSaida,localizacao(i)==="com_cliente"?dias(i.dataSaida):i.diasUltimaPermanencia,condicaoNome(i),localizacao(i)==="com_cliente"?"":i.ultimaDevolucao,i.observacaoCondicao||i.observacaoSaida||i.observacaoDevolucao||""])];
+      ...lista.map(i=>[i.numero,localizacaoNome(i),i.clienteAtual,i.pedidoCodigo,dataSaidaAtual(i),localizacao(i)==="com_cliente"?dias(dataSaidaAtual(i)):i.diasUltimaPermanencia,condicaoNome(i),localizacao(i)==="com_cliente"?"":dataDevolucaoAtual(i),i.observacaoCondicao||i.observacaoSaida||i.observacaoDevolucao||""])];
     const texto="\ufeff"+linhas.map(l=>l.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(";")).join("\n");
     const url=URL.createObjectURL(new Blob([texto],{type:"text/csv;charset=utf-8"}));
     const a=document.createElement("a");a.href=url;a.download="controle-containers.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -200,8 +202,8 @@
         i.numero,
         i.clienteAtual||"-",
         i.pedidoCodigo||"-",
-        dataBR(i.dataSaida),
-        localizacao(i)==="com_cliente"?dias(i.dataSaida):"-",
+        dataBR(dataSaidaAtual(i)),
+        localizacao(i)==="com_cliente"?dias(dataSaidaAtual(i)):"-",
         localizacaoNome(i),
         condicaoNome(i),
         i.observacaoCondicao||i.observacaoSaida||i.observacaoDevolucao||"-"
@@ -318,14 +320,14 @@
 
       document.getElementById("ct-lista").innerHTML=visiveis.length?visiveis.map(i=>{
         const fora=localizacao(i)==="com_cliente";
-        const dataLocal=fora?i.dataSaida:i.ultimaDevolucao;
+        const dataLocal=fora?dataSaidaAtual(i):dataDevolucaoAtual(i);
         const observacao=i.observacaoCondicao||i.observacaoDevolucao||i.observacaoSaida||"-";
         return `<tr class="border-t hover:bg-gray-50">
           <td class="p-3 font-bold text-blue-900">${esc(i.numero)}</td>
           <td class="p-3"><span class="px-2 py-1 rounded-full text-xs ${localizacaoCor(i)}">${localizacaoNome(i)}</span></td>
           <td class="p-3">${esc(i.clienteAtual||"-")}</td>
           <td class="p-3">${dataBR(dataLocal)}</td>
-          <td class="p-3 text-right">${fora?dias(i.dataSaida):"-"}</td>
+          <td class="p-3 text-right">${fora?dias(dataSaidaAtual(i)):"-"}</td>
           <td class="p-3"><span class="px-2 py-1 rounded-full text-xs font-semibold ${condicaoCor(i)}">${condicaoNome(i)}</span></td>
           <td class="p-3 max-w-xs">${esc(observacao)}</td>
           <td class="p-3 text-right"><button data-editar-condicao="${i.id}" class="border border-blue-700 text-blue-700 px-3 py-1 rounded whitespace-nowrap">Editar condição</button></td>
@@ -371,7 +373,7 @@
         <div class="space-y-4">
           <label class="block"><span class="font-semibold block mb-1">1. Cliente *</span><select id="cad-cliente" class="border p-2 rounded w-full"><option value="">Selecione o cliente cadastrado</option>${clientesOrdenados.map(c=>`<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join("")}</select></label>
           <div><label class="font-semibold block mb-1">2. Pedido do cliente *</label><input id="cad-pesquisa-pedido" class="border p-2 rounded w-full mb-2" placeholder="Pesquisar pelo número ou produto" disabled><select id="cad-pedido" class="border p-2 rounded w-full" disabled><option>Selecione primeiro o cliente</option></select><p id="cad-pedido-info" class="text-xs text-gray-500 mt-1"></p></div>
-          <label class="block"><span class="font-semibold block mb-1">3. Data do carregamento *</span><input id="cad-data" type="date" class="border p-2 rounded w-full"><span class="text-xs text-gray-500">Preenchida automaticamente com a data do pedido; pode ser corrigida se necessário.</span></label>
+          <label class="block"><span class="font-semibold block mb-1">3. Data da saída *</span><input id="cad-data" type="date" value="${hoje()}" class="border p-2 rounded w-full"><span class="text-xs text-gray-500">Data em que o contêiner saiu da empresa para o cliente.</span></label>
           <div><label class="font-semibold block mb-1">4. Numeração dos contêineres *</label><div id="cad-numeros" class="space-y-2"><div class="flex gap-2"><input class="cad-numero border p-2 rounded flex-1" placeholder="Número do contêiner"><button type="button" class="cad-remover hidden bg-red-600 text-white px-3 rounded">&times;</button></div></div><button id="cad-adicionar" type="button" class="mt-2 border border-blue-700 text-blue-700 px-3 py-2 rounded">+ Adicionar outro contêiner</button></div>
           <label class="block"><span class="font-semibold block mb-1">5. Observações</span><textarea id="cad-obs" rows="3" class="border p-2 rounded w-full" placeholder="Informações sobre o carregamento ou os contêineres"></textarea></label>
         </div>`,"Cadastrar e registrar saída");
@@ -387,10 +389,10 @@
       }
       selCliente.onchange=()=>{
         pedidosCliente=pedidos.filter(p=>norm(p.clienteNome)===norm(selCliente.value)).sort((a,b)=>String(dataPedido(b)).localeCompare(String(dataPedido(a))));
-        buscaPedido.disabled=!selCliente.value;selPedido.disabled=!selCliente.value;buscaPedido.value="";preencherPedidos();data.value="";info.textContent=pedidosCliente.length?`${pedidosCliente.length} pedido(s) encontrado(s).`:"Nenhum pedido encontrado para este cliente.";
+        buscaPedido.disabled=!selCliente.value;selPedido.disabled=!selCliente.value;buscaPedido.value="";preencherPedidos();data.value=hoje();info.textContent=pedidosCliente.length?`${pedidosCliente.length} pedido(s) encontrado(s).`:"Nenhum pedido encontrado para este cliente.";
       };
       buscaPedido.oninput=preencherPedidos;
-      selPedido.onchange=()=>{const p=pedidosCliente.find(x=>x.id===selPedido.value);data.value=p?dataPedido(p):"";info.textContent=p?`Pedido ${p.codigo||p.id} • ${p.produtosResumo||p.produtoNome||""}`:"";};
+      selPedido.onchange=()=>{const p=pedidosCliente.find(x=>x.id===selPedido.value);info.textContent=p?`Pedido ${p.codigo||p.id} • ${p.produtosResumo||p.produtoNome||""} • Data do pedido: ${dataBR(dataPedido(p))}`:"";};
       function atualizarRemover(){const linhas=m.querySelectorAll("#cad-numeros>div");linhas.forEach(l=>l.querySelector(".cad-remover").classList.toggle("hidden",linhas.length===1));}
       m.querySelector("#cad-adicionar").onclick=()=>{const linha=document.createElement("div");linha.className="flex gap-2";linha.innerHTML='<input class="cad-numero border p-2 rounded flex-1" placeholder="Número do contêiner"><button type="button" class="cad-remover bg-red-600 text-white px-3 rounded">&times;</button>';linha.querySelector("button").onclick=()=>{linha.remove();atualizarRemover();};m.querySelector("#cad-numeros").appendChild(linha);atualizarRemover();linha.querySelector("input").focus();};
       m.querySelector(".salvar").onclick=async()=>{
@@ -430,7 +432,7 @@
         <div class="bg-blue-50 text-blue-900 border border-blue-100 rounded p-3 text-sm">A devolução altera apenas a localização para <strong>empresa / pátio</strong>. A condição atual do contêiner será mantida e pode ser editada separadamente.</div>
         <label class="block">Data da devolução *<input id="dev-data" type="date" value="${hoje()}" class="border p-2 rounded w-full"></label>
         <input id="dev-busca" class="border p-2 rounded w-full" placeholder="Pesquisar número ou cliente">
-        <div id="dev-lista" class="max-h-72 overflow-y-auto space-y-2">${fora.map(i=>`<label class="dev-linha flex justify-between border rounded p-2" data-busca="${esc(norm(i.numero+" "+i.clienteAtual))}"><span><input type="checkbox" class="dev-item mr-2" value="${i.id}"><strong>${esc(i.numero)}</strong> • ${esc(i.clienteAtual)} <span class="ml-1 px-2 py-0.5 rounded-full text-xs ${condicaoCor(i)}">${condicaoNome(i)}</span></span><span class="text-gray-500">${dias(i.dataSaida)} dias</span></label>`).join("")}</div>
+        <div id="dev-lista" class="max-h-72 overflow-y-auto space-y-2">${fora.map(i=>`<label class="dev-linha flex justify-between border rounded p-2" data-busca="${esc(norm(i.numero+" "+i.clienteAtual))}"><span><input type="checkbox" class="dev-item mr-2" value="${i.id}"><strong>${esc(i.numero)}</strong> • ${esc(i.clienteAtual)} <span class="ml-1 px-2 py-0.5 rounded-full text-xs ${condicaoCor(i)}">${condicaoNome(i)}</span></span><span class="text-gray-500">${dias(dataSaidaAtual(i))} dias</span></label>`).join("")}</div>
         <label class="block">Observações da devolução<textarea id="dev-obs" class="border p-2 rounded w-full"></textarea></label>
       </div>`,"Confirmar devolução");
       m.querySelector("#dev-busca").oninput=e=>{const t=norm(e.target.value);m.querySelectorAll(".dev-linha").forEach(l=>l.classList.toggle("hidden",t&&!l.dataset.busca.includes(t)));};
@@ -442,7 +444,7 @@
           const usuario=await waitForAuth();
           const batch=db.batch();
           ids.forEach(id=>{
-            const i=containers.find(x=>x.id===id),tempo=dias(i.dataSaida);
+            const i=containers.find(x=>x.id===id),tempo=dias(dataSaidaAtual(i));
             batch.update(db.collection(CT).doc(id),{
               status:"disponivel",condicao:condicao(i),ultimaDevolucao:data,diasUltimaPermanencia:tempo,
               observacaoDevolucao:observacao,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()
