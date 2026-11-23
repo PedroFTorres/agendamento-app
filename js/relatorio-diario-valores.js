@@ -304,6 +304,7 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
   const valorRecibo = numeroRelatorioDiario(opcoes.valorRecibo);
   const pedidosNota = Math.max(0, Math.trunc(numeroRelatorioDiario(opcoes.pedidosNota)));
   const pedidosRecibo = Math.max(0, Math.trunc(numeroRelatorioDiario(opcoes.pedidosRecibo)));
+  const somenteTabelaItens = opcoes.somenteTabelaItens === true;
 
   const pedidos = new Map();
   const produtos = new Map();
@@ -375,13 +376,13 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
 
   const linhasPagamento = [...pagamentos.entries()]
     .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
-    .map(([nome, dados]) => `<tr><td>${escapar(nome)}</td><td class="num">${formatoNumero(dados.valor)}</td><td>Pedidos:</td><td class="num">${dados.pedidos.size}</td></tr>`)
-    .join("") || '<tr><td>Não informado</td><td class="num">0,00</td><td>Pedidos:</td><td class="num">0</td></tr>';
+    .map(([nome, dados]) => `<tr class="ocultar-somente-itens"><td>${escapar(nome)}</td><td class="num">${formatoNumero(dados.valor)}</td><td>Pedidos:</td><td class="num">${dados.pedidos.size}</td></tr>`)
+    .join("") || '<tr class="ocultar-somente-itens"><td>Não informado</td><td class="num">0,00</td><td>Pedidos:</td><td class="num">0</td></tr>';
 
   const linhasCidades = [...cidades.entries()]
     .sort((a, b) => a[0].localeCompare(b[0], "pt-BR"))
-    .map(([nome, ids]) => `<tr><td>${escapar(nome)}</td><td class="num">${ids.size}</td><td></td><td></td></tr>`)
-    .join("") || '<tr><td>Não informado</td><td class="num">0</td><td></td><td></td></tr>';
+    .map(([nome, ids]) => `<tr class="ocultar-somente-itens"><td>${escapar(nome)}</td><td class="num">${ids.size}</td><td></td><td></td></tr>`)
+    .join("") || '<tr class="ocultar-somente-itens"><td>Não informado</td><td class="num">0</td><td></td><td></td></tr>';
 
   const linhaProduto = item => `<tr><td>${escapar(item.nome)}</td><td class="num">${formatoQuantidade(item.quantidade)}</td><td class="num">${formatoNumero(item.valor)}</td><td class="num">${formatoNumero(item.medio)}</td></tr>`;
   const linhaTotal = (rotulo, dados, classe) => `<tr class="${classe}"><td>${rotulo}</td><td class="num">${formatoQuantidade(dados.quantidade)}</td><td class="num">${formatoNumero(dados.valor)}</td><td class="num">${formatoNumero(dados.medio)}</td></tr>`;
@@ -428,10 +429,11 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
         .total-bandas td { color: #6b21a8; background: #f3e8ff; font-weight: bold; }
         .total-outros td { color: #854d0e; background: #fef9c3; font-weight: bold; }
         .total-geral td { color: #17263a; background: #eef1f4; font-weight: bold; border-top: 2px solid #17263a; border-bottom: 2px solid #17263a; }
+        .somente-itens .ocultar-somente-itens { display: none; }
         @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
       </style>
     </head>
-    <body>
+    <body class="${somenteTabelaItens ? "somente-itens" : ""}">
       <main class="relatorio">
         <header class="cabecalho">
           <div class="marca">
@@ -443,21 +445,21 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
         <table>
         <colgroup><col><col><col><col></colgroup>
         <tbody>
-          <tr class="titulo"><td>Forma de pagamento</td><td></td><td></td><td></td></tr>
+          <tr class="titulo ocultar-somente-itens"><td>Forma de pagamento</td><td></td><td></td><td></td></tr>
           ${linhasPagamento}
-          <tr class="espaco"><td colspan="4"></td></tr>
+          <tr class="espaco ocultar-somente-itens"><td colspan="4"></td></tr>
 
-          <tr class="titulo"><td>Tipo de documento</td><td></td><td></td><td></td></tr>
-          <tr><td>NOTA FISCAL</td><td class="num">${formatoNumero(valorNota)}</td><td>Pedidos:</td><td class="num">${pedidosNota}</td></tr>
-          <tr><td>RECIBO</td><td class="num">${formatoNumero(valorRecibo)}</td><td>Pedidos:</td><td class="num">${pedidosRecibo}</td></tr>
-          <tr class="total"><td>Valor Total</td><td class="num">${formatoNumero(valorTotal)}</td><td></td><td></td></tr>
-          <tr><td>Peso Total</td><td class="num">${formatoNumero(pesoTotal, 3)}</td><td></td><td></td></tr>
-          <tr><td>Quantidade de Pedidos</td><td class="num">${pedidos.size}</td><td></td><td></td></tr>
-          <tr class="espaco"><td colspan="4"></td></tr>
+          <tr class="titulo ocultar-somente-itens"><td>Tipo de documento</td><td></td><td></td><td></td></tr>
+          <tr class="ocultar-somente-itens"><td>NOTA FISCAL</td><td class="num">${formatoNumero(valorNota)}</td><td>Pedidos:</td><td class="num">${pedidosNota}</td></tr>
+          <tr class="ocultar-somente-itens"><td>RECIBO</td><td class="num">${formatoNumero(valorRecibo)}</td><td>Pedidos:</td><td class="num">${pedidosRecibo}</td></tr>
+          <tr class="total ocultar-somente-itens"><td>Valor Total</td><td class="num">${formatoNumero(valorTotal)}</td><td></td><td></td></tr>
+          <tr class="ocultar-somente-itens"><td>Peso Total</td><td class="num">${formatoNumero(pesoTotal, 3)}</td><td></td><td></td></tr>
+          <tr class="ocultar-somente-itens"><td>Quantidade de Pedidos</td><td class="num">${pedidos.size}</td><td></td><td></td></tr>
+          <tr class="espaco ocultar-somente-itens"><td colspan="4"></td></tr>
 
-          <tr class="titulo"><td>Resumo por Cidade</td><td class="num">Qtd Pedidos</td><td></td><td></td></tr>
+          <tr class="titulo ocultar-somente-itens"><td>Resumo por Cidade</td><td class="num">Qtd Pedidos</td><td></td><td></td></tr>
           ${linhasCidades}
-          <tr class="espaco"><td colspan="4"></td></tr>
+          <tr class="espaco ocultar-somente-itens"><td colspan="4"></td></tr>
 
           <tr class="titulo"><td>Resumo por Item</td><td class="num">Qtd Itens</td><td class="num">Valor</td><td class="num">Valor Médio</td></tr>
           ${linhasItens}
@@ -878,6 +880,14 @@ function renderRelatoriosDiarios() {
             <small class="text-gray-500">Preenchimento manual, se desejar mostrar no PDF.</small>
           </label>
 
+          <label class="md:col-span-2 flex items-start gap-3 border border-purple-200 bg-purple-50 rounded-lg p-4">
+            <input id="relatorio-diario-somente-itens" type="checkbox" class="mt-1 h-4 w-4">
+            <span>
+              <strong class="block text-purple-900">Imprimir somente a tabela Resumo por Item</strong>
+              <small class="text-purple-700">Gera uma impressão separada apenas com produtos, quantidades, valores e totais.</small>
+            </span>
+          </label>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label class="block">
               <span class="block font-semibold mb-1">Valor de nota fiscal</span>
@@ -926,6 +936,7 @@ function renderRelatoriosDiarios() {
   const recibo = document.getElementById("relatorio-diario-recibo");
   const notaPedidos = document.getElementById("relatorio-diario-nota-pedidos");
   const reciboPedidos = document.getElementById("relatorio-diario-recibo-pedidos");
+  const somenteItens = document.getElementById("relatorio-diario-somente-itens");
   const botaoAbrir = document.getElementById("relatorio-diario-abrir");
   const botaoPdf = document.getElementById("relatorio-diario-pdf");
   const status = document.getElementById("relatorio-diario-status");
@@ -997,6 +1008,7 @@ function renderRelatoriosDiarios() {
         valorRecibo: recibo.value,
         pedidosNota: notaPedidos.value,
         pedidosRecibo: reciboPedidos.value,
+        somenteTabelaItens: somenteItens.checked,
         janelaReservada
       });
       status.textContent = "";
