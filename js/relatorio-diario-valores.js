@@ -349,7 +349,11 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
 
   const telhas = itensProdutos.filter(item => chave(item.nome).includes("telha"));
   const tijolos = itensProdutos.filter(item => chave(item.nome).includes("tijolo"));
-  const outros = itensProdutos.filter(item => !chave(item.nome).includes("telha") && !chave(item.nome).includes("tijolo"));
+  const bandas = itensProdutos.filter(item => chave(item.nome).includes("banda"));
+  const outros = itensProdutos.filter(item => {
+    const nome = chave(item.nome);
+    return !nome.includes("telha") && !nome.includes("tijolo") && !nome.includes("banda");
+  });
   const resumoCategoria = itens => ({
     quantidade: itens.reduce((total, item) => total + item.quantidade, 0),
     valor: itens.reduce((total, item) => total + item.valor, 0),
@@ -357,6 +361,7 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
   });
   const totalTelhas = resumoCategoria(telhas);
   const totalTijolos = resumoCategoria(tijolos);
+  const totalBandas = resumoCategoria(bandas);
   const totalOutros = resumoCategoria(outros);
   const totalProdutos = resumoCategoria(itensProdutos);
   const valorProdutos = totalProdutos.valor;
@@ -380,6 +385,8 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
     telhas.length ? linhaTotal("TOTAL DE TELHAS", totalTelhas, "total-telhas") : "",
     ...tijolos.map(linhaProduto),
     tijolos.length ? linhaTotal("TOTAL DE TIJOLOS", totalTijolos, "total-tijolos") : "",
+    ...bandas.map(linhaProduto),
+    bandas.length ? linhaTotal("TOTAL DE BANDAS", totalBandas, "total-bandas") : "",
     ...outros.map(linhaProduto),
     outros.length ? linhaTotal("TOTAL DE OUTROS ITENS", totalOutros, "total-outros") : ""
   ].join("") || '<tr><td>Nenhum item</td><td class="num">0</td><td class="num">0,00</td><td class="num">0,00</td></tr>';
@@ -413,7 +420,8 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
         .total td { font-weight: bold; border-top: 1px solid #cfd8e3; border-bottom: 1px solid #cfd8e3; }
         .total-telhas td { color: #8a4707; background: #fff0df; font-weight: bold; }
         .total-tijolos td { color: #234d2d; background: #e5f1e7; font-weight: bold; }
-        .total-outros td { color: #3f4d5d; background: #f1f3f5; font-weight: bold; }
+        .total-bandas td { color: #6b21a8; background: #f3e8ff; font-weight: bold; }
+        .total-outros td { color: #854d0e; background: #fef9c3; font-weight: bold; }
         .total-geral td { color: #17263a; background: #eef1f4; font-weight: bold; border-top: 2px solid #17263a; border-bottom: 2px solid #17263a; }
         @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
       </style>
