@@ -280,10 +280,15 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
   const escapar = valor => typeof escapeHtmlRelatorio === "function"
     ? escapeHtmlRelatorio(valor)
     : String(valor || "");
-  const dataFormatada = (() => {
-    const [ano, mes, dia] = String(dataSelecionada || "").split("-");
-    return dia && mes && ano ? `${dia}/${mes}/${ano}` : String(dataSelecionada || "");
-  })();
+  const formatarDataPeriodo = valor => {
+    const [ano, mes, dia] = String(valor || "").split("-");
+    return dia && mes && ano ? `${dia}/${mes}/${ano}` : String(valor || "");
+  };
+  const dataInicioRelatorio = opcoes.dataInicio || dataSelecionada;
+  const dataFimRelatorio = opcoes.dataFim || dataInicioRelatorio;
+  const dataFormatada = dataInicioRelatorio === dataFimRelatorio
+    ? formatarDataPeriodo(dataInicioRelatorio)
+    : `${formatarDataPeriodo(dataInicioRelatorio)} a ${formatarDataPeriodo(dataFimRelatorio)}`;
   const formatoNumero = (valor, casas = 2) => Number(valor || 0).toLocaleString("pt-BR", {
     minimumFractionDigits: casas,
     maximumFractionDigits: casas
@@ -491,8 +496,13 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
   const user = await waitForAuth();
   const representanteSomenteConsulta = PERFIL === "representante";
 
-  let query = db.collection("agendamentos").where("data", "==", dataSelecionada);
+  const dataInicioRelatorio = opcoesRelatorio.dataInicio || dataSelecionada;
+  const dataFimRelatorio = opcoesRelatorio.dataFim || dataInicioRelatorio;
+  let query = db.collection("agendamentos");
   if (PERFIL === "representante") query = query.where("userId", "==", user.uid);
+  query = dataInicioRelatorio === dataFimRelatorio
+    ? query.where("data", "==", dataInicioRelatorio)
+    : query.where("data", ">=", dataInicioRelatorio).where("data", "<=", dataFimRelatorio);
 
   const snap = await query.get();
   let totalGeral = 0;
@@ -685,7 +695,7 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
   modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto";
   modal.innerHTML = `
     <div class="bg-white p-6 rounded w-full max-w-3xl max-h-[90vh] flex flex-col gap-4 overflow-hidden my-6">
-      <h3 class="text-lg font-bold">${representanteSomenteConsulta ? "Resumo das suas vendas" : "Resumo do dia"} ${dataSelecionada}</h3>
+      <h3 class="text-lg font-bold">${representanteSomenteConsulta ? "Resumo das suas vendas" : "Resumo do período"} ${dataInicioRelatorio === dataFimRelatorio ? dataInicioRelatorio : dataInicioRelatorio + " a " + dataFimRelatorio}</h3>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="bg-blue-50 border border-blue-200 p-4 rounded text-center">
@@ -810,6 +820,7 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
 function renderRelatoriosDiarios() {
   const agora = new Date();
   const dataLocal = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const mesLocal = dataLocal.slice(0, 7);
 
   pageContent.innerHTML = `
     <section class="max-w-4xl mx-auto space-y-4">
@@ -826,8 +837,21 @@ function renderRelatoriosDiarios() {
 
         <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
           <label class="block">
-            <span class="block font-semibold mb-1">Data do relatório *</span>
+            <span class="block font-semibold mb-1">Período do relatório *</span>
+            <select id="relatorio-diario-tipo-periodo" class="border rounded p-3 w-full">
+              <option value="dia">Dia específico</option>
+              <option value="mes">Mês completo</option>
+            </select>
+          </label>
+
+          <label id="relatorio-diario-campo-data" class="block">
+            <span class="block font-semibold mb-1">Data *</span>
             <input id="relatorio-diario-data" type="date" value="${dataLocal}" class="border rounded p-3 w-full">
+          </label>
+
+          <label id="relatorio-diario-campo-mes" class="block hidden">
+            <span class="block font-semibold mb-1">Mês *</span>
+            <input id="relatorio-diario-mes" type="month" value="${mesLocal}" class="border rounded p-3 w-full">
           </label>
 
           <label class="block">
@@ -881,7 +905,11 @@ function renderRelatoriosDiarios() {
     </section>
   `;
 
+  const tipoPeriodo = document.getElementById("relatorio-diario-tipo-periodo");
+  const campoData = document.getElementById("relatorio-diario-campo-data");
+  const campoMes = document.getElementById("relatorio-diario-campo-mes");
   const data = document.getElementById("relatorio-diario-data");
+  const mes = document.getElementById("relatorio-diario-mes");
   const orientacao = document.getElementById("relatorio-diario-orientacao");
   const peso = document.getElementById("relatorio-diario-peso");
   const nota = document.getElementById("relatorio-diario-nota");
@@ -892,6 +920,26 @@ function renderRelatoriosDiarios() {
   const botaoPdf = document.getElementById("relatorio-diario-pdf");
   const status = document.getElementById("relatorio-diario-status");
 
+  const atualizarCamposPeriodo = () => {
+    const mensal = tipoPeriodo.value === "mes";
+    campoData.classList.toggle("hidden", mensal);
+    campoMes.classList.toggle("hidden", !mensal);
+  };
+  const obterPeriodo = () => {
+    if (tipoPeriodo.value === "mes") {
+      if (!mes.value) return null;
+      const [ano, numeroMes] = mes.value.split("-").map(Number);
+      const ultimoDia = new Date(ano, numeroMes, 0).getDate();
+      return {
+        inicio: `${mes.value}-01`,
+        fim: `${mes.value}-${String(ultimoDia).padStart(2, "0")}`
+      };
+    }
+    return data.value ? { inicio: data.value, fim: data.value } : null;
+  };
+  tipoPeriodo.onchange = atualizarCamposPeriodo;
+  atualizarCamposPeriodo();
+
   const bloquear = estado => {
     [botaoAbrir, botaoPdf].forEach(botao => {
       botao.disabled = estado;
@@ -901,11 +949,15 @@ function renderRelatoriosDiarios() {
   };
 
   botaoAbrir.onclick = async () => {
-    if (!data.value || botaoAbrir.disabled) return;
+    const periodo = obterPeriodo();
+    if (!periodo || botaoAbrir.disabled) return;
     bloquear(true);
-    status.textContent = "Carregando pedidos do dia...";
+    status.textContent = "Carregando pedidos do período...";
     try {
-      await abrirResumoDoDia(data.value);
+      await abrirResumoDoDia(periodo.inicio, {
+        dataInicio: periodo.inicio,
+        dataFim: periodo.fim
+      });
       status.textContent = "";
     } finally {
       bloquear(false);
@@ -913,7 +965,8 @@ function renderRelatoriosDiarios() {
   };
 
   botaoPdf.onclick = async () => {
-    if (!data.value || botaoPdf.disabled) return;
+    const periodo = obterPeriodo();
+    if (!periodo || botaoPdf.disabled) return;
 
     const janelaReservada = window.open("", "_blank");
     if (janelaReservada) {
@@ -924,8 +977,10 @@ function renderRelatoriosDiarios() {
     bloquear(true);
     status.textContent = "Calculando e preparando o PDF...";
     try {
-      await abrirResumoDoDia(data.value, {
+      await abrirResumoDoDia(periodo.inicio, {
         gerarDireto: true,
+        dataInicio: periodo.inicio,
+        dataFim: periodo.fim,
         orientacao: orientacao.value,
         pesoTotal: peso.value,
         valorNota: nota.value,
