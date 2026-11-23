@@ -546,29 +546,39 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
     console.warn("Nao foi possivel consultar os cadastros atuais dos clientes.", e);
   }
 
+  const pedidosAtuaisPorId = new Map();
+  const pedidosAtuaisPorCodigo = new Map();
+  const pedidosAtuaisPorAgendamento = new Map();
+
+  try {
+    const pedidosSnap = await db.collection("pedidos").get();
+    pedidosSnap.forEach(doc => {
+      const dados = doc.data() || {};
+      const registro = { id: doc.id, dados };
+      pedidosAtuaisPorId.set(doc.id, registro);
+      if (dados.codigo) pedidosAtuaisPorCodigo.set(String(dados.codigo), registro);
+      if (dados.agendamentoId) pedidosAtuaisPorAgendamento.set(String(dados.agendamentoId), registro);
+      (Array.isArray(dados.agendamentoIds) ? dados.agendamentoIds : []).forEach(id => {
+        pedidosAtuaisPorAgendamento.set(String(id), registro);
+      });
+    });
+  } catch (e) {
+    console.warn("Nao foi possivel carregar os pedidos em lote.", e);
+  }
+
   async function buscarDadosPedido(agendamento) {
     const chave = agendamento.pedidoId ? `pedido:${agendamento.pedidoId}` : `agendamento:${agendamento.id}`;
     if (dadosPedidoPorVinculo.has(chave)) return dadosPedidoPorVinculo.get(chave);
 
     const consulta = (async () => {
-      let pedidoDoc = null;
-      if (agendamento.pedidoId) {
-        const porCodigo = await db.collection("pedidos").where("codigo", "==", agendamento.pedidoId).limit(1).get();
-        if (!porCodigo.empty) pedidoDoc = porCodigo.docs[0];
-        else {
-          const porId = await db.collection("pedidos").doc(String(agendamento.pedidoId)).get();
-          if (porId.exists) pedidoDoc = porId;
-        }
-      }
-      if (!pedidoDoc && agendamento.id) {
-        const porListaIds = await db.collection("pedidos").where("agendamentoIds", "array-contains", agendamento.id).limit(1).get();
-        if (!porListaIds.empty) pedidoDoc = porListaIds.docs[0];
-      }
-      if (!pedidoDoc && agendamento.id) {
-        const porIdPrincipal = await db.collection("pedidos").where("agendamentoId", "==", agendamento.id).limit(1).get();
-        if (!porIdPrincipal.empty) pedidoDoc = porIdPrincipal.docs[0];
-      }
-      const pedido = pedidoDoc?.data() || {};
+      const pedidoId = String(agendamento.pedidoId || "").trim();
+      const agendamentoId = String(agendamento.id || "").trim();
+      const pedidoRegistro =
+        (pedidoId ? pedidosAtuaisPorCodigo.get(pedidoId) : null) ||
+        (pedidoId ? pedidosAtuaisPorId.get(pedidoId) : null) ||
+        (agendamentoId ? pedidosAtuaisPorAgendamento.get(agendamentoId) : null) ||
+        null;
+      const pedido = pedidoRegistro?.dados || {};
       const clienteDocumento = String(
         agendamento.clienteDocumento ||
         pedido.clienteCnpj ||
@@ -624,7 +634,7 @@ async function abrirResumoDoDia(dataSelecionada, opcoesRelatorio = {}) {
       }
 
       return {
-        pedidoDocumentoId: pedidoDoc?.id || "",
+        pedidoDocumentoId: pedidoRegistro?.id || "",
         observacao: String(pedido.observacao || "").trim(),
         prazoPagamento: String(pedido.prazoPagamento || "").trim(),
         clienteDocumento: String(
