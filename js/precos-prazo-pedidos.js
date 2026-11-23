@@ -170,26 +170,47 @@ function instalarRelatorioComPrecoDoPedido() {
   const original = window.aplicarValoresAgendamentosRelatorio;
   window.aplicarValoresAgendamentosRelatorio = async function(lista, user) {
     if (!Array.isArray(lista) || !lista.length) return 0;
+
+    const pedidosPorId = new Map();
+    const pedidosPorCodigo = new Map();
+    const produtosPorNome = new Map();
+    const precosPorClienteProduto = new Map();
+
+    try {
+      const [pedidosSnap, produtosSnap, precosSnap] = await Promise.all([
+        db.collection("pedidos").get(),
+        db.collection("produtos").get(),
+        db.collection("precos_clientes").get()
+      ]);
+
+      pedidosSnap.forEach(doc => {
+        const pedido = doc.data() || {};
+        pedidosPorId.set(doc.id, pedido);
+        if (pedido.codigo) pedidosPorCodigo.set(String(pedido.codigo), pedido);
+      });
+      produtosSnap.forEach(doc => {
+        const produto = doc.data() || {};
+        const chave = normalizarPrecoPrazo(produto.nome);
+        if (chave) produtosPorNome.set(chave, produto);
+      });
+      precosSnap.forEach(doc => {
+        const preco = doc.data() || {};
+        const cliente = normalizarPrecoPrazo(preco.clienteNome);
+        const produto = normalizarPrecoPrazo(preco.produtoNome);
+        if (cliente && produto) precosPorClienteProduto.set(`${cliente}::${produto}`, preco);
+      });
+    } catch (erro) {
+      console.warn("Nao foi possivel carregar os valores do relatorio em lote.", erro);
+      if (typeof original === "function") return original(lista, user);
+    }
+
     let total = 0;
-    const pedidos = new Map();
-
-    await Promise.all([...new Set(lista.map(item => String(item.pedidoId || "").trim()).filter(Boolean))]
-      .map(async pedidoId => {
-        try {
-          const porCodigo = await db.collection("pedidos").where("codigo", "==", pedidoId).limit(1).get();
-          if (!porCodigo.empty) {
-            pedidos.set(pedidoId, porCodigo.docs[0].data() || {});
-            return;
-          }
-          const porId = await db.collection("pedidos").doc(pedidoId).get();
-          if (porId.exists) pedidos.set(pedidoId, porId.data() || {});
-        } catch (_) {}
-      }));
-
     for (const item of lista) {
-      const pedido = pedidos.get(String(item.pedidoId || "").trim()) || null;
+      const pedidoId = String(item.pedidoId || "").trim();
+      const pedido = pedidosPorCodigo.get(pedidoId) || pedidosPorId.get(pedidoId) || null;
       const prazo = item.prazoPagamento || pedido?.prazoPagamento || "";
       const produtoChave = normalizarPrecoPrazo(item.produtoNome);
+      const clienteChave = normalizarPrecoPrazo(item.clienteNome);
       const itemPedido = Array.isArray(pedido?.itens)
         ? pedido.itens.find(produto => normalizarPrecoPrazo(produto.produtoNome || produto.produto) === produtoChave)
         : null;
@@ -200,22 +221,21 @@ function instalarRelatorioComPrecoDoPedido() {
         : Number(itemPedido?.precoUnitario);
       let origem = Number.isFinite(precoUnitario) ? (itemPedido?.precoOrigem || "pedido") : "";
 
-      const resultadoAtual = await buscarPrecoUnitarioPedido(
-        item.clienteNome,
-        item.produtoNome,
-        prazo,
-        item.userId || user?.uid || ""
-      );
-
-      // O preço gravado no pedido é histórico e não pode mudar após reajustes.
       if (!Number.isFinite(precoUnitario)) {
-        precoUnitario = resultadoAtual.preco;
-        origem = resultadoAtual.origem;
+        const precoEspecial = precosPorClienteProduto.get(`${clienteChave}::${produtoChave}`);
+        const valorEspecial = precoEspecialPorPrazo(precoEspecial || {}, prazo);
+        if (valorEspecial != null) {
+          precoUnitario = valorEspecial;
+          origem = "cliente";
+        } else {
+          precoUnitario = precoProdutoPorPrazo(produtosPorNome.get(produtoChave) || {}, prazo);
+          origem = "produto";
+        }
       }
 
       item.prazoPagamento = prazo;
-      item.precoUnitario = precoUnitario;
-      item.valorVenda = precoUnitario * Number(item.quantidade || 0);
+      item.precoUnitario = Number(precoUnitario || 0);
+      item.valorVenda = item.precoUnitario * Number(item.quantidade || 0);
       item.precoOrigem = origem;
       total += item.valorVenda;
     }
