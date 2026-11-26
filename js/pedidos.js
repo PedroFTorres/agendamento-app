@@ -112,6 +112,16 @@ async function obterDataCarregamentoPedido(pedido) {
   return formatarDataPedido(pedido.data);
 }
 
+function formatarHorarioCarregamento(valor) {
+  const horario = String(valor || "").trim();
+  if (!horario) return "A confirmar";
+
+  const encontrado = horario.match(/^(\d{1,2}):(\d{2})/);
+  if (!encontrado) return horario;
+
+  return `${encontrado[1].padStart(2, "0")}:${encontrado[2]}`;
+}
+
 function formatarDataWhatsapp(valor) {
   if (!valor) return "-";
   if (valor && typeof valor.toDate === "function") {
@@ -152,11 +162,12 @@ function abrirUrlWhatsapp(numero, mensagem, janelaReservada = null) {
 
 async function abrirWhatsappPedidoAprovado(pedido, dataAgendada) {
   const cliente = await buscarDadosClientePedido(pedido);
+  const horarioCarregamento = formatarHorarioCarregamento(pedido.previsaoHorarioChegada);
   await imprimirPedidoPdf(pedido, cliente);
 
   const mensagem = [
     `Olá, ${pedido.clienteNome || "cliente"}.`,
-    `Seu pedido ${pedido.codigo || ""} foi aprovado com carregamento para ${formatarDataWhatsapp(dataAgendada)}.`,
+    `Seu pedido ${pedido.codigo || ""} foi aprovado com carregamento para ${formatarDataWhatsapp(dataAgendada)}, às ${horarioCarregamento}.`,
     `Produtos: ${formatarItensPedidoTexto(pedido)}.`,
     `Quantidade total: ${formatarQuantidadePedido(obterTotalQuantidadePedido(pedido))}.`,
     "O PDF do pedido foi gerado para anexar nesta conversa."
@@ -199,10 +210,15 @@ async function abrirWhatsappPedidoAtualizado(pedidoAnterior, pedidoAtualizado, d
   const itensDepois = formatarItensPedidoTexto(pedidoAtualizado);
   const quantidadeAntes = obterTotalQuantidadePedido(pedidoAnterior);
   const quantidadeDepois = obterTotalQuantidadePedido(pedidoAtualizado);
+  const horarioAntes = formatarHorarioCarregamento(pedidoAnterior.previsaoHorarioChegada);
+  const horarioDepois = formatarHorarioCarregamento(pedidoAtualizado.previsaoHorarioChegada);
   const linhasAlteracoes = [];
 
   if (dataAnterior !== novaData) {
     linhasAlteracoes.push(`Data: ${formatarDataWhatsapp(dataAnterior)} -> ${formatarDataWhatsapp(novaData)}`);
+  }
+  if (horarioAntes !== horarioDepois) {
+    linhasAlteracoes.push(`Horário: ${horarioAntes} -> ${horarioDepois}`);
   }
   if (itensAntes !== itensDepois || Number(quantidadeAntes || 0) !== Number(quantidadeDepois || 0)) {
     linhasAlteracoes.push(`Pedido: ${itensAntes} -> ${itensDepois}`);
@@ -217,7 +233,7 @@ async function abrirWhatsappPedidoAtualizado(pedidoAnterior, pedidoAtualizado, d
     `Olá, ${pedidoAtualizado.clienteNome || "cliente"}.`,
     `Houve uma atualização no seu pedido ${pedidoAtualizado.codigo || ""}:`,
     ...linhasAlteracoes,
-    `Nova data do carregamento: ${formatarDataWhatsapp(novaData)}.`,
+    `Novo carregamento: ${formatarDataWhatsapp(novaData)}, às ${horarioDepois}.`,
     "O PDF atualizado do pedido foi gerado para anexar nesta conversa."
   ].join("\n");
 
@@ -293,6 +309,7 @@ async function imprimirPedidoPdf(pedido, cliente = {}) {
   const emissao = formatarDataPedido(pedido.createdAt);
   const prazo = obterPrazoPedido(pedido);
   const dataCarregamento = await obterDataCarregamentoPedido(pedido);
+  const horarioCarregamento = formatarHorarioCarregamento(pedido.previsaoHorarioChegada);
 
   const itensTexto = formatarItensPedidoTexto(pedido);
   const quantidade = formatarQuantidadePedido(obterTotalQuantidadePedido(pedido));
@@ -363,6 +380,7 @@ const logo = await carregarLogoDataUrl();
   y = desenharLinhaDupla(["Representante", pedido.representanteNome || "-"], ["Prazo", prazo], y);
   y = desenharCampo("Produtos", itensTexto, margemX, y, larguraPagina);
   y = desenharLinhaDupla(["Quantidade total", quantidade], ["Data do carregamento", dataCarregamento], y);
+  y = desenharCampo("Horário do carregamento", horarioCarregamento, margemX, y, larguraPagina);
   y = desenharCampo("Observação", pedido.observacao || "-", margemX, y, larguraPagina);
 
   y += 3;
@@ -420,6 +438,7 @@ async function abrirModalDetalhesPedido(pedido) {
   const emissao = formatarDataPedido(pedido.createdAt);
    const prazo = obterPrazoPedido(pedido);
   const dataCarregamento = await obterDataCarregamentoPedido(pedido);
+  const horarioCarregamento = formatarHorarioCarregamento(pedido.previsaoHorarioChegada);
  const itensTexto = formatarItensPedidoTexto(pedido);
   const quantidade = formatarQuantidadePedido(obterTotalQuantidadePedido(pedido));
 
@@ -447,6 +466,7 @@ async function abrirModalDetalhesPedido(pedido) {
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Quantidade total:</span> ${escapeHtml(quantidade)}</div>
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Prazo:</span> ${escapeHtml(prazo || "-")}</div>
           <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Data do carregamento:</span> ${escapeHtml(dataCarregamento || "-")}</div>
+          <div class="bg-slate-50 rounded-lg p-3"><span class="font-semibold text-slate-700">Horário do carregamento:</span> ${escapeHtml(horarioCarregamento)}</div>
           <div class="md:col-span-2 bg-orange-50 rounded-lg p-3 border border-orange-100"><span class="font-semibold text-slate-700">Observação:</span> ${escapeHtml(pedido.observacao || "-")}</div>
         </div>
 
@@ -581,7 +601,9 @@ async function aprovarPedido(id, btn) {
       </style>
       <div id="modal-aprovacao-conteudo" class="bg-white rounded shadow max-h-[95vh] overflow-y-auto">
         <div class="p-3 sm:p-4">
-          <h3 class="text-lg font-bold mb-2">Escolher data do agendamento</h3>
+          <h3 class="text-lg font-bold mb-2">Escolher data e horário do carregamento</h3>
+          <label for="horario-aprovacao" class="block text-sm font-semibold text-slate-700 mb-1">Horário do carregamento</label>
+          <input id="horario-aprovacao" type="time" value="${escapeHtml(p.previsaoHorarioChegada || "")}" class="w-full border border-slate-300 rounded px-3 py-2 mb-3" required>
           <div class="w-full min-w-0 overflow-hidden">
             <div id="calendar-aprovacao" class="w-full max-w-full min-w-0"></div>
           </div>
@@ -640,6 +662,14 @@ async function aprovarPedido(id, btn) {
           clicado = true;
 
           const dataEscolhida = info.dateStr;
+          const horarioEscolhido = document.getElementById("horario-aprovacao")?.value || "";
+
+          if (!horarioEscolhido) {
+            clicado = false;
+            alert("Informe o horário do carregamento.");
+            document.getElementById("horario-aprovacao")?.focus();
+            return;
+          }
 
           try {
 
@@ -667,7 +697,7 @@ async function aprovarPedido(id, btn) {
                 criadoPorAdmin: p.criadoPorAdmin === true,
                 pedidoId: p.codigo || id,
                 data: dataEscolhida,
-                previsaoHorarioChegada: p.previsaoHorarioChegada || "",
+                previsaoHorarioChegada: horarioEscolhido,
                 observacao: p.observacao || "",
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
               });
@@ -679,6 +709,7 @@ async function aprovarPedido(id, btn) {
               agendamentoId: agRefs[0] || "",
               agendamentoIds: agRefs,
               data: dataEscolhida,
+              previsaoHorarioChegada: horarioEscolhido,
               itens: itensPedido,
               produtoNome: itensPedido[0]?.produtoNome || p.produtoNome || "",
               precoUnitario: Number(itensPedido[0]?.precoUnitario || 0),
@@ -713,7 +744,8 @@ async function aprovarPedido(id, btn) {
               status: "aprovado",
               agendamentoId: agRefs[0] || "",
               agendamentoIds: agRefs,
-              data: dataEscolhida
+              data: dataEscolhida,
+              previsaoHorarioChegada: horarioEscolhido
             }, dataEscolhida);
             modal.remove();
 
@@ -934,7 +966,7 @@ async function editarPedidoAprovado(id) {
      <label class="block mb-1">Data/Dia</label>
       <input id="edit-data" type="date" value="${escapeHtml(dataAtual)}" class="w-full border p-2 mb-3"/>
 
-      <label class="block mb-1">Previsão de chegada (opcional)</label>
+      <label class="block mb-1">Horário do carregamento agendado</label>
       <input id="edit-horario-chegada" type="time" value="${escapeHtml(p.previsaoHorarioChegada || "")}" class="w-full border p-2 mb-3"/>
 
       <label class="block mb-1">Prazo de pagamento</label>
@@ -1042,8 +1074,8 @@ async function editarPedidoAprovado(id) {
     const novoHorarioChegada = modal.querySelector("#edit-horario-chegada").value;
     const novaObs = modal.querySelector("#edit-obs").value.trim();
 
-  if (!novosItens.length || !novaData || !novoPrazo) {
-      alert("Preencha produto, quantidade, data e prazo");
+  if (!novosItens.length || !novaData || !novoHorarioChegada || !novoPrazo) {
+      alert("Preencha produto, quantidade, data, horário do carregamento e prazo");
       return;
     }
 
