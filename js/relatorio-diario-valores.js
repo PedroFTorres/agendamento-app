@@ -6,6 +6,23 @@ function normalizarChavePrecoRelatorio(valor) {
     .toLowerCase();
 }
 
+function classificarProdutoRelatorio(nomeProduto, categoriaProduto) {
+  const nome = normalizarChavePrecoRelatorio(nomeProduto);
+  const categoria = normalizarChavePrecoRelatorio(categoriaProduto);
+  const referencia = `${categoria} ${nome}`.trim();
+  const segunda =
+    referencia.includes("segunda") ||
+    /(^|\s)2\s*(a|ª)(\s|$)/.test(referencia);
+  const familia = referencia.includes("telha")
+    ? "telhas"
+    : referencia.includes("tijolo")
+      ? "tijolos"
+      : referencia.includes("banda")
+        ? "bandas"
+        : "outros";
+  return { familia, segunda };
+}
+
 function formatMoedaRelatorio(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
@@ -26,6 +43,7 @@ function formatMoedaUnitarioRelatorio(valor) {
 
 async function aplicarValoresAgendamentosRelatorio(lista, user) {
   const produtosPorNome = new Map();
+  const categoriasPorProduto = new Map();
   const precosPorClienteProduto = new Map();
 
   try {
@@ -35,6 +53,7 @@ async function aplicarValoresAgendamentosRelatorio(lista, user) {
       const nome = normalizarChavePrecoRelatorio(produto.nome);
       const preco = Number(produto.preco || 0);
       if (nome && Number.isFinite(preco)) produtosPorNome.set(nome, preco);
+      if (nome) categoriasPorProduto.set(nome, String(produto.categoria || "").trim());
     });
   } catch (e) {
     console.warn("Nao foi possivel carregar os precos dos produtos.", e);
@@ -84,6 +103,12 @@ async function aplicarValoresAgendamentosRelatorio(lista, user) {
     item.precoUnitario = precoUnitario;
     item.valorVenda = valorVenda;
     item.precoOrigem = origem;
+    item.produtoCategoria = String(
+      item.produtoCategoria ||
+      item.categoriaProduto ||
+      categoriasPorProduto.get(produto) ||
+      ""
+    ).trim();
     total += valorVenda;
   }
   return total;
@@ -322,9 +347,17 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
     const nomeProduto = String(item.produtoNome || "Não informado").trim() || "Não informado";
     const produtoId = chave(nomeProduto);
     if (!produtos.has(produtoId)) {
-      produtos.set(produtoId, { nome: nomeProduto, quantidade: 0, valor: 0 });
+      produtos.set(produtoId, {
+        nome: nomeProduto,
+        categoria: String(item.produtoCategoria || item.categoriaProduto || "").trim(),
+        quantidade: 0,
+        valor: 0
+      });
     }
     const produto = produtos.get(produtoId);
+    if (!produto.categoria) {
+      produto.categoria = String(item.produtoCategoria || item.categoriaProduto || "").trim();
+    }
     produto.quantidade += Number(item.quantidade || 0);
     produto.valor += Number(item.valorVenda || 0);
   });
@@ -353,22 +386,31 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
     }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
-  const telhas = itensProdutos.filter(item => chave(item.nome).includes("telha"));
-  const tijolos = itensProdutos.filter(item => chave(item.nome).includes("tijolo"));
-  const bandas = itensProdutos.filter(item => chave(item.nome).includes("banda"));
-  const outros = itensProdutos.filter(item => {
-    const nome = chave(item.nome);
-    return !nome.includes("telha") && !nome.includes("tijolo") && !nome.includes("banda");
+  const selecionarProdutos = (familia, segunda) => itensProdutos.filter(item => {
+    const classificacao = classificarProdutoRelatorio(item.nome, item.categoria);
+    return classificacao.familia === familia && classificacao.segunda === segunda;
   });
+  const telhas = selecionarProdutos("telhas", false);
+  const telhasSegunda = selecionarProdutos("telhas", true);
+  const tijolos = selecionarProdutos("tijolos", false);
+  const tijolosSegunda = selecionarProdutos("tijolos", true);
+  const bandas = selecionarProdutos("bandas", false);
+  const bandasSegunda = selecionarProdutos("bandas", true);
+  const outros = selecionarProdutos("outros", false);
+  const outrosSegunda = selecionarProdutos("outros", true);
   const resumoCategoria = itens => ({
     quantidade: itens.reduce((total, item) => total + item.quantidade, 0),
     valor: itens.reduce((total, item) => total + item.valor, 0),
     medio: itens.length ? itens.reduce((total, item) => total + item.medio, 0) / itens.length : 0
   });
   const totalTelhas = resumoCategoria(telhas);
+  const totalTelhasSegunda = resumoCategoria(telhasSegunda);
   const totalTijolos = resumoCategoria(tijolos);
+  const totalTijolosSegunda = resumoCategoria(tijolosSegunda);
   const totalBandas = resumoCategoria(bandas);
+  const totalBandasSegunda = resumoCategoria(bandasSegunda);
   const totalOutros = resumoCategoria(outros);
+  const totalOutrosSegunda = resumoCategoria(outrosSegunda);
   const totalProdutos = resumoCategoria(itensProdutos);
   const valorProdutos = totalProdutos.valor;
   const valorDocumentos = valorNota + valorRecibo;
@@ -389,12 +431,20 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
   const linhasItens = [
     ...telhas.map(linhaProduto),
     telhas.length ? linhaTotal("TOTAL DE TELHAS", totalTelhas, "total-telhas") : "",
+    ...telhasSegunda.map(linhaProduto),
+    telhasSegunda.length ? linhaTotal("TOTAL DE TELHAS DE SEGUNDA", totalTelhasSegunda, "total-segunda") : "",
     ...tijolos.map(linhaProduto),
     tijolos.length ? linhaTotal("TOTAL DE TIJOLOS", totalTijolos, "total-tijolos") : "",
+    ...tijolosSegunda.map(linhaProduto),
+    tijolosSegunda.length ? linhaTotal("TOTAL DE TIJOLOS DE SEGUNDA", totalTijolosSegunda, "total-segunda") : "",
     ...bandas.map(linhaProduto),
     bandas.length ? linhaTotal("TOTAL DE BANDAS", totalBandas, "total-bandas") : "",
+    ...bandasSegunda.map(linhaProduto),
+    bandasSegunda.length ? linhaTotal("TOTAL DE BANDAS DE SEGUNDA", totalBandasSegunda, "total-segunda") : "",
     ...outros.map(linhaProduto),
-    outros.length ? linhaTotal("TOTAL DE OUTROS ITENS", totalOutros, "total-outros") : ""
+    outros.length ? linhaTotal("TOTAL DE OUTROS ITENS", totalOutros, "total-outros") : "",
+    ...outrosSegunda.map(linhaProduto),
+    outrosSegunda.length ? linhaTotal("TOTAL DE OUTROS ITENS DE SEGUNDA", totalOutrosSegunda, "total-segunda") : ""
   ].join("") || '<tr><td>Nenhum item</td><td class="num">0</td><td class="num">0,00</td><td class="num">0,00</td></tr>';
 
   janela.document.open();
@@ -428,6 +478,7 @@ function imprimirRelatorioGerencialDiario(dataSelecionada, lista, opcoes = {}) {
         .total-tijolos td { color: #234d2d; background: #e5f1e7; font-weight: bold; }
         .total-bandas td { color: #6b21a8; background: #f3e8ff; font-weight: bold; }
         .total-outros td { color: #854d0e; background: #fef9c3; font-weight: bold; }
+        .total-segunda td { color: #1e3a8a; background: #dbeafe; font-weight: bold; }
         .total-geral td { color: #17263a; background: #eef1f4; font-weight: bold; border-top: 2px solid #17263a; border-bottom: 2px solid #17263a; }
         .somente-itens .ocultar-somente-itens { display: none; }
         @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
