@@ -366,7 +366,8 @@
       const responsavel = document.getElementById("p-responsavel")?.value.trim() || REPRESENTANTE_ATUAL || "Administrativo";
 
       if (!prazo) return alert("Selecione o prazo de pagamento.");
-      if (!previsaoHorarioChegada) return alert("Informe o horário do carregamento.");\n      if (!cliente || !itens.length) return alert("Selecione pelo menos um produto com quantidade.");
+      if (!previsaoHorarioChegada) return alert("Informe o horário do carregamento.");
+      if (!cliente || !itens.length) return alert("Selecione pelo menos um produto com quantidade.");
 
       pedidoEmEnvio = true;
       try {
