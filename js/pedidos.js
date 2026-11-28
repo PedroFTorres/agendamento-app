@@ -609,7 +609,6 @@ async function aprovarPedido(id, btn) {
       <div id="modal-aprovacao-conteudo" class="bg-white rounded shadow max-h-[95vh] overflow-y-auto">
         <div class="p-3 sm:p-4">
           <h3 class="text-lg font-bold mb-2">Escolher data do carregamento</h3>
-          <p class="text-sm text-slate-600 mb-3">Horário informado no pedido: <strong>${escapeHtml(formatarHorarioCarregamento(horarioCarregamento))}</strong></p>
           <div class="w-full min-w-0 overflow-hidden">
             <div id="calendar-aprovacao" class="w-full max-w-full min-w-0"></div>
           </div>
@@ -631,16 +630,6 @@ async function aprovarPedido(id, btn) {
       if (btn) btn.disabled = false;
     };
 
-    const snap = await db.collection("agendamentos").get();
-
-    const eventos = snap.docs.map(doc => {
-      const d = doc.data();
-      return {
-        title: `${d.produtoNome || ""} (${d.quantidade || 0})`,
-        start: d.data
-      };
-    });
-
     let clicado = false;
     const isMobile = window.matchMedia("(max-width: 640px)").matches;
 
@@ -660,8 +649,6 @@ async function aprovarPedido(id, btn) {
           center: "title",
           right: ""
         },
-        events: eventos,
-
         dateClick: async function(info) {
 
           if (clicado) return;
