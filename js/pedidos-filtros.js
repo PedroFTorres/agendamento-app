@@ -366,7 +366,7 @@
       const responsavel = document.getElementById("p-responsavel")?.value.trim() || REPRESENTANTE_ATUAL || "Administrativo";
 
       if (!prazo) return alert("Selecione o prazo de pagamento.");
-      if (!cliente || !itens.length) return alert("Selecione pelo menos um produto com quantidade.");
+      if (!previsaoHorarioChegada) return alert("Informe o horário do carregamento.");\n      if (!cliente || !itens.length) return alert("Selecione pelo menos um produto com quantidade.");
 
       pedidoEmEnvio = true;
       try {
@@ -535,7 +535,7 @@
                 <option value="30/60 dias">30/60 dias</option>
               </select>
               <input id="p-responsavel" type="text" class="border p-2 w-full" placeholder="Representante/responsavel">
-              <label class="block text-sm"><span class="block mb-1 font-semibold">Previsão de chegada (opcional)</span><input id="p-horario-chegada" type="time" class="border p-2 rounded w-full"></label>
+              <label class="block text-sm"><span class="block mb-1 font-semibold">Horário do carregamento *</span><input id="p-horario-chegada" type="time" class="border p-2 rounded w-full" required></label>
               <input id="p-obs" type="text" class="border p-2 w-full" placeholder="Observacoes (opcional)">
               <p id="msg-enviando-pedido" class="hidden text-center text-sm font-semibold text-blue-700">ENVIANDO SEU PEDIDO...</p>
               <button id="btn-pedido" class="bg-blue-600 text-white p-2 rounded w-full">Enviar Pedido</button>
