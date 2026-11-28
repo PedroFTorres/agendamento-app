@@ -668,6 +668,21 @@
       let query = db.collection("pedidos");
       if (PERFIL === "representante") {
         query = query.where("userId", "==", user.uid);
+      } else {
+        // O admin só precisa receber os pedidos do mês exibido.
+        const inicioMes = new Date(
+          pedidosDataAtual.getFullYear(),
+          pedidosDataAtual.getMonth(),
+          1
+        );
+        const fimMes = new Date(
+          pedidosDataAtual.getFullYear(),
+          pedidosDataAtual.getMonth() + 1,
+          1
+        );
+        query = query
+          .where("createdAt", ">=", inicioMes)
+          .where("createdAt", "<", fimMes);
       }
 
       if (unsubscribePedidos) {
