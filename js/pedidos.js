@@ -1185,7 +1185,8 @@ async function editarPedidoAprovado(id) {
         );
       }
 
-      location.reload();
+      // A escuta em tempo real da lista já reflete a alteração.
+      // Recarregar a página inteira fazia o usuário voltar ao Início.
 
     } catch (e) {
       console.error(e);
