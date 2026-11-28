@@ -517,6 +517,13 @@ async function aprovarPedido(id, btn) {
       return;
     }
 
+    const horarioCarregamento = String(p.previsaoHorarioChegada || "").trim();
+    if (!horarioCarregamento) {
+      alert("Este pedido antigo não possui horário de carregamento. Edite o pedido, informe o horário e depois tente aprová-lo novamente.");
+      if (btn) btn.disabled = false;
+      return;
+    }
+
     const modal = document.createElement("div");
     modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto";
 
@@ -601,9 +608,8 @@ async function aprovarPedido(id, btn) {
       </style>
       <div id="modal-aprovacao-conteudo" class="bg-white rounded shadow max-h-[95vh] overflow-y-auto">
         <div class="p-3 sm:p-4">
-          <h3 class="text-lg font-bold mb-2">Escolher data e horário do carregamento</h3>
-          <label for="horario-aprovacao" class="block text-sm font-semibold text-slate-700 mb-1">Horário do carregamento</label>
-          <input id="horario-aprovacao" type="time" value="${escapeHtml(p.previsaoHorarioChegada || "")}" class="w-full border border-slate-300 rounded px-3 py-2 mb-3" required>
+          <h3 class="text-lg font-bold mb-2">Escolher data do carregamento</h3>
+          <p class="text-sm text-slate-600 mb-3">Horário informado no pedido: <strong>${escapeHtml(formatarHorarioCarregamento(horarioCarregamento))}</strong></p>
           <div class="w-full min-w-0 overflow-hidden">
             <div id="calendar-aprovacao" class="w-full max-w-full min-w-0"></div>
           </div>
@@ -662,14 +668,7 @@ async function aprovarPedido(id, btn) {
           clicado = true;
 
           const dataEscolhida = info.dateStr;
-          const horarioEscolhido = document.getElementById("horario-aprovacao")?.value || "";
-
-          if (!horarioEscolhido) {
-            clicado = false;
-            alert("Informe o horário do carregamento.");
-            document.getElementById("horario-aprovacao")?.focus();
-            return;
-          }
+          const horarioEscolhido = horarioCarregamento;
 
           try {
 
