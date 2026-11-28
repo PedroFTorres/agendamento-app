@@ -61,7 +61,9 @@ async function carregarUsuario() {
   }
 }
 carregarUsuario().then(() => {
-  if (PERFIL) renderInicio();
+  if (!PERFIL) return;
+  const paginaSalva = sessionStorage.getItem("agendacf-pagina-atual") || "inicio";
+  navegarParaPagina(paginaSalva, { restaurando: true });
 });
 
 function normalizarTexto(valor) {
@@ -2519,6 +2521,7 @@ let dashboardRankingUnsubscribe = null;
 let dashboardCalendar = null;
 let dashboardTooltip = null;
 let dashboardRenderToken = 0;
+let dashboardDataAtual = new Date();
 
 function limparRecursosDashboard() {
   dashboardRenderToken += 1;
@@ -2887,7 +2890,21 @@ if (PERFIL === "representante") {
   query = db.collection("agendamentos")
     .where("userId", "==", user.uid);
 } else {
-  query = db.collection("agendamentos"); // ✅ SIMPLES
+  // O administrador visualiza apenas a janela necessária ao calendário atual.
+  // Antes, todos os agendamentos históricos eram transferidos a cada abertura.
+  const inicioConsulta = new Date(
+    dashboardDataAtual.getFullYear(),
+    dashboardDataAtual.getMonth() - 1,
+    1
+  ).toISOString().slice(0, 10);
+  const fimConsulta = new Date(
+    dashboardDataAtual.getFullYear(),
+    dashboardDataAtual.getMonth() + 2,
+    1
+  ).toISOString().slice(0, 10);
+  query = db.collection("agendamentos")
+    .where("data", ">=", inicioConsulta)
+    .where("data", "<", fimConsulta);
 }
 
 dashboardUnsubscribe = query.onSnapshot(snap => {
@@ -3055,6 +3072,7 @@ dashboardUnsubscribe = query.onSnapshot(snap => {
   
         const calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: "dayGridMonth",
+          initialDate: dashboardDataAtual,
           locale: "pt-br",
           // ✅ Registra o clique no dia do calendário
 dateClick: function(info) {
@@ -3070,6 +3088,18 @@ dateClick: function(info) {
               : "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
           },
           events: eventos,
+          datesSet: function(info) {
+            const centro = new Date((info.start.getTime() + info.end.getTime()) / 2);
+            if (
+              centro.getFullYear() !== dashboardDataAtual.getFullYear() ||
+              centro.getMonth() !== dashboardDataAtual.getMonth()
+            ) {
+              dashboardDataAtual = new Date(centro.getFullYear(), centro.getMonth(), 1);
+              setTimeout(() => {
+                if (document.getElementById("calendar")) renderDashboard();
+              }, 0);
+            }
+          },
           eventOrderStrict: true,
           eventOrder: function(a, b) {
             const produto = String(a.extendedProps.produto || "").localeCompare(
@@ -3867,9 +3897,11 @@ const docsVisiveis = snap.docs.filter(doc => {
   }
 }
 // ================== MENU ==================
-document.querySelectorAll(".menu-item").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const page = btn.dataset.page;
+function navegarParaPagina(page, opcoes = {}) {
+    const botao = document.querySelector(`.menu-item[data-page="${page}"]`);
+    if (!botao || botao.closest("li")?.style.display === "none") page = "inicio";
+
+    sessionStorage.setItem("agendacf-pagina-atual", page);
 
     if (!["inicio", "dashboard"].includes(page)) {
       limparRecursosDashboard();
@@ -3902,11 +3934,21 @@ document.querySelectorAll(".menu-item").forEach(btn => {
     else if (page === "retornos") renderRetornos();
     else renderForm(page);
 
-    // 👇 ISSO AQUI QUE RESOLVE SEU PROBLEMA
+    document.querySelectorAll(".menu-item").forEach(item => {
+      item.classList.toggle("active", item.dataset.page === page);
+    });
+
     const menu = document.getElementById("sidebar");
-    if (window.innerWidth < 768) {
+    if (!opcoes.restaurando && window.innerWidth < 768) {
       menu.classList.add("-translate-x-full");
     }
+}
+
+window.navegarParaPagina = navegarParaPagina;
+
+document.querySelectorAll(".menu-item").forEach(btn => {
+  btn.addEventListener("click", () => {
+    navegarParaPagina(btn.dataset.page);
   });
 });
 
