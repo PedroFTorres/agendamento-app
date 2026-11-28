@@ -22,6 +22,10 @@ const verificacoes = [
     "A aprovação deve reutilizar o horário informado no pedido."
   ],
   [
+    !pedidos.includes('db.collection("agendamentos").get()'),
+    "A aprovação não deve carregar toda a coleção de agendamentos antes de abrir o calendário."
+  ],
+  [
     pedidos.includes("Este pedido antigo não possui horário de carregamento."),
     "Pedidos antigos sem horário devem orientar a edição antes da aprovação."
   ]
